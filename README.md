@@ -1,5 +1,8 @@
 # shallow-water
-3D shallow water code
+
+3D shallow water code by David Dritschel
+
+http://www-vortex.mcs.st-and.ac.uk/software.html
 
 ## build instructions
 
