@@ -9,8 +9,8 @@ present_post_files = $(notdir $(basename $(wildcard $(sourcedir)/post/*.f90)))
 energy: $(objects) $(fft_lib) $(sourcedir)/post/energy.f90
 	$(f90) $(fft_lib) parameters.o constants.o spectral.o $(sourcedir)/post/energy.f90 -o energy $(flags)
 
-vspectrum: $(objects) ~/hydra/lib/stafft/stafft.f90 $(sourcedir)/post/vspectrum.f90
-	$(f90) ~/hydra/lib/stafft/stafft.f90 parameters.o constants.o $(sourcedir)/post/vspectrum.f90 -o vspectrum $(flags)
+#vspectrum: $(objects) stafft.f90 $(sourcedir)/post/vspectrum.f90
+#	$(f90) stafft.f90 parameters.o constants.o $(sourcedir)/post/vspectrum.f90 -o vspectrum $(flags)
 
 accel: $(objects) $(fft_lib) $(sourcedir)/post/accel.f90
 	$(f90) $(fft_lib) parameters.o constants.o spectral.o $(sourcedir)/post/accel.f90 -o accel $(flags)
