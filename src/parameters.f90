@@ -6,7 +6,7 @@ module parameters
 double precision,parameter:: pi=3.141592653589793238462643383279502884197169399375105820974944592307816d0
 
 ! ==> Numerical parameters <==
-integer,parameter:: ng=256,nz=32
+integer,parameter:: ng=128,nz=16
 double precision,parameter:: dt=1.d0/dble(ng),tsim=25.d0
 double precision,parameter:: tgsave=0.25d0
 double precision,parameter:: toler=1.d-9
