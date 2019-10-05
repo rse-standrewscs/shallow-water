@@ -1,0 +1,23 @@
+# Build output
+*.mod
+*.o
+
+accel
+balinit
+energy
+gamma-tilde
+hspectrum
+nh-pressure
+nhswps
+slice
+swto3d
+threevort
+vertical-velocity
+vstrip
+
+
+# Execution output
+*.r4
+*.r8
+*.asc
+log
