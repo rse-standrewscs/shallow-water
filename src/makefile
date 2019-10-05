@@ -5,12 +5,12 @@ installdir = ..
 
  # Set main source and object files:
 sources = $(sourcedir)/parameters.f90 $(sourcedir)/constants.f90 $(sourcedir)/spectral.f90 #Main f90 sources
-objects = parameters.o constants.o spectral.o #Main .o files 
+objects = parameters.o constants.o spectral.o #Main .o files
 
  # Set location of fft library:
-fft_lib = stafft.f90 sta2dfft.f90 
+fft_lib = stafft.f90 sta2dfft.f90
 
- # Set flag options: 
+ # Set flag options:
 norm_flags = -O3 #-mcmodel=medium #Compiler flags
 test_flags = -O3 -mcmodel=medium -fbounds-check -fbacktrace  #Compiler flags
 
@@ -25,7 +25,7 @@ all: nhswps setup proxy_init_all proxy_post_all install
 nhswps: $(objects) $(fft_lib) $(sourcedir)/nhswps.f90
 	$(f90) $(fft_lib) $(objects) $(sourcedir)/nhswps.f90 -o nhswps $(flags)
 
-$(objects): $(fft_lib) $(sources) 
+$(objects): $(fft_lib) $(sources)
 	$(f90) $(fft_lib) $(sources) -c $(flags)
 
 .PHONY: clean setup install
@@ -36,9 +36,9 @@ setup:
 	test -d $(installdir)/2d || mkdir $(installdir)/2d
 
 install:
-	find . -type f -perm 755 -exec /bin/mv {} $(installdir)/ \;
+	find . -type f -executable -exec /bin/mv {} $(installdir)/ \;
 
- # Include intialisation and post-processing rules 
+ # Include intialisation and post-processing rules
  # if these exist:
 -include init/init.make
 -include post/post.make
@@ -47,14 +47,14 @@ install:
  # also gets built:
 ifdef init_exists
 proxy_init_all: init_all
-else 
+else
 proxy_init_all:
-	 @echo No init directory found 
+	 @echo No init directory found
 endif
 
 ifdef post_exists
 proxy_post_all: post_all
-else 
+else
 proxy_post_all:
-	 @echo No post directory found 
+	 @echo No post directory found
 endif
