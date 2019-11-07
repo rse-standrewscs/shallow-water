@@ -1,0 +1,9 @@
+[numerical]
+vertical_layer_count = 16
+inversion_grid_resolution = 128
+simulation_duration = 25
+time_step = 0.1
+save_step = 0.25
+max_pressure_difference = 0.000000001
+
+[physical]
