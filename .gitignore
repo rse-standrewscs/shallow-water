@@ -1,20 +1,5 @@
 # Build output
-*.mod
-*.o
-
-accel
-balinit
-energy
-gamma-tilde
-hspectrum
-nh-pressure
-nhswps
-slice
-swto3d
-threevort
-vertical-velocity
-vstrip
-
+target
 
 # Execution output
 *.r4

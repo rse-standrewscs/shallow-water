@@ -6,18 +6,10 @@
 
 http://www-vortex.mcs.st-and.ac.uk/software.html
 
-## Build instructions
-
-    cd src
-    make all clean
-
 ## Usage instructions
 
 In the root directory of the project:
 
-    ./vstrip < in_vstrip
-    ./balinit
-    ./swto3d
-    ./nhswps > log &
+    cargo run
 
 When finished, inspect `monitor.asc` and `log` files.
