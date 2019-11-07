@@ -1,7 +1,23 @@
-language: c
-sudo: required
-before_install:
-  - sudo apt-get install gfortran
+language: rust
+rust: stable
+env:
+  global:
+    - RUSTFLAGS="--deny warnings"
 
-script:
-  - cd ./tst && ./test.sh
+stages:
+  - stylecheck
+  - test
+
+jobs:
+  include:
+    - stage: stylecheck
+      script:
+        - rustup component add rustfmt
+        - cargo fmt --all -- --check
+    - stage: test
+      script:
+        - cargo test --all-features --no-fail-fast --all
+
+notifications:
+  email:
+    on_success: never
