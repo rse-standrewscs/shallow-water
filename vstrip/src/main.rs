@@ -9,24 +9,37 @@ use {
     std::f64::consts::PI,
     std::fs::File,
     std::io::prelude::*,
+    toml::Value,
 };
 
 fn main() {
-    let _ = clap_app!(vstrip =>
+    let matches = clap_app!(vstrip =>
         (version: crate_version!())
         (about: "Initialises a PV strip with zero fields of divergence and acceleration divergence.")
-        //(@arg PARAMETERS_FILE: +required +takes_value "Path to file containing parameters to be used during PV strip initialization.")
+        (@arg PARAMETERS_FILE: +required +takes_value "Path to file containing parameters to be used during PV strip initialization.")
     )
     .get_matches();
 
-    let qq = init_pv_strip(NG, 0.4, 0.02, -0.01);
+    let mut parameters_string = String::new();
+    let mut f = File::open(matches.value_of("PARAMETERS_FILE").unwrap()).unwrap();
+    f.read_to_string(&mut parameters_string).unwrap();
+    let config: Value = toml::from_str(&parameters_string).unwrap();
+
+    let qq = init_pv_strip(
+        config["numerical"]["vertical_layer_count"]
+            .as_integer()
+            .unwrap() as usize,
+        0.4,
+        0.02,
+        -0.01,
+    );
 
     let mut f = File::create("qq_init.r8").unwrap();
     let mut buf = [0u8; 8];
     f.write_all(&buf).unwrap();
-    for col in qq {
-        for row in col {
-            LittleEndian::write_f64(&mut buf, row);
+    for x in 0..qq.len() {
+        for row in &qq {
+            LittleEndian::write_f64(&mut buf, row[x]);
             f.write_all(&buf).unwrap();
         }
     }
@@ -62,12 +75,13 @@ fn init_pv_strip(ng: usize, width: f64, a2: f64, a3: f64) -> Vec<Vec<f64>> {
         let y1 = -hwid;
         let y2 = hwid + a2 * (2.0 * x).sin() + a3 * (3.0 * x).sin();
 
-        for j in 0..ngu {
+        for (j, row) in qa.iter_mut().enumerate() {
             let y = glu * j as f64 - PI;
-            if (y2 - y) * (y - y1) > 0.0 {
-                qa[j][i] = 4.0 * qmax * (y2 - y) * (y - y1) / (y2 - y1).powf(2.0);
+
+            row[i] = if (y2 - y) * (y - y1) > 0.0 {
+                4.0 * qmax * (y2 - y) * (y - y1) / (y2 - y1).powf(2.0)
             } else {
-                qa[j][i] = 0.0;
+                0.0
             }
         }
     }
@@ -109,20 +123,21 @@ fn init_pv_strip(ng: usize, width: f64, a2: f64, a3: f64) -> Vec<Vec<f64>> {
                     + 0.25 * qod1[iy]
             }
 
-            for iy in 0..ngh {
-                qod2[iy] = qod0[iy];
-                qev2[iy + 1] = qev0[iy + 1];
-            }
+            qod2[..ngh].clone_from_slice(&qod0[..ngh]);
+            qev2[1..=ngh].clone_from_slice(&qev0[1..=ngh]);
+
             qev2[0] = qev0[0];
         }
     }
 
     let mut qavg = 0f64;
+
     for ix in 0..ng {
         for iy in 0..ng {
             qavg += qa[iy][ix];
         }
     }
+
     qavg /= (ng * ng) as f64;
 
     for ix in 0..ng {
@@ -136,10 +151,40 @@ fn init_pv_strip(ng: usize, width: f64, a2: f64, a3: f64) -> Vec<Vec<f64>> {
 
 #[cfg(test)]
 mod test {
-    use {super::init_pv_strip, insta::assert_debug_snapshot};
+    use {
+        super::init_pv_strip,
+        byteorder::{ByteOrder, LittleEndian},
+        insta::assert_debug_snapshot,
+    };
 
+    /// Generates a .r8 file from the initial parameters
+    fn gen_r8(ng: usize, width: f64, a2: f64, a3: f64) -> Vec<u8> {
+        let qq = init_pv_strip(ng, width, a2, a3);
+
+        let mut data = Vec::<u8>::new();
+
+        let mut buf = [0u8; 8];
+        data.append(&mut buf.to_vec());
+
+        for x in 0..qq.len() {
+            qq.iter().for_each(|row| {
+                LittleEndian::write_f64(&mut buf, row[x]);
+                data.append(&mut buf.to_vec());
+            });
+        }
+
+        data
+    }
+
+    /// Asserts that the generated .r8 file for ng=128 is equivalent to the snapshot of the Fortran-created file.
     #[test]
-    fn test_snapshots() {
-        assert_debug_snapshot!(init_pv_strip(32, 0.4, 0.02, -0.01));
+    fn ng128_snapshot() {
+        assert_debug_snapshot!(gen_r8(128, 0.4, 0.02, -0.01));
+    }
+
+    /// Asserts that the generated .r8 file for ng=32 is equivalent to the snapshot of the Fortran-created file.
+    #[test]
+    fn ng32_snapshot() {
+        assert_debug_snapshot!(gen_r8(32, 0.4, 0.02, -0.01));
     }
 }
