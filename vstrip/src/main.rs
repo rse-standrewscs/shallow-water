@@ -154,7 +154,6 @@ mod test {
     use {
         super::init_pv_strip,
         byteorder::{ByteOrder, LittleEndian},
-        insta::assert_debug_snapshot,
     };
 
     /// Generates a .r8 file from the initial parameters
@@ -176,15 +175,17 @@ mod test {
         data
     }
 
-    /// Asserts that the generated .r8 file for ng=128 is equivalent to the snapshot of the Fortran-created file.
-    #[test]
-    fn ng128_snapshot() {
-        assert_debug_snapshot!(gen_r8(128, 0.4, 0.02, -0.01));
-    }
-
-    /// Asserts that the generated .r8 file for ng=32 is equivalent to the snapshot of the Fortran-created file.
+    /// Asserts that the generated .r8 file for ng=32 is close to the Fortran-created file.
     #[test]
     fn ng32_snapshot() {
-        assert_debug_snapshot!(gen_r8(32, 0.4, 0.02, -0.01));
+        for (a, b) in include_bytes!("../../testdata/qq_init_32.r8")
+            .iter()
+            .zip(gen_r8(32, 0.4, 0.02, -0.01))
+        {
+            let a = *a as i16;
+            let b = b as i16;
+
+            assert!((a - b).abs() < 3);
+        }
     }
 }
