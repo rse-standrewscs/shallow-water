@@ -1,4 +1,7 @@
 [numerical]
+strip_width = 0.4
+a2 = 0.02
+a3 = -0.01
 vertical_layer_count = 32
 inversion_grid_resolution = 128
 simulation_duration = 25

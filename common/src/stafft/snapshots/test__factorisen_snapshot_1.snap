@@ -1,0 +1,11 @@
+---
+source: common/src/stafft/mod.rs
+expression: factors
+---
+[
+    0,
+    2,
+    0,
+    0,
+    0,
+]
