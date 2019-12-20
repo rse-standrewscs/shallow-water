@@ -1,6 +1,6 @@
 # shallow-water
 
-[![Build Status](https://travis-ci.com/chocol4te/shallow-water.svg?token=Yy278F6KPxruhJLf8xog&branch=master)](https://travis-ci.com/chocol4te/shallow-water)
+[![Build Status](https://travis-ci.com/chocol4te/shallow-water.svg?token=Yy278F6KPxruhJLf8xog&branch=rust_port)](https://travis-ci.com/chocol4te/shallow-water)
 
 3D shallow water code by David Dritschel
 
