@@ -65,7 +65,7 @@ pub use reverse::*;
 /// Subroutine performs initialisation work for all the transforms.
 /// It calls routines to factorise the array length n and then sets up
 /// a trig array full of sin/cos values used in the transform backend.
-pub fn initfft(n: usize, factors: &mut [u32; 5], trig: &mut [f64]) {
+pub fn initfft(n: usize, factors: &mut [u8; 5], trig: &mut [f64]) {
     assert_eq!(2 * n, trig.len());
 
     let twopi = 6.283_185_307_179_586;
@@ -97,7 +97,7 @@ pub fn initfft(n: usize, factors: &mut [u32; 5], trig: &mut [f64]) {
     }
 }
 
-pub fn factorisen(n: usize, factors: &mut [u32; 5]) {
+pub fn factorisen(n: usize, factors: &mut [u8; 5]) {
     let mut rem = n;
 
     for elem in factors.iter_mut() {
@@ -157,7 +157,7 @@ pub fn factorisen(n: usize, factors: &mut [u32; 5]) {
 /// should be kept from call to call.
 /// Backend consists of mixed-radix routines, with 'decimation in time'.
 /// Transform is stored in Hermitian form.
-pub fn forfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[usize; 5]) {
+pub fn forfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize; 5]) {
     assert_eq!(m * n, xs.len());
     assert_eq!(2 * n, trig.len());
 
@@ -178,26 +178,20 @@ pub fn forfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
         let cosine = slice_to_2d(&trig[iloc..], cum, 4);
         let sine = slice_to_2d(&trig[n + iloc..], cum, 4);
 
-        let a = slice_to_3d(
-            if orig { &xs.as_slice() } else { &wk.as_slice() },
-            m * rem,
-            5,
-            cum,
-        );
-        let mut b = slice_to_3d(
-            if orig { &wk.as_slice() } else { &xs.as_slice() },
-            m * rem,
-            cum,
-            5,
-        );
+        let a = slice_to_3d(if orig { xs } else { &wk.as_slice() }, m * rem, 5, cum);
+        let mut b = slice_to_3d(if orig { &wk.as_slice() } else { xs }, m * rem, cum, 5);
 
         forrdx5(&a, &mut b, m * rem, cum, &cosine, &sine);
 
         if orig {
-            *xs = _3d_to_vec(&a);
+            for (i, e) in _3d_to_vec(&a).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&b);
         } else {
-            *xs = _3d_to_vec(&b);
+            for (i, e) in _3d_to_vec(&b).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&a);
         }
 
@@ -213,26 +207,20 @@ pub fn forfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
         let cosine = slice_to_2d(&trig[iloc..], cum, 2);
         let sine = slice_to_2d(&trig[n + iloc..], cum, 2);
 
-        let a = slice_to_3d(
-            if orig { &xs.as_slice() } else { &wk.as_slice() },
-            m * rem,
-            3,
-            cum,
-        );
-        let mut b = slice_to_3d(
-            if orig { &wk.as_slice() } else { &xs.as_slice() },
-            m * rem,
-            cum,
-            3,
-        );
+        let a = slice_to_3d(if orig { xs } else { &wk.as_slice() }, m * rem, 3, cum);
+        let mut b = slice_to_3d(if orig { &wk.as_slice() } else { xs }, m * rem, cum, 3);
 
         forrdx3(&a, &mut b, m * rem, cum, &cosine, &sine);
 
         if orig {
-            *xs = _3d_to_vec(&a);
+            for (i, e) in _3d_to_vec(&a).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&b);
         } else {
-            *xs = _3d_to_vec(&b);
+            for (i, e) in _3d_to_vec(&b).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&a);
         }
 
@@ -248,26 +236,20 @@ pub fn forfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
         let cosine = slice_to_2d(&trig[iloc..], cum, 1);
         let sine = slice_to_2d(&trig[n + iloc..], cum, 1);
 
-        let a = slice_to_3d(
-            if orig { &xs.as_slice() } else { &wk.as_slice() },
-            m * rem,
-            2,
-            cum,
-        );
-        let mut b = slice_to_3d(
-            if orig { &wk.as_slice() } else { &xs.as_slice() },
-            m * rem,
-            cum,
-            2,
-        );
+        let a = slice_to_3d(if orig { xs } else { &wk.as_slice() }, m * rem, 2, cum);
+        let mut b = slice_to_3d(if orig { &wk.as_slice() } else { xs }, m * rem, cum, 2);
 
         forrdx2(&a, &mut b, m * rem, cum, &cosine[0], &sine[0]);
 
         if orig {
-            *xs = _3d_to_vec(&a);
+            for (i, e) in _3d_to_vec(&a).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&b);
         } else {
-            *xs = _3d_to_vec(&b);
+            for (i, e) in _3d_to_vec(&b).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&a);
         }
 
@@ -283,26 +265,20 @@ pub fn forfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
         let cosine = slice_to_2d(&trig[iloc..], cum, 3);
         let sine = slice_to_2d(&trig[n + iloc..], cum, 3);
 
-        let a = slice_to_3d(
-            if orig { &xs.as_slice() } else { &wk.as_slice() },
-            m * rem,
-            4,
-            cum,
-        );
-        let mut b = slice_to_3d(
-            if orig { &wk.as_slice() } else { &xs.as_slice() },
-            m * rem,
-            cum,
-            4,
-        );
+        let a = slice_to_3d(if orig { xs } else { &wk.as_slice() }, m * rem, 4, cum);
+        let mut b = slice_to_3d(if orig { &wk.as_slice() } else { xs }, m * rem, cum, 4);
 
         forrdx4(&a, &mut b, m * rem, cum, &cosine, &sine);
 
         if orig {
-            *xs = _3d_to_vec(&a);
+            for (i, e) in _3d_to_vec(&a).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&b);
         } else {
-            *xs = _3d_to_vec(&b);
+            for (i, e) in _3d_to_vec(&b).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&a);
         }
 
@@ -318,26 +294,20 @@ pub fn forfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
         let cosine = slice_to_2d(&trig[iloc..], cum, 5);
         let sine = slice_to_2d(&trig[n + iloc..], cum, 5);
 
-        let a = slice_to_3d(
-            if orig { &xs.as_slice() } else { &wk.as_slice() },
-            m * rem,
-            6,
-            cum,
-        );
-        let mut b = slice_to_3d(
-            if orig { &wk.as_slice() } else { &xs.as_slice() },
-            m * rem,
-            cum,
-            6,
-        );
+        let a = slice_to_3d(if orig { xs } else { &wk.as_slice() }, m * rem, 6, cum);
+        let mut b = slice_to_3d(if orig { &wk.as_slice() } else { xs }, m * rem, cum, 6);
 
         forrdx6(&a, &mut b, m * rem, cum, &cosine, &sine);
 
         if orig {
-            *xs = _3d_to_vec(&a);
+            for (i, e) in _3d_to_vec(&a).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&b);
         } else {
-            *xs = _3d_to_vec(&b);
+            for (i, e) in _3d_to_vec(&b).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&a);
         }
 
@@ -363,7 +333,7 @@ pub fn forfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
 /// should be kept from call to call.
 /// Backend consists of mixed-radix routines, with 'decimation in frequency'.
 /// Reverse transform starts in Hermitian form.
-pub fn revfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[usize; 5]) {
+pub fn revfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize; 5]) {
     assert_eq!(m * n, xs.len());
     assert_eq!(2 * n, trig.len());
 
@@ -400,26 +370,20 @@ pub fn revfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
         let cosine = slice_to_2d(&trig[iloc..], rem, 5);
         let sine = slice_to_2d(&trig[n + iloc..], rem, 5);
 
-        let a = slice_to_3d(
-            if orig { &xs.as_slice() } else { &wk.as_slice() },
-            m * cum,
-            rem,
-            6,
-        );
-        let mut b = slice_to_3d(
-            if orig { &wk.as_slice() } else { &xs.as_slice() },
-            m * cum,
-            6,
-            rem,
-        );
+        let a = slice_to_3d(if orig { xs } else { &wk.as_slice() }, m * cum, rem, 6);
+        let mut b = slice_to_3d(if orig { &wk.as_slice() } else { xs }, m * cum, 6, rem);
 
         revrdx6(&a, &mut b, m * cum, rem, &cosine, &sine);
 
         if orig {
-            *xs = _3d_to_vec(&a);
+            for (i, e) in _3d_to_vec(&a).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&b);
         } else {
-            *xs = _3d_to_vec(&b);
+            for (i, e) in _3d_to_vec(&b).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&a);
         }
 
@@ -435,26 +399,20 @@ pub fn revfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
         let cosine = slice_to_2d(&trig[iloc..], rem, 3);
         let sine = slice_to_2d(&trig[n + iloc..], rem, 3);
 
-        let a = slice_to_3d(
-            if orig { &xs.as_slice() } else { &wk.as_slice() },
-            m * cum,
-            rem,
-            4,
-        );
-        let mut b = slice_to_3d(
-            if orig { &wk.as_slice() } else { &xs.as_slice() },
-            m * cum,
-            4,
-            rem,
-        );
+        let a = slice_to_3d(if orig { xs } else { &wk.as_slice() }, m * cum, rem, 4);
+        let mut b = slice_to_3d(if orig { &wk.as_slice() } else { xs }, m * cum, 4, rem);
 
         revrdx4(&a, &mut b, m * cum, rem, &cosine, &sine);
 
         if orig {
-            *xs = _3d_to_vec(&a);
+            for (i, e) in _3d_to_vec(&a).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&b);
         } else {
-            *xs = _3d_to_vec(&b);
+            for (i, e) in _3d_to_vec(&b).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&a);
         }
 
@@ -467,26 +425,19 @@ pub fn revfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
         rem /= 2;
         iloc = (cum - 1) * 2 * rem;
 
-        let a = slice_to_3d(
-            if orig { &xs.as_slice() } else { &wk.as_slice() },
-            m * cum,
-            rem,
-            2,
-        );
-        let mut b = slice_to_3d(
-            if orig { &wk.as_slice() } else { &xs.as_slice() },
-            m * cum,
-            2,
-            rem,
-        );
+        let a = slice_to_3d(if orig { xs } else { &wk.as_slice() }, m * cum, rem, 2);
+        let mut b = slice_to_3d(if orig { &wk.as_slice() } else { xs }, m * cum, 2, rem);
 
         revrdx2(&a, &mut b, m * cum, rem, &[trig[iloc]], &[trig[n + iloc]]);
-
         if orig {
-            *xs = _3d_to_vec(&a);
+            for (i, e) in _3d_to_vec(&a).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&b);
         } else {
-            *xs = _3d_to_vec(&b);
+            for (i, e) in _3d_to_vec(&b).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&a);
         }
 
@@ -502,26 +453,20 @@ pub fn revfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
         let cosine = slice_to_2d(&trig[iloc..], rem, 2);
         let sine = slice_to_2d(&trig[n + iloc..], rem, 2);
 
-        let a = slice_to_3d(
-            if orig { &xs.as_slice() } else { &wk.as_slice() },
-            m * cum,
-            rem,
-            3,
-        );
-        let mut b = slice_to_3d(
-            if orig { &wk.as_slice() } else { &xs.as_slice() },
-            m * cum,
-            3,
-            rem,
-        );
+        let a = slice_to_3d(if orig { xs } else { &wk.as_slice() }, m * cum, rem, 3);
+        let mut b = slice_to_3d(if orig { &wk.as_slice() } else { xs }, m * cum, 3, rem);
 
         revrdx3(&a, &mut b, m * cum, rem, &cosine, &sine);
 
         if orig {
-            *xs = _3d_to_vec(&a);
+            for (i, e) in _3d_to_vec(&a).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&b);
         } else {
-            *xs = _3d_to_vec(&b);
+            for (i, e) in _3d_to_vec(&b).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&a);
         }
 
@@ -537,26 +482,20 @@ pub fn revfft(m: usize, n: usize, xs: &mut Vec<f64>, trig: &[f64], factors: &[us
         let cosine = slice_to_2d(&trig[iloc..], rem, 4);
         let sine = slice_to_2d(&trig[n + iloc..], rem, 4);
 
-        let a = slice_to_3d(
-            if orig { &xs.as_slice() } else { &wk.as_slice() },
-            m * cum,
-            rem,
-            5,
-        );
-        let mut b = slice_to_3d(
-            if orig { &wk.as_slice() } else { &xs.as_slice() },
-            m * cum,
-            5,
-            rem,
-        );
+        let a = slice_to_3d(if orig { xs } else { &wk.as_slice() }, m * cum, rem, 5);
+        let mut b = slice_to_3d(if orig { &wk.as_slice() } else { xs }, m * cum, 5, rem);
 
         revrdx5(&a, &mut b, m * cum, rem, &cosine, &sine);
 
         if orig {
-            *xs = _3d_to_vec(&a);
+            for (i, e) in _3d_to_vec(&a).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&b);
         } else {
-            *xs = _3d_to_vec(&b);
+            for (i, e) in _3d_to_vec(&b).iter().enumerate() {
+                xs[i] = *e;
+            }
             wk = _3d_to_vec(&a);
         }
 
@@ -658,7 +597,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/forfft_ng12_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/forfft_ng12_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -681,7 +620,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/forfft_ng12_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/forfft_ng12_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -704,7 +643,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/forfft_ng15_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/forfft_ng15_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -728,7 +667,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/forfft_ng15_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/forfft_ng15_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -751,7 +690,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/forfft_ng16_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/forfft_ng16_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -774,7 +713,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/forfft_ng16_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/forfft_ng16_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -797,7 +736,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/forfft_ng18_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/forfft_ng18_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -820,7 +759,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/forfft_ng18_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/forfft_ng18_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -843,7 +782,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/forfft_ng24_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/forfft_ng24_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -866,7 +805,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/forfft_ng24_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/forfft_ng24_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -889,7 +828,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/revfft_ng12_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/revfft_ng12_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -912,7 +851,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/revfft_ng12_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/revfft_ng12_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -935,7 +874,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/revfft_ng15_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/revfft_ng15_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -959,7 +898,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/revfft_ng15_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/revfft_ng15_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -983,7 +922,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/revfft_ng16_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/revfft_ng16_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -1007,7 +946,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/revfft_ng16_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/revfft_ng16_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -1031,7 +970,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/revfft_ng18_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/revfft_ng18_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -1055,7 +994,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/revfft_ng18_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/revfft_ng18_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -1079,7 +1018,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/revfft_ng24_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/revfft_ng24_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -1103,7 +1042,7 @@ mod test {
         let mut x = include_bytes!("../../../testdata/revfft_ng24_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
-            .collect();
+            .collect::<Vec<f64>>();
         let x2 = include_bytes!("../../../testdata/revfft_ng24_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
