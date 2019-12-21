@@ -2,11 +2,19 @@ language: rust
 rust: stable
 env:
   global:
-    - RUSTFLAGS="--deny warnings"
+    - RUSTFLAGS="--deny warnings -C link-dead-code"
+
+addons:
+    apt:
+        packages:
+            - libssl-dev
+
+cache: cargo
 
 stages:
   - stylecheck
   - test
+  - coverage
 
 jobs:
   include:
@@ -17,6 +25,11 @@ jobs:
     - stage: test
       script:
         - cargo test --all-features --no-fail-fast --all
+    - stage: coverage
+      script: |
+        cargo install cargo-tarpaulin || true
+        cargo tarpaulin -v --out Xml
+        bash <(curl -s https://codecov.io/bash)
 
 notifications:
   email:
