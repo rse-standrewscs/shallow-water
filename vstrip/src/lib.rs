@@ -127,7 +127,7 @@ mod test {
     /// Asserts that the generated .r8 file for ng=32 is close to the Fortran-created file.
     #[test]
     fn ng32_snapshot() {
-        for (a, b) in include_bytes!("../../testdata/qq_init_32.r8")
+        for (a, b) in include_bytes!("testdata/qq_init_32.r8")
             .iter()
             .zip(gen_r8(32, 0.4, 0.02, -0.01))
         {

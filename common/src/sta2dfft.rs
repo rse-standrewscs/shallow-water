@@ -245,7 +245,7 @@ mod test {
             &mut ky,
         );
 
-        for (i, e) in include_bytes!("../../testdata/init2dfft_trig.bin")
+        for (i, e) in include_bytes!("testdata/init2dfft_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .enumerate()
@@ -264,29 +264,29 @@ mod test {
     fn ptospc_ng32() {
         let nx = 32;
         let ny = 32;
-        let mut rvar = include_bytes!("../../testdata/ptospc_ng32_rvar.bin")
+        let mut rvar = include_bytes!("testdata/ptospc/ptospc_ng32_rvar.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let mut svar = include_bytes!("../../testdata/ptospc_ng32_svar.bin")
+        let mut svar = include_bytes!("testdata/ptospc/ptospc_ng32_svar.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let rvar2 = include_bytes!("../../testdata/ptospc_ng32_rvar2.bin")
+        let rvar2 = include_bytes!("testdata/ptospc/ptospc_ng32_rvar2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let svar2 = include_bytes!("../../testdata/ptospc_ng32_svar2.bin")
+        let svar2 = include_bytes!("testdata/ptospc/ptospc_ng32_svar2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let xfactors = [0, 2, 1, 0, 0];
         let yfactors = [0, 2, 1, 0, 0];
-        let xtrig = include_bytes!("../../testdata/ptospc_ng32_trig.bin")
+        let xtrig = include_bytes!("testdata/ptospc/ptospc_ng32_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let ytrig = include_bytes!("../../testdata/ptospc_ng32_trig.bin")
+        let ytrig = include_bytes!("testdata/ptospc/ptospc_ng32_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -303,29 +303,29 @@ mod test {
     fn spctop_ng32() {
         let nx = 32;
         let ny = 32;
-        let mut rvar = include_bytes!("../../testdata/spctop_ng32_rvar.bin")
+        let mut rvar = include_bytes!("testdata/spctop/spctop_ng32_rvar.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let mut svar = include_bytes!("../../testdata/spctop_ng32_svar.bin")
+        let mut svar = include_bytes!("testdata/spctop/spctop_ng32_svar.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let rvar2 = include_bytes!("../../testdata/spctop_ng32_rvar2.bin")
+        let rvar2 = include_bytes!("testdata/spctop/spctop_ng32_rvar2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let svar2 = include_bytes!("../../testdata/spctop_ng32_svar2.bin")
+        let svar2 = include_bytes!("testdata/spctop/spctop_ng32_svar2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let xfactors = [0, 2, 1, 0, 0];
         let yfactors = [0, 2, 1, 0, 0];
-        let xtrig = include_bytes!("../../testdata/spctop_ng32_trig.bin")
+        let xtrig = include_bytes!("testdata/spctop/spctop_ng32_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let ytrig = include_bytes!("../../testdata/spctop_ng32_trig.bin")
+        let ytrig = include_bytes!("testdata/spctop/spctop_ng32_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -342,22 +342,22 @@ mod test {
     fn xderiv_1() {
         let nx = 32;
         let ny = 32;
-        let rkx = include_bytes!("../../testdata/xderiv_1_rkx.bin")
+        let rkx = include_bytes!("testdata/deriv/xderiv_1_rkx.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let var = include_bytes!("../../testdata/xderiv_1_var.bin")
+        let var = include_bytes!("testdata/deriv/xderiv_1_var.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let mut der = include_bytes!("../../testdata/xderiv_1_der.bin")
+        let mut der = include_bytes!("testdata/deriv/xderiv_1_der.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let der2 = include_bytes!("../../testdata/xderiv_1_der2.bin")
+        let der2 = include_bytes!("testdata/deriv/xderiv_1_der2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -371,22 +371,22 @@ mod test {
     fn xderiv_2() {
         let nx = 24;
         let ny = 24;
-        let rkx = include_bytes!("../../testdata/xderiv_2_rkx.bin")
+        let rkx = include_bytes!("testdata/deriv/xderiv_2_rkx.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let var = include_bytes!("../../testdata/xderiv_2_var.bin")
+        let var = include_bytes!("testdata/deriv/xderiv_2_var.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let mut der = include_bytes!("../../testdata/xderiv_2_der.bin")
+        let mut der = include_bytes!("testdata/deriv/xderiv_2_der.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let der2 = include_bytes!("../../testdata/xderiv_2_der2.bin")
+        let der2 = include_bytes!("testdata/deriv/xderiv_2_der2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -400,22 +400,22 @@ mod test {
     fn yderiv_1() {
         let nx = 32;
         let ny = 32;
-        let rky = include_bytes!("../../testdata/yderiv_1_rky.bin")
+        let rky = include_bytes!("testdata/deriv/yderiv_1_rky.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let var = include_bytes!("../../testdata/yderiv_1_var.bin")
+        let var = include_bytes!("testdata/deriv/yderiv_1_var.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let mut der = include_bytes!("../../testdata/yderiv_1_der.bin")
+        let mut der = include_bytes!("testdata/deriv/yderiv_1_der.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let der2 = include_bytes!("../../testdata/yderiv_1_der2.bin")
+        let der2 = include_bytes!("testdata/deriv/yderiv_1_der2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -429,22 +429,22 @@ mod test {
     fn yderiv_2() {
         let nx = 24;
         let ny = 24;
-        let rky = include_bytes!("../../testdata/yderiv_2_rky.bin")
+        let rky = include_bytes!("testdata/deriv/yderiv_2_rky.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let var = include_bytes!("../../testdata/yderiv_2_var.bin")
+        let var = include_bytes!("testdata/deriv/yderiv_2_var.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let mut der = include_bytes!("../../testdata/yderiv_2_der.bin")
+        let mut der = include_bytes!("testdata/deriv/yderiv_2_der.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let der2 = include_bytes!("../../testdata/yderiv_2_der2.bin")
+        let der2 = include_bytes!("testdata/deriv/yderiv_2_der2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
