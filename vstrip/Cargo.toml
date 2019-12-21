@@ -8,3 +8,11 @@ edition = "2018"
 clap = "2.33.0"
 byteorder = "1.3.2"
 toml = "0.5.5"
+
+[lib]
+name = "libvstrip"
+path = "src/lib.rs"
+
+[[bin]]
+name = "vstrip"
+path = "src/main.rs"
