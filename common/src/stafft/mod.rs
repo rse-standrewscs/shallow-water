@@ -595,15 +595,15 @@ mod test {
     fn forfft_ng12_1() {
         let m = 12;
         let n = 12;
-        let mut x = include_bytes!("../../../testdata/forfft_ng12_1_x.bin")
+        let mut x = include_bytes!("testdata/forfft/forfft_ng12_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/forfft_ng12_1_x2.bin")
+        let x2 = include_bytes!("testdata/forfft/forfft_ng12_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/forfft_ng12_1_trig.bin")
+        let trig = include_bytes!("testdata/forfft/forfft_ng12_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -618,15 +618,15 @@ mod test {
     fn forfft_ng12_2() {
         let m = 12;
         let n = 12;
-        let mut x = include_bytes!("../../../testdata/forfft_ng12_2_x.bin")
+        let mut x = include_bytes!("testdata/forfft/forfft_ng12_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/forfft_ng12_2_x2.bin")
+        let x2 = include_bytes!("testdata/forfft/forfft_ng12_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/forfft_ng12_2_trig.bin")
+        let trig = include_bytes!("testdata/forfft/forfft_ng12_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -641,15 +641,15 @@ mod test {
     fn forfft_ng15_1() {
         let m = 15;
         let n = 15;
-        let mut x = include_bytes!("../../../testdata/forfft_ng15_1_x.bin")
+        let mut x = include_bytes!("testdata/forfft/forfft_ng15_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/forfft_ng15_1_x2.bin")
+        let x2 = include_bytes!("testdata/forfft/forfft_ng15_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/forfft_ng15_1_trig.bin")
+        let trig = include_bytes!("testdata/forfft/forfft_ng15_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -665,15 +665,15 @@ mod test {
     fn forfft_ng15_2() {
         let m = 15;
         let n = 15;
-        let mut x = include_bytes!("../../../testdata/forfft_ng15_2_x.bin")
+        let mut x = include_bytes!("testdata/forfft/forfft_ng15_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/forfft_ng15_2_x2.bin")
+        let x2 = include_bytes!("testdata/forfft/forfft_ng15_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/forfft_ng15_2_trig.bin")
+        let trig = include_bytes!("testdata/forfft/forfft_ng15_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -688,15 +688,15 @@ mod test {
     fn forfft_ng16_1() {
         let m = 16;
         let n = 16;
-        let mut x = include_bytes!("../../../testdata/forfft_ng16_1_x.bin")
+        let mut x = include_bytes!("testdata/forfft/forfft_ng16_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/forfft_ng16_1_x2.bin")
+        let x2 = include_bytes!("testdata/forfft/forfft_ng16_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/forfft_ng16_1_trig.bin")
+        let trig = include_bytes!("testdata/forfft/forfft_ng16_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -711,15 +711,15 @@ mod test {
     fn forfft_ng16_2() {
         let m = 16;
         let n = 16;
-        let mut x = include_bytes!("../../../testdata/forfft_ng16_2_x.bin")
+        let mut x = include_bytes!("testdata/forfft/forfft_ng16_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/forfft_ng16_2_x2.bin")
+        let x2 = include_bytes!("testdata/forfft/forfft_ng16_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/forfft_ng16_2_trig.bin")
+        let trig = include_bytes!("testdata/forfft/forfft_ng16_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -734,15 +734,15 @@ mod test {
     fn forfft_ng18_1() {
         let m = 18;
         let n = 18;
-        let mut x = include_bytes!("../../../testdata/forfft_ng18_1_x.bin")
+        let mut x = include_bytes!("testdata/forfft/forfft_ng18_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/forfft_ng18_1_x2.bin")
+        let x2 = include_bytes!("testdata/forfft/forfft_ng18_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/forfft_ng18_1_trig.bin")
+        let trig = include_bytes!("testdata/forfft/forfft_ng18_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -757,15 +757,15 @@ mod test {
     fn forfft_ng18_2() {
         let m = 18;
         let n = 18;
-        let mut x = include_bytes!("../../../testdata/forfft_ng18_2_x.bin")
+        let mut x = include_bytes!("testdata/forfft/forfft_ng18_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/forfft_ng18_2_x2.bin")
+        let x2 = include_bytes!("testdata/forfft/forfft_ng18_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/forfft_ng18_2_trig.bin")
+        let trig = include_bytes!("testdata/forfft/forfft_ng18_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -780,15 +780,15 @@ mod test {
     fn forfft_ng24_1() {
         let m = 24;
         let n = 24;
-        let mut x = include_bytes!("../../../testdata/forfft_ng24_1_x.bin")
+        let mut x = include_bytes!("testdata/forfft/forfft_ng24_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/forfft_ng24_1_x2.bin")
+        let x2 = include_bytes!("testdata/forfft/forfft_ng24_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/forfft_ng24_1_trig.bin")
+        let trig = include_bytes!("testdata/forfft/forfft_ng24_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -803,15 +803,15 @@ mod test {
     fn forfft_ng24_2() {
         let m = 24;
         let n = 24;
-        let mut x = include_bytes!("../../../testdata/forfft_ng24_2_x.bin")
+        let mut x = include_bytes!("testdata/forfft/forfft_ng24_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/forfft_ng24_2_x2.bin")
+        let x2 = include_bytes!("testdata/forfft/forfft_ng24_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/forfft_ng24_2_trig.bin")
+        let trig = include_bytes!("testdata/forfft/forfft_ng24_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -826,15 +826,15 @@ mod test {
     fn revfft_ng12_1() {
         let m = 12;
         let n = 12;
-        let mut x = include_bytes!("../../../testdata/revfft_ng12_1_x.bin")
+        let mut x = include_bytes!("testdata/revfft/revfft_ng12_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/revfft_ng12_1_x2.bin")
+        let x2 = include_bytes!("testdata/revfft/revfft_ng12_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/revfft_ng12_1_trig.bin")
+        let trig = include_bytes!("testdata/revfft/revfft_ng12_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -849,15 +849,15 @@ mod test {
     fn revfft_ng12_2() {
         let m = 12;
         let n = 12;
-        let mut x = include_bytes!("../../../testdata/revfft_ng12_2_x.bin")
+        let mut x = include_bytes!("testdata/revfft/revfft_ng12_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/revfft_ng12_2_x2.bin")
+        let x2 = include_bytes!("testdata/revfft/revfft_ng12_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/revfft_ng12_2_trig.bin")
+        let trig = include_bytes!("testdata/revfft/revfft_ng12_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -872,15 +872,15 @@ mod test {
     fn revfft_ng15_1() {
         let m = 15;
         let n = 15;
-        let mut x = include_bytes!("../../../testdata/revfft_ng15_1_x.bin")
+        let mut x = include_bytes!("testdata/revfft/revfft_ng15_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/revfft_ng15_1_x2.bin")
+        let x2 = include_bytes!("testdata/revfft/revfft_ng15_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/revfft_ng15_1_trig.bin")
+        let trig = include_bytes!("testdata/revfft/revfft_ng15_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -896,15 +896,15 @@ mod test {
     fn revfft_ng15_2() {
         let m = 15;
         let n = 15;
-        let mut x = include_bytes!("../../../testdata/revfft_ng15_2_x.bin")
+        let mut x = include_bytes!("testdata/revfft/revfft_ng15_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/revfft_ng15_2_x2.bin")
+        let x2 = include_bytes!("testdata/revfft/revfft_ng15_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/revfft_ng15_2_trig.bin")
+        let trig = include_bytes!("testdata/revfft/revfft_ng15_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -920,15 +920,15 @@ mod test {
     fn revfft_ng16_1() {
         let m = 16;
         let n = 16;
-        let mut x = include_bytes!("../../../testdata/revfft_ng16_1_x.bin")
+        let mut x = include_bytes!("testdata/revfft/revfft_ng16_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/revfft_ng16_1_x2.bin")
+        let x2 = include_bytes!("testdata/revfft/revfft_ng16_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/revfft_ng16_1_trig.bin")
+        let trig = include_bytes!("testdata/revfft/revfft_ng16_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -944,15 +944,15 @@ mod test {
     fn revfft_ng16_2() {
         let m = 16;
         let n = 16;
-        let mut x = include_bytes!("../../../testdata/revfft_ng16_2_x.bin")
+        let mut x = include_bytes!("testdata/revfft/revfft_ng16_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/revfft_ng16_2_x2.bin")
+        let x2 = include_bytes!("testdata/revfft/revfft_ng16_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/revfft_ng16_2_trig.bin")
+        let trig = include_bytes!("testdata/revfft/revfft_ng16_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -968,15 +968,15 @@ mod test {
     fn revfft_ng18_1() {
         let m = 18;
         let n = 18;
-        let mut x = include_bytes!("../../../testdata/revfft_ng18_1_x.bin")
+        let mut x = include_bytes!("testdata/revfft/revfft_ng18_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/revfft_ng18_1_x2.bin")
+        let x2 = include_bytes!("testdata/revfft/revfft_ng18_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/revfft_ng18_1_trig.bin")
+        let trig = include_bytes!("testdata/revfft/revfft_ng18_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -992,15 +992,15 @@ mod test {
     fn revfft_ng18_2() {
         let m = 18;
         let n = 18;
-        let mut x = include_bytes!("../../../testdata/revfft_ng18_2_x.bin")
+        let mut x = include_bytes!("testdata/revfft/revfft_ng18_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/revfft_ng18_2_x2.bin")
+        let x2 = include_bytes!("testdata/revfft/revfft_ng18_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/revfft_ng18_2_trig.bin")
+        let trig = include_bytes!("testdata/revfft/revfft_ng18_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -1016,15 +1016,15 @@ mod test {
     fn revfft_ng24_1() {
         let m = 24;
         let n = 24;
-        let mut x = include_bytes!("../../../testdata/revfft_ng24_1_x.bin")
+        let mut x = include_bytes!("testdata/revfft/revfft_ng24_1_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/revfft_ng24_1_x2.bin")
+        let x2 = include_bytes!("testdata/revfft/revfft_ng24_1_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/revfft_ng24_1_trig.bin")
+        let trig = include_bytes!("testdata/revfft/revfft_ng24_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -1040,15 +1040,15 @@ mod test {
     fn revfft_ng24_2() {
         let m = 24;
         let n = 24;
-        let mut x = include_bytes!("../../../testdata/revfft_ng24_2_x.bin")
+        let mut x = include_bytes!("testdata/revfft/revfft_ng24_2_x.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let x2 = include_bytes!("../../../testdata/revfft_ng24_2_x2.bin")
+        let x2 = include_bytes!("testdata/revfft/revfft_ng24_2_x2.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let trig = include_bytes!("../../../testdata/revfft_ng24_2_trig.bin")
+        let trig = include_bytes!("testdata/revfft/revfft_ng24_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();

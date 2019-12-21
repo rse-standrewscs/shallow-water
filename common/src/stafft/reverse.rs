@@ -729,7 +729,7 @@ mod test {
         let lv = 1;
 
         let a = slice_to_3d(
-            &include_bytes!("../../../testdata/revrdx2_simple_1_a.bin")
+            &include_bytes!("testdata/revrdx2/revrdx2_simple_1_a.bin")
                 .chunks(8)
                 .map(NetworkEndian::read_f64)
                 .collect::<Vec<f64>>(),
@@ -738,7 +738,7 @@ mod test {
             2,
         );
         let mut b = slice_to_3d(
-            &include_bytes!("../../../testdata/revrdx2_simple_1_b.bin")
+            &include_bytes!("testdata/revrdx2/revrdx2_simple_1_b.bin")
                 .chunks(8)
                 .map(NetworkEndian::read_f64)
                 .collect::<Vec<f64>>(),
@@ -748,7 +748,7 @@ mod test {
         );
 
         let b2 = slice_to_3d(
-            &include_bytes!("../../../testdata/revrdx2_simple_1_b2.bin")
+            &include_bytes!("testdata/revrdx2/revrdx2_simple_1_b2.bin")
                 .chunks(8)
                 .map(NetworkEndian::read_f64)
                 .collect::<Vec<f64>>(),
@@ -771,7 +771,7 @@ mod test {
         let lv = 1;
 
         let a = slice_to_3d(
-            &include_bytes!("../../../testdata/revrdx2_simple_2_a.bin")
+            &include_bytes!("testdata/revrdx2/revrdx2_simple_2_a.bin")
                 .chunks(8)
                 .map(NetworkEndian::read_f64)
                 .collect::<Vec<f64>>(),
@@ -780,7 +780,7 @@ mod test {
             2,
         );
         let mut b = slice_to_3d(
-            &include_bytes!("../../../testdata/revrdx2_simple_2_b.bin")
+            &include_bytes!("testdata/revrdx2/revrdx2_simple_2_b.bin")
                 .chunks(8)
                 .map(NetworkEndian::read_f64)
                 .collect::<Vec<f64>>(),
@@ -790,7 +790,7 @@ mod test {
         );
 
         let b2 = slice_to_3d(
-            &include_bytes!("../../../testdata/revrdx2_simple_2_b2.bin")
+            &include_bytes!("testdata/revrdx2/revrdx2_simple_2_b2.bin")
                 .chunks(8)
                 .map(NetworkEndian::read_f64)
                 .collect::<Vec<f64>>(),
