@@ -3,9 +3,9 @@ source: common/src/sta2dfft.rs
 expression: yfactors
 ---
 [
-    0,
-    2,
+    1,
     1,
     0,
     0,
+    1,
 ]

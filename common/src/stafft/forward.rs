@@ -1,5 +1,5 @@
 //! Physical to spectral (forward) routines
-use {super::constants::*, core::f64::consts::FRAC_1_SQRT_2};
+use {crate::constants::*, core::f64::consts::FRAC_1_SQRT_2};
 
 /// Radix six physical to Hermitian FFT with 'decimation in time'.
 pub fn forrdx6(

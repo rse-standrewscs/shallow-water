@@ -1,5 +1,5 @@
 //! Spectral to physical (reverse) routines
-use {super::constants::*, core::f64::consts::FRAC_1_SQRT_2};
+use {crate::constants::*, core::f64::consts::FRAC_1_SQRT_2};
 
 /// Radix six Hermitian to physical FFT with 'decimation in frequency'.
 pub fn revrdx6(

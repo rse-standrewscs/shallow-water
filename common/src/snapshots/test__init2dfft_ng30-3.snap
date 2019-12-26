@@ -1,6 +1,6 @@
 ---
 source: common/src/sta2dfft.rs
-expression: ky
+expression: kx
 ---
 [
     0.5,
@@ -33,6 +33,4 @@ expression: ky
     14.0,
     14.5,
     15.0,
-    15.5,
-    16.0,
 ]
