@@ -1,5 +1,5 @@
-pub fn slice_to_2d(v: &[f64], x: usize, y: usize) -> Vec<Vec<f64>> {
-    let mut out = vec![vec![0.0; y]; x];
+pub fn slice_to_2d<T: Clone + Copy>(v: &[T], x: usize, y: usize) -> Vec<Vec<T>> {
+    let mut out = vec![vec![v[0]; y]; x];
 
     for i in 0..x {
         for j in 0..y {
@@ -13,8 +13,8 @@ pub fn slice_to_2d(v: &[f64], x: usize, y: usize) -> Vec<Vec<f64>> {
     out
 }
 
-pub fn _2d_to_vec(v: &[Vec<f64>]) -> Vec<f64> {
-    let mut out = vec![0.0; v.len() * v[0].len()];
+pub fn _2d_to_vec<T: Clone + Copy>(v: &[Vec<T>]) -> Vec<T> {
+    let mut out = vec![v[0][0]; v.len() * v[0].len()];
 
     for i in 0..v.len() {
         for j in 0..v[0].len() {
@@ -25,8 +25,8 @@ pub fn _2d_to_vec(v: &[Vec<f64>]) -> Vec<f64> {
     out
 }
 
-pub fn slice_to_3d(v: &[f64], x: usize, y: usize, z: usize) -> Vec<Vec<Vec<f64>>> {
-    let mut out = vec![vec![vec![0.0; z]; y]; x];
+pub fn slice_to_3d<T: Clone + Copy>(v: &[T], x: usize, y: usize, z: usize) -> Vec<Vec<Vec<T>>> {
+    let mut out = vec![vec![vec![v[0]; z]; y]; x];
 
     for i in 0..x {
         for j in 0..y {
@@ -42,11 +42,11 @@ pub fn slice_to_3d(v: &[f64], x: usize, y: usize, z: usize) -> Vec<Vec<Vec<f64>>
     out
 }
 
-pub fn _3d_to_vec(v: &[Vec<Vec<f64>>]) -> Vec<f64> {
+pub fn _3d_to_vec<T: Clone + Copy>(v: &[Vec<Vec<T>>]) -> Vec<T> {
     let x = v.len();
     let y = v[0].len();
     let z = v[0][0].len();
-    let mut out = vec![0.0; x * y * z];
+    let mut out = vec![v[0][0][0]; x * y * z];
 
     for i in 0..x {
         for j in 0..y {
@@ -57,6 +57,15 @@ pub fn _3d_to_vec(v: &[Vec<Vec<f64>>]) -> Vec<f64> {
     }
 
     out
+}
+
+#[cfg(test)]
+pub fn assert_approx_eq_slice(a: &[f64], b: &[f64]) {
+    use approx::assert_abs_diff_eq;
+
+    for (i, e) in a.iter().enumerate() {
+        assert_abs_diff_eq!(*e, b[i]);
+    }
 }
 
 #[cfg(test)]

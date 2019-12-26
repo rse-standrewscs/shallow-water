@@ -53,9 +53,8 @@
 //! the sine modes (in reverse order ie. wave number increasing from n back to nw+1).
 //! [Here, for even n, nw=n/2, and for odd n, nw=(n-1)/2].
 
-use crate::utils::*;
+use {crate::utils::*, core::f64::consts::PI};
 
-mod constants;
 mod forward;
 mod reverse;
 
@@ -68,14 +67,12 @@ pub use reverse::*;
 pub fn initfft(n: usize, factors: &mut [u8; 5], trig: &mut [f64]) {
     assert_eq!(2 * n, trig.len());
 
-    let twopi = 6.283_185_307_179_586;
-
     let fac = [6, 4, 2, 3, 5];
     // First factorise n
     factorisen(n, factors);
 
     //Define constants needed in trig array definition
-    let mut ftwopin = twopi / n as f64;
+    let mut ftwopin = 2.0 * PI / (n as f64);
     let mut rem = n;
     let mut m = 1;
     for (i, element) in factors.iter().enumerate() {
@@ -91,9 +88,11 @@ pub fn initfft(n: usize, factors: &mut [u8; 5], trig: &mut [f64]) {
         }
     }
 
-    for i in 0..n {
-        trig[n + i] = -trig[i].sin();
-        trig[i] = trig[i].cos();
+    dbg!(&trig);
+
+    for i in 1..=n - 1 {
+        trig[i + n - 1] = -(trig[i - 1].sin());
+        trig[i - 1] = trig[i - 1].cos();
     }
 }
 
@@ -519,7 +518,6 @@ pub fn revfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
 mod test {
     use {
         super::*,
-        approx::assert_abs_diff_eq,
         byteorder::{ByteOrder, NetworkEndian},
         core::f64::consts::FRAC_1_SQRT_2,
         insta::assert_debug_snapshot,
@@ -547,50 +545,49 @@ mod test {
 
     #[test]
     fn initfft_snapshot_1() {
-        let n = 16;
+        let n = 30;
         let mut factors = [0; 5];
-        let mut trig = [0.0; 32];
-        let trig2 = [
-            1.0,
-            0.923_879_532_511_286_7,
-            FRAC_1_SQRT_2,
-            0.382_683_432_365_089_84,
-            1.0,
-            FRAC_1_SQRT_2,
-            0.000_000_000_000_000_061_232_339_957_367_66,
-            -0.707_106_781_186_547_5,
-            1.0,
-            0.382_683_432_365_089_84,
-            -0.707_106_781_186_547_5,
-            -0.923_879_532_511_286_7,
-            1.0,
-            1.0,
-            1.0,
-            1.0,
-            -0.0,
-            -0.382_683_432_365_089_8,
-            -0.707_106_781_186_547_5,
-            -0.923_879_532_511_286_7,
-            -0.0,
-            -0.707_106_781_186_547_5,
-            -1.0,
-            -FRAC_1_SQRT_2,
-            -0.0,
-            -0.923_879_532_511_286_7,
-            -FRAC_1_SQRT_2,
-            0.382_683_432_365_089_67,
-            -0.0,
-            -0.0,
-            -0.0,
-            -0.0,
-        ];
+        let mut trig = [0.0; 60];
+        let trig2 = include_bytes!("testdata/initfft/30_trig.bin")
+            .chunks(8)
+            .map(NetworkEndian::read_f64)
+            .collect::<Vec<f64>>();
 
         initfft(n, &mut factors, &mut trig);
 
-        for (i, e) in trig.iter().enumerate() {
-            assert_abs_diff_eq!(trig2[i], *e);
-        }
+        assert_approx_eq_slice(&trig2, &trig);
     }
+
+    #[test]
+    fn initfft_snapshot_2() {
+        let n = 32;
+        let mut factors = [0; 5];
+        let mut trig = [0.0; 64];
+        let trig2 = include_bytes!("testdata/initfft/32_trig.bin")
+            .chunks(8)
+            .map(NetworkEndian::read_f64)
+            .collect::<Vec<f64>>();
+
+        initfft(n, &mut factors, &mut trig);
+
+        assert_approx_eq_slice(&trig2, &trig);
+    }
+
+    #[test]
+    fn initfft_snapshot_3() {
+        let n = 18;
+        let mut factors = [0; 5];
+        let mut trig = [0.0; 36];
+        let trig2 = include_bytes!("testdata/initfft/18_trig.bin")
+            .chunks(8)
+            .map(NetworkEndian::read_f64)
+            .collect::<Vec<f64>>();
+
+        initfft(n, &mut factors, &mut trig);
+
+        assert_approx_eq_slice(&trig2, &trig);
+    }
+
     #[test]
     fn forfft_ng12_1() {
         let m = 12;

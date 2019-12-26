@@ -28,8 +28,8 @@ pub fn init2dfft(
     ny: usize,
     lx: f64,
     ly: f64,
-    xfactors: &mut [u8; 5],
-    yfactors: &mut [u8; 5],
+    xfactors: &mut [usize; 5],
+    yfactors: &mut [usize; 5],
     xtrig: &mut [f64],
     ytrig: &mut [f64],
     kx: &mut [f64],
@@ -219,18 +219,18 @@ mod test {
     };
 
     #[test]
-    fn init2dfft_snapshot() {
-        let nx = 32;
-        let ny = 32;
+    fn init2dfft_ng30() {
+        let nx = 30;
+        let ny = 30;
         let lx = 6.283_185_307_179_586;
         let ly = 6.283_185_307_179_586;
 
         let mut xfactors = [0; 5];
         let mut yfactors = [0; 5];
-        let mut xtrig = [0.0; 64];
-        let mut ytrig = [0.0; 64];
-        let mut kx = [0.0; 32];
-        let mut ky = [0.0; 32];
+        let mut xtrig = [0.0; 60];
+        let mut ytrig = [0.0; 60];
+        let mut kx = [0.0; 30];
+        let mut ky = [0.0; 30];
 
         init2dfft(
             nx,
@@ -245,7 +245,7 @@ mod test {
             &mut ky,
         );
 
-        for (i, e) in include_bytes!("testdata/init2dfft_trig.bin")
+        for (i, e) in include_bytes!("testdata/init2dfft/ng30_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .enumerate()
@@ -258,6 +258,48 @@ mod test {
         assert_debug_snapshot!(yfactors);
         assert_debug_snapshot!(kx);
         assert_debug_snapshot!(ky);
+    }
+
+    #[test]
+    fn init2dfft_ng120() {
+        let nx = 120;
+        let ny = 120;
+        let lx = 6.283_185_307_179_586;
+        let ly = 6.283_185_307_179_586;
+
+        let mut xfactors = [0; 5];
+        let mut yfactors = [0; 5];
+        let mut xtrig = [0.0; 240];
+        let mut ytrig = [0.0; 240];
+        let mut kx = [0.0; 120];
+        let mut ky = [0.0; 120];
+
+        init2dfft(
+            nx,
+            ny,
+            lx,
+            ly,
+            &mut xfactors,
+            &mut yfactors,
+            &mut xtrig,
+            &mut ytrig,
+            &mut kx,
+            &mut ky,
+        );
+
+        for (i, e) in include_bytes!("testdata/init2dfft/ng120_trig.bin")
+            .chunks(8)
+            .map(NetworkEndian::read_f64)
+            .enumerate()
+        {
+            assert_abs_diff_eq!(e, xtrig[i]);
+            assert_abs_diff_eq!(e, ytrig[i]);
+        }
+
+        assert_debug_snapshot!(xfactors);
+        assert_debug_snapshot!(yfactors);
+        assert_debug_snapshot!(&kx[..]);
+        assert_debug_snapshot!(&ky[..]);
     }
 
     #[test]
