@@ -102,39 +102,76 @@ pub fn init_pv_strip(ng: usize, width: f64, a2: f64, a3: f64) -> Vec<Vec<f64>> {
 mod test {
     use {
         super::init_pv_strip,
+        approx::assert_abs_diff_eq,
         byteorder::{ByteOrder, LittleEndian},
     };
 
-    /// Generates a .r8 file from the initial parameters
-    fn gen_r8(ng: usize, width: f64, a2: f64, a3: f64) -> Vec<u8> {
-        let qq = init_pv_strip(ng, width, a2, a3);
+    /// Asserts that the generated .r8 file for ng=18 is close to the Fortran-created file.
+    #[test]
+    fn ng18_snapshot() {
+        let qq_init = &include_bytes!("testdata/qq_init_18.r8")
+            .chunks(8)
+            .skip(1)
+            .map(LittleEndian::read_f64)
+            .collect::<Vec<f64>>();
 
-        let mut data = Vec::<u8>::new();
+        let qq_matrix = init_pv_strip(18, 0.4, 0.02, -0.01);
 
-        let mut buf = [0u8; 8];
-        data.append(&mut buf.to_vec());
-
-        for x in 0..qq.len() {
-            qq.iter().for_each(|row| {
-                LittleEndian::write_f64(&mut buf, row[x]);
-                data.append(&mut buf.to_vec());
+        let mut qq = Vec::with_capacity(18 * 18);
+        for i in 0..18 {
+            qq_matrix.iter().for_each(|row| {
+                qq.push(row[i]);
             });
         }
 
-        data
+        for (a, b) in qq_init.iter().zip(qq) {
+            assert_abs_diff_eq!(*a, b, epsilon = 1.0E-14);
+        }
     }
 
     /// Asserts that the generated .r8 file for ng=32 is close to the Fortran-created file.
     #[test]
     fn ng32_snapshot() {
-        for (a, b) in include_bytes!("testdata/qq_init_32.r8")
-            .iter()
-            .zip(gen_r8(32, 0.4, 0.02, -0.01))
-        {
-            let a = *a as i16;
-            let b = b as i16;
+        let qq_init = &include_bytes!("testdata/qq_init_32.r8")
+            .chunks(8)
+            .skip(1)
+            .map(LittleEndian::read_f64)
+            .collect::<Vec<f64>>();
 
-            assert!((a - b).abs() < 3);
+        let qq_matrix = init_pv_strip(32, 0.4, 0.02, -0.01);
+
+        let mut qq = Vec::with_capacity(32 * 32);
+        for i in 0..32 {
+            qq_matrix.iter().for_each(|row| {
+                qq.push(row[i]);
+            });
+        }
+
+        for (a, b) in qq_init.iter().zip(qq) {
+            assert_abs_diff_eq!(*a, b, epsilon = 1.0E-14);
+        }
+    }
+
+    /// Asserts that the generated .r8 file for ng=64 is close to the Fortran-created file.
+    #[test]
+    fn ng64_snapshot() {
+        let qq_init = &include_bytes!("testdata/qq_init_64.r8")
+            .chunks(8)
+            .skip(1)
+            .map(LittleEndian::read_f64)
+            .collect::<Vec<f64>>();
+
+        let qq_matrix = init_pv_strip(64, 0.4, 0.02, -0.01);
+
+        let mut qq = Vec::with_capacity(64 * 64);
+        for i in 0..64 {
+            qq_matrix.iter().for_each(|row| {
+                qq.push(row[i]);
+            });
+        }
+
+        for (a, b) in qq_init.iter().zip(qq) {
+            assert_abs_diff_eq!(*a, b, epsilon = 1.0E-14);
         }
     }
 }
