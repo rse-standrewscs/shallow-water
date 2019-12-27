@@ -26,7 +26,7 @@ fn main() {
     let config: Value = toml::from_str(&parameters_string).unwrap();
 
     let qq = init_pv_strip(
-        config["numerical"]["vertical_layer_count"]
+        config["numerical"]["inversion_grid_resolution"]
             .as_integer()
             .unwrap() as usize,
         0.4,

@@ -17,17 +17,17 @@ pub struct Spectral {
     // Spectral operators
     hlap: Vec<Vec<f64>>,
     glap: Vec<Vec<f64>>,
-    rlap: Vec<Vec<f64>>,
-    helm: Vec<Vec<f64>>,
+    pub rlap: Vec<Vec<f64>>,
+    pub helm: Vec<Vec<f64>>,
 
-    c2g2: Vec<Vec<f64>>,
+    pub c2g2: Vec<Vec<f64>>,
     simp: Vec<Vec<f64>>,
     rope: Vec<Vec<f64>>,
     fope: Vec<Vec<f64>>,
 
-    filt: Vec<Vec<f64>>,
+    pub filt: Vec<Vec<f64>>,
     diss: Vec<Vec<f64>>,
-    opak: Vec<Vec<f64>>,
+    pub opak: Vec<Vec<f64>>,
     rdis: Vec<Vec<f64>>,
 
     // Tridiagonal arrays for the pressure Poisson equation
@@ -44,13 +44,13 @@ pub struct Spectral {
     weight: Vec<f64>,
 
     // For 2D FFTs
-    hrkx: Vec<f64>,
-    hrky: Vec<f64>,
+    pub hrkx: Vec<f64>,
+    pub hrky: Vec<f64>,
     rk: Vec<f64>,
-    xtrig: Vec<f64>,
-    ytrig: Vec<f64>,
-    xfactors: [usize; 5],
-    yfactors: [usize; 5],
+    pub xtrig: Vec<f64>,
+    pub ytrig: Vec<f64>,
+    pub xfactors: [usize; 5],
+    pub yfactors: [usize; 5],
 
     spmf: Vec<f64>,
     alk: Vec<f64>,
