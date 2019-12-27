@@ -64,7 +64,7 @@ pub use reverse::*;
 /// Subroutine performs initialisation work for all the transforms.
 /// It calls routines to factorise the array length n and then sets up
 /// a trig array full of sin/cos values used in the transform backend.
-pub fn initfft(n: usize, factors: &mut [u8; 5], trig: &mut [f64]) {
+pub fn initfft(n: usize, factors: &mut [usize; 5], trig: &mut [f64]) {
     assert_eq!(2 * n, trig.len());
 
     let fac = [6, 4, 2, 3, 5];
@@ -88,15 +88,13 @@ pub fn initfft(n: usize, factors: &mut [u8; 5], trig: &mut [f64]) {
         }
     }
 
-    dbg!(&trig);
-
-    for i in 1..=n - 1 {
+    for i in 1..n {
         trig[i + n - 1] = -(trig[i - 1].sin());
         trig[i - 1] = trig[i - 1].cos();
     }
 }
 
-pub fn factorisen(n: usize, factors: &mut [u8; 5]) {
+pub fn factorisen(n: usize, factors: &mut [usize; 5]) {
     let mut rem = n;
 
     for elem in factors.iter_mut() {
@@ -519,7 +517,6 @@ mod test {
     use {
         super::*,
         byteorder::{ByteOrder, NetworkEndian},
-        core::f64::consts::FRAC_1_SQRT_2,
         insta::assert_debug_snapshot,
     };
 
