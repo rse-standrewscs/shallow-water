@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "common",
+    "shallow_water",
     "vstrip",
     "balinit"
 ]

@@ -1,5 +1,5 @@
 [package]
-name = "common"
+name = "shallow_water"
 version = "0.1.0"
 authors = ["Ferdia McKeogh <ferdia@mckeogh.tech>"]
 edition = "2018"
