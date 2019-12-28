@@ -2,5 +2,6 @@
 members = [
     "shallow_water",
     "vstrip",
-    "balinit"
+    "balinit",
+    "swto3d"
 ]
