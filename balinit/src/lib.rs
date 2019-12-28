@@ -539,12 +539,10 @@ mod test {
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        dbg!(qq_init.len());
         let sw_init = include_bytes!("testdata/18_2_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
-        dbg!(sw_init.len());
 
         let (qq, dd, gg) = balinit(&qq_init, 18, 2);
 
