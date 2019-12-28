@@ -6,7 +6,7 @@
 //! Adapted for swnh to produce the linearised PV (q_l), the
 //! divergence (delta) and the SW acceleration divergence (gamma).
 
-use common::{
+use shallow_water::{
     constants::*,
     spectral::Spectral,
     sta2dfft::{ptospc, spctop, xderiv, yderiv},
