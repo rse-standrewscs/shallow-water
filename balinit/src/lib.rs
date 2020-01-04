@@ -374,7 +374,7 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         for i in 0..ng {
             for j in 0..ng {
                 wka_matrix[i][j] = spectral.rlap[i][j] * wkb_matrix[i][j];
-                wkb_matrix[i][j] = spectral.filt[i][j] * wkb_matrix[i][j];
+                wkb_matrix[i][j] *= spectral.filt[i][j];
             }
         }
         wka = _2d_to_vec(&wka_matrix);
