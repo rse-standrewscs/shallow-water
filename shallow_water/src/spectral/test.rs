@@ -237,12 +237,12 @@ fn divs_48_6() {
 fn ptospc3d_18_2() {
     let spectral = Spectral::new(18, 2);
 
-    let mut fp = _1d_from_file!("testdata/ptospc3d/18_2_fp.bin");
+    let fp = _1d_from_file!("testdata/ptospc3d/18_2_fp.bin");
     let mut fs = _1d_from_file!("testdata/ptospc3d/18_2_fs.bin");
     let fp2 = _1d_from_file!("testdata/ptospc3d/18_2_fp2.bin");
     let fs2 = _1d_from_file!("testdata/ptospc3d/18_2_fs2.bin");
 
-    spectral.ptospc3d(&mut fp, &mut fs, 0, 1);
+    spectral.ptospc3d(&fp, &mut fs, 0, 1);
 
     assert_approx_eq_slice(&fs2, &fs);
     assert_approx_eq_slice(&fp2, &fp);
@@ -252,12 +252,12 @@ fn ptospc3d_18_2() {
 fn ptospc3d_30_4() {
     let spectral = Spectral::new(30, 4);
 
-    let mut fp = _1d_from_file!("testdata/ptospc3d/30_4_fp.bin");
+    let fp = _1d_from_file!("testdata/ptospc3d/30_4_fp.bin");
     let mut fs = _1d_from_file!("testdata/ptospc3d/30_4_fs.bin");
     let fp2 = _1d_from_file!("testdata/ptospc3d/30_4_fp2.bin");
     let fs2 = _1d_from_file!("testdata/ptospc3d/30_4_fs2.bin");
 
-    spectral.ptospc3d(&mut fp, &mut fs, 0, 3);
+    spectral.ptospc3d(&fp, &mut fs, 0, 3);
 
     assert_approx_eq_slice(&fs2, &fs);
     assert_approx_eq_slice(&fp2, &fp);
@@ -267,12 +267,12 @@ fn ptospc3d_30_4() {
 fn spctop3d_18_2() {
     let spectral = Spectral::new(18, 2);
 
-    let mut fs = _1d_from_file!("testdata/spctop3d/18_2_fs.bin");
+    let fs = _1d_from_file!("testdata/spctop3d/18_2_fs.bin");
     let mut fp = _1d_from_file!("testdata/spctop3d/18_2_fp.bin");
     let fs2 = _1d_from_file!("testdata/spctop3d/18_2_fs2.bin");
     let fp2 = _1d_from_file!("testdata/spctop3d/18_2_fp2.bin");
 
-    spectral.spctop3d(&mut fs, &mut fp, 0, 1);
+    spectral.spctop3d(&fs, &mut fp, 0, 1);
 
     assert_approx_eq_slice(&fs2, &fs);
     assert_approx_eq_slice(&fp2, &fp);
@@ -282,12 +282,12 @@ fn spctop3d_18_2() {
 fn spctop3d_30_4() {
     let spectral = Spectral::new(30, 4);
 
-    let mut fs = _1d_from_file!("testdata/spctop3d/30_4_fs.bin");
+    let fs = _1d_from_file!("testdata/spctop3d/30_4_fs.bin");
     let mut fp = _1d_from_file!("testdata/spctop3d/30_4_fp.bin");
     let fs2 = _1d_from_file!("testdata/spctop3d/30_4_fs2.bin");
     let fp2 = _1d_from_file!("testdata/spctop3d/30_4_fp2.bin");
 
-    spectral.spctop3d(&mut fs, &mut fp, 0, 3);
+    spectral.spctop3d(&fs, &mut fp, 0, 3);
 
     assert_approx_eq_slice(&fs2, &fs);
     assert_approx_eq_slice(&fp2, &fp);

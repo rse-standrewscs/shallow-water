@@ -12,54 +12,54 @@ use {
     core::f64::consts::PI,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Spectral {
     // Spectral operators
-    hlap: Vec<Vec<f64>>,
-    glap: Vec<Vec<f64>>,
+    pub hlap: Vec<Vec<f64>>,
+    pub glap: Vec<Vec<f64>>,
     pub rlap: Vec<Vec<f64>>,
     pub helm: Vec<Vec<f64>>,
 
     pub c2g2: Vec<Vec<f64>>,
-    simp: Vec<Vec<f64>>,
-    rope: Vec<Vec<f64>>,
-    fope: Vec<Vec<f64>>,
+    pub simp: Vec<Vec<f64>>,
+    pub rope: Vec<Vec<f64>>,
+    pub fope: Vec<Vec<f64>>,
 
     pub filt: Vec<Vec<f64>>,
-    diss: Vec<Vec<f64>>,
+    pub diss: Vec<Vec<f64>>,
     pub opak: Vec<Vec<f64>>,
-    rdis: Vec<Vec<f64>>,
+    pub rdis: Vec<Vec<f64>>,
 
     // Tridiagonal arrays for the pressure Poisson equation
-    etdv: Vec<Vec<Vec<f64>>>,
-    htdv: Vec<Vec<Vec<f64>>>,
-    ap: Vec<Vec<f64>>,
+    pub etdv: Vec<Vec<Vec<f64>>>,
+    pub htdv: Vec<Vec<Vec<f64>>>,
+    pub ap: Vec<Vec<f64>>,
 
     // Tridiagonal arrays for the compact difference calculation of d/dz
-    etd1: Vec<f64>,
-    htd1: Vec<f64>,
+    pub etd1: Vec<f64>,
+    pub htd1: Vec<f64>,
 
     // Array for theta and vertical weights for integration:
-    theta: Vec<f64>,
-    weight: Vec<f64>,
+    pub theta: Vec<f64>,
+    pub weight: Vec<f64>,
 
     // For 2D FFTs
     pub hrkx: Vec<f64>,
     pub hrky: Vec<f64>,
-    rk: Vec<f64>,
+    pub rk: Vec<f64>,
     pub xtrig: Vec<f64>,
     pub ytrig: Vec<f64>,
     pub xfactors: [usize; 5],
     pub yfactors: [usize; 5],
 
-    spmf: Vec<f64>,
-    alk: Vec<f64>,
-    kmag: Vec<Vec<usize>>,
-    kmax: usize,
-    kmaxred: usize,
+    pub spmf: Vec<f64>,
+    pub alk: Vec<f64>,
+    pub kmag: Vec<Vec<usize>>,
+    pub kmax: usize,
+    pub kmaxred: usize,
 
-    ng: usize,
-    nz: usize,
+    pub ng: usize,
+    pub nz: usize,
 }
 
 impl Spectral {
@@ -672,7 +672,7 @@ impl Spectral {
 
     /// Transforms a physical 3d field fp to spectral space (horizontally)
     /// as the array fs.
-    pub fn ptospc3d(&self, fp: &mut [f64], fs: &mut [f64], izbeg: usize, izend: usize) {
+    pub fn ptospc3d(&self, fp: &[f64], fs: &mut [f64], izbeg: usize, izend: usize) {
         let mut wkp = vec![0.0; self.ng * self.ng];
         let mut wks = vec![0.0; self.ng * self.ng];
 
@@ -712,7 +712,7 @@ impl Spectral {
 
     /// Transforms a spectral 3d field fs to physical space (horizontally)
     /// as the array fp.
-    pub fn spctop3d(&self, fs: &mut [f64], fp: &mut [f64], izbeg: usize, izend: usize) {
+    pub fn spctop3d(&self, fs: &[f64], fp: &mut [f64], izbeg: usize, izend: usize) {
         let mut wks = vec![0.0; self.ng * self.ng];
         let mut wkp = vec![0.0; self.ng * self.ng];
 

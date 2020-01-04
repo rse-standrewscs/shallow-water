@@ -43,7 +43,7 @@ fn main() {
             .collect::<Vec<f64>>();
 
         sw_init
-            .chunks(128 * 128 + 1)
+            .chunks(ng * ng + 1)
             .map(|xs| xs[1..].to_vec())
             .collect::<Vec<Vec<f64>>>()
     };

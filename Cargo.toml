@@ -3,5 +3,6 @@ members = [
     "shallow_water",
     "vstrip",
     "balinit",
-    "swto3d"
+    "swto3d",
+    "nhswps",
 ]
