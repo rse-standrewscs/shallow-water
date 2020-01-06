@@ -40,49 +40,49 @@ pub struct State {
     pub spectral: Spectral,
 
     // Velocity field (physical
-    u: Vec<f64>,
-    v: Vec<f64>,
-    w: Vec<f64>,
+    pub u: Vec<f64>,
+    pub v: Vec<f64>,
+    pub w: Vec<f64>,
 
     // Layer heights and their x & y derivatives (physical)
-    z: Vec<f64>,
-    zx: Vec<f64>,
-    zy: Vec<f64>,
+    pub z: Vec<f64>,
+    pub zx: Vec<f64>,
+    pub zy: Vec<f64>,
 
     // Dimensionless layer thickness anomaly and inverse thickness (physical)
-    r: Vec<f64>,
-    ri: Vec<f64>,
+    pub r: Vec<f64>,
+    pub ri: Vec<f64>,
 
     // A = grad{u*rho'_theta} (spectral):
-    aa: Vec<f64>,
+    pub aa: Vec<f64>,
 
     // Relative vertical vorticity component (physical):
-    zeta: Vec<f64>,
+    pub zeta: Vec<f64>,
 
     // Non-hydrostatic pressure (p_n) and its first derivative wrt theta:
-    pn: Vec<f64>,
-    dpn: Vec<f64>,
+    pub pn: Vec<f64>,
+    pub dpn: Vec<f64>,
 
     // Non-hydrostatic pressure (p_n) in spectral space (called ps):
-    ps: Vec<f64>,
+    pub ps: Vec<f64>,
 
     // Prognostic fields q_l, delta and gamma (spectral):
-    qs: Vec<f64>,
-    ds: Vec<f64>,
-    gs: Vec<f64>,
+    pub qs: Vec<f64>,
+    pub ds: Vec<f64>,
+    pub gs: Vec<f64>,
 
     // Time:
-    t: f64,
+    pub t: f64,
 
     // Number of time steps between field saves and related indices:
-    ngsave: usize,
-    itime: usize,
-    jtime: usize,
+    pub ngsave: usize,
+    pub itime: usize,
+    pub jtime: usize,
 
     // Logical for use in calling inversion routine:
-    ggen: bool,
+    pub ggen: bool,
 
-    output: Output,
+    pub output: Output,
 }
 
 #[allow(clippy::many_single_char_names)]
@@ -318,7 +318,7 @@ fn diagnose(state: &mut State) {
 
 /// Advances fields from time t to t+dt using an iterative implicit
 /// method of the form
-fn advance(state: &mut State) {
+pub fn advance(state: &mut State) {
     // (F^{n+1}-F^n)/dt = L[(F^{n+1}-F^n)/2] + N[(F^{n+1}-F^n)/2]
     //
     // for a field F, where n refers to the time level, L refers to
@@ -682,7 +682,7 @@ fn advance(state: &mut State) {
 /// Solves for the nonhydrostatic part of the pressure (pn) given
 /// the velocity field (u,v,w) together with r = rho'_theta and
 /// z = theta + int_0^theta{rho'_theta(s)ds}.
-fn psolve(state: &mut State) {
+pub fn psolve(state: &mut State) {
     let toler = 1.0E-9;
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
@@ -1196,7 +1196,7 @@ fn psolve(state: &mut State) {
 
 /// Finds the part of the pressure source which does not vary
 /// in the iteration to find the pressure.
-fn cpsource(state: &State, sp0: &mut [f64]) {
+pub fn cpsource(state: &State, sp0: &mut [f64]) {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
     let hdzi = (1.0 / 2.0) * (1.0 / (HBAR / nz as f64));
@@ -1738,7 +1738,13 @@ fn cpsource(state: &State, sp0: &mut [f64]) {
 }
 
 /// Calculates the fixed coefficients used in the pressure iteration.
-fn coeffs(state: &State, sigx: &mut [f64], sigy: &mut [f64], cpt1: &mut [f64], cpt2: &mut [f64]) {
+pub fn coeffs(
+    state: &State,
+    sigx: &mut [f64],
+    sigy: &mut [f64],
+    cpt1: &mut [f64],
+    cpt2: &mut [f64],
+) {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
     let qdzi = (1.0 / 4.0) * (1.0 / (HBAR / nz as f64));
@@ -1876,7 +1882,7 @@ fn coeffs(state: &State, sigx: &mut [f64], sigy: &mut [f64], cpt1: &mut [f64], c
 
 /// Calculates layer heights (z), as well as dz/dx & dz/dy (zx & zy),
 /// the vertical velocity (w), and the A = grad{u*rho'_theta} (aa).
-fn vertical(state: &mut State) {
+pub fn vertical(state: &mut State) {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
 
@@ -2157,7 +2163,7 @@ fn vertical(state: &mut State) {
 /// Note: u, v & zeta obtained by main_invert, and z obtained by psolve
 /// (which calls vertical) before calling this routine are all
 /// spectrally truncated.
-fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) {
+pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
 

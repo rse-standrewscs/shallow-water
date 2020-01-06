@@ -10,3 +10,23 @@ quickcheck = "0.9.0"
 byteorder = "1.3.2"
 approx = "0.3.2"
 lazy_static = "1.4.0"
+criterion = "0.3.0"
+vstrip = { path = "../vstrip" }
+swto3d = { path = "../swto3d" }
+balinit = { path = "../balinit" }
+
+[[bench]]
+name = "spectral"
+harness = false
+
+[[bench]]
+name = "sta2dfft"
+harness = false
+
+[[bench]]
+name = "stafft"
+harness = false
+
+[[bench]]
+name = "setup"
+harness = false

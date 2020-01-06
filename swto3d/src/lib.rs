@@ -36,7 +36,7 @@ mod test {
     };
 
     #[test]
-    fn end2end_18_2_qq() {
+    fn _18_2_qq() {
         let sw_init = include_bytes!("testdata/18_2_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
@@ -59,7 +59,7 @@ mod test {
     }
 
     #[test]
-    fn end2end_18_2_dd() {
+    fn _18_2_dd() {
         let sw_init = include_bytes!("testdata/18_2_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
@@ -82,7 +82,7 @@ mod test {
     }
 
     #[test]
-    fn end2end_18_2_gg() {
+    fn _18_2_gg() {
         let sw_init = include_bytes!("testdata/18_2_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
@@ -105,7 +105,7 @@ mod test {
     }
 
     #[test]
-    fn end2end_128_32() {
+    fn _128_32() {
         let sw_init = include_bytes!("testdata/128_32_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
