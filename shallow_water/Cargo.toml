@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Ferdia McKeogh <ferdia@mckeogh.tech>"]
 edition = "2018"
 
+[dependencies]
+ndarray = { version = "0.13.0", features = ["approx", "serde", "rayon"] }
+
 [dev-dependencies]
 insta = "0.12.0"
 quickcheck = "0.9.0"

@@ -1,3 +1,5 @@
+use ndarray::{Array2, Array3, Axis};
+
 pub fn slice_to_2d<T: Clone + Copy>(v: &[T], x: usize, y: usize) -> Vec<Vec<T>> {
     let mut out = vec![vec![v[0]; y]; x];
 
@@ -52,6 +54,67 @@ pub fn _3d_to_vec<T: Clone + Copy>(v: &[Vec<Vec<T>>]) -> Vec<T> {
         for j in 0..y {
             for k in 0..z {
                 out[y * x * k + x * j + i] = v[i][j][k];
+            }
+        }
+    }
+
+    out
+}
+
+pub fn slice_to_2d_nd(v: &[f64], x: usize, y: usize) -> Array2<f64> {
+    let mut out = Array2::zeros((x, y));
+
+    for i in 0..x {
+        for j in 0..y {
+            let index = x * j + i;
+            if index < v.len() {
+                out[[i, j]] = v[index];
+            }
+        }
+    }
+
+    out
+}
+
+pub fn slice_to_3d_nd(v: &[f64], x: usize, y: usize, z: usize) -> Array3<f64> {
+    let mut out = Array3::zeros((x, y, z));
+
+    for i in 0..x {
+        for j in 0..y {
+            for k in 0..z {
+                let index = y * x * k + x * j + i;
+                if index < v.len() {
+                    out[[i, j, k]] = v[index];
+                }
+            }
+        }
+    }
+
+    out
+}
+
+pub fn _2d_to_vec_nd(v: &Array2<f64>) -> Vec<f64> {
+    let mut out = vec![0.0; v.len()];
+
+    for i in 0..v.len_of(Axis(0)) {
+        for j in 0..v.len_of(Axis(1)) {
+            out[v.len() * j + i] = v[[i, j]];
+        }
+    }
+
+    out
+}
+
+pub fn _3d_to_vec_nd(v: &Array3<f64>) -> Vec<f64> {
+    let x = v.len_of(Axis(0));
+    let y = v.len_of(Axis(1));
+    let z = v.len_of(Axis(2));
+    let mut out = vec![0.0; v.len()];
+
+    for i in 0..x {
+        for j in 0..y {
+            for k in 0..z {
+                out[y * x * k + x * j + i] = v[[i, j, k]];
             }
         }
     }
