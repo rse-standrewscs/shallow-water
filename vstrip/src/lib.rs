@@ -125,7 +125,7 @@ mod test {
         }
 
         for (a, b) in qq_init.iter().zip(qq) {
-            assert_abs_diff_eq!(*a, b, epsilon = 1.0E-14);
+            assert_abs_diff_eq!(*a, b, epsilon = 1.0E-13);
         }
     }
 
@@ -148,7 +148,7 @@ mod test {
         }
 
         for (a, b) in qq_init.iter().zip(qq) {
-            assert_abs_diff_eq!(*a, b, epsilon = 1.0E-14);
+            assert_abs_diff_eq!(*a, b, epsilon = 1.0E-13);
         }
     }
 
@@ -171,7 +171,7 @@ mod test {
         }
 
         for (a, b) in qq_init.iter().zip(qq) {
-            assert_abs_diff_eq!(*a, b, epsilon = 1.0E-14);
+            assert_abs_diff_eq!(*a, b, epsilon = 1.0E-13);
         }
     }
 }
