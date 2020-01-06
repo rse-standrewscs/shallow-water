@@ -446,8 +446,8 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         //Compute overall error:
         toterr = (1.0 / 2.0) * (ddrmserr + ggrmserr);
 
-        println!(" relative delta error = {}", ddrmserr);
-        println!(" relative gamma error = {}", ggrmserr);
+        //println!(" relative delta error = {}", ddrmserr);
+        //println!(" relative gamma error = {}", ggrmserr);
 
         //If error is going up again, stop and save fields:
         if toterrpre <= toterr {
@@ -460,7 +460,7 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         toterrpre = toterr;
     }
 
-    println!(" Minimum error = {}", toterrpre);
+    //println!(" Minimum error = {}", toterrpre);
 
     for (i, e) in qq.iter_mut().enumerate() {
         *e = zz[i] - COF * hh[i];
