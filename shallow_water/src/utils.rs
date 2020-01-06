@@ -64,7 +64,7 @@ pub fn assert_approx_eq_slice(a: &[f64], b: &[f64]) {
     use approx::assert_abs_diff_eq;
 
     for (i, e) in a.iter().enumerate() {
-        assert_abs_diff_eq!(*e, b[i], epsilon = 1.0E-14);
+        assert_abs_diff_eq!(*e, b[i], epsilon = 1.0E-13);
     }
 }
 
