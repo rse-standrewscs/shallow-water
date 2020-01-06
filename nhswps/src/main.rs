@@ -13,13 +13,18 @@ fn main() {
     let matches = clap_app!(vstrip =>
         (version: crate_version!())
         (about: "The Horizontally Doubly-Periodic Three-Dimensional Non-Hydrostatic Shallow-Water Pseudo-Spectral Method")
-        (@arg PARAMETERS_FILE: +required +takes_value "Path to file containing parameters to be used.")
+        (@arg PARAMETERS_FILE: +takes_value "Path to file containing parameters to be used.")
     )
     .get_matches();
 
     let (ng, nz) = {
         let mut parameters_string = String::new();
-        let mut f = File::open(matches.value_of("PARAMETERS_FILE").unwrap()).unwrap();
+        let mut f = File::open(
+            matches
+                .value_of("PARAMETERS_FILE")
+                .unwrap_or("parameters.toml"),
+        )
+        .unwrap();
         f.read_to_string(&mut parameters_string).unwrap();
         let config: Value = toml::from_str(&parameters_string).unwrap();
 
