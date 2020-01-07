@@ -9,7 +9,6 @@
 use shallow_water::{
     constants::*,
     spectral::Spectral,
-    sta2dfft::{ptospc, spctop, xderiv, yderiv},
     utils::{_2d_to_vec, slice_to_2d},
 };
 
@@ -85,16 +84,7 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         wkp[i] = COF * e;
     }
 
-    ptospc(
-        ng,
-        ng,
-        &mut wkp,
-        &mut wkb,
-        &spectral.xfactors,
-        &spectral.yfactors,
-        &spectral.xtrig,
-        &spectral.ytrig,
-    );
+    spectral.d2fft.ptospc(&mut wkp, &mut wkb);
     fqbar = COF * qbar;
 
     let mut wka_matrix = slice_to_2d(&wka, ng, ng);
@@ -102,21 +92,12 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
     for i in 0..ng {
         for j in 0..ng {
             wka_matrix[i][j] =
-                spectral.filt[i][j] * wkb_matrix[i][j] / (spectral.opak[i][j] - fqbar);
+                spectral.filt[[i, j]] * wkb_matrix[i][j] / (spectral.opak[[i, j]] - fqbar);
         }
     }
     wka = _2d_to_vec(&wka_matrix);
 
-    spctop(
-        ng,
-        ng,
-        &mut wka,
-        &mut hh,
-        &spectral.xfactors,
-        &spectral.yfactors,
-        &spectral.xtrig,
-        &spectral.ytrig,
-    );
+    spectral.d2fft.spctop(&mut wka, &mut hh);
 
     //wkp: corrected de-aliased height field (to be hh below)
     for (i, e) in hh.iter().enumerate() {
@@ -136,63 +117,27 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
     }
 
     //Obtain velocity field (uu,vv):
-    ptospc(
-        ng,
-        ng,
-        &mut zz,
-        &mut wkb,
-        &spectral.xfactors,
-        &spectral.yfactors,
-        &spectral.xtrig,
-        &spectral.ytrig,
-    );
+    spectral.d2fft.ptospc(&mut zz, &mut wkb);
 
     let mut wka_matrix = slice_to_2d(&wka, ng, ng);
     let mut wkb_matrix = slice_to_2d(&wkb, ng, ng);
     for i in 0..ng {
         for j in 0..ng {
-            wka_matrix[i][j] = spectral.rlap[i][j] * wkb_matrix[i][j];
-            wkb_matrix[i][j] *= spectral.filt[i][j];
+            wka_matrix[i][j] = spectral.rlap[[i, j]] * wkb_matrix[i][j];
+            wkb_matrix[i][j] *= spectral.filt[[i, j]];
         }
     }
     wka = _2d_to_vec(&wka_matrix);
     wkb = _2d_to_vec(&wkb_matrix);
 
-    spctop(
-        ng,
-        ng,
-        &mut wkb,
-        &mut zz,
-        &spectral.xfactors,
-        &spectral.yfactors,
-        &spectral.xtrig,
-        &spectral.ytrig,
-    );
-    xderiv(ng, ng, &spectral.hrkx, &wka, &mut wkd);
-    yderiv(ng, ng, &spectral.hrky, &wka, &mut wkb);
+    spectral.d2fft.spctop(&mut wkb, &mut zz);
+    spectral.d2fft.xderiv(&spectral.hrkx, &wka, &mut wkd);
+    spectral.d2fft.yderiv(&spectral.hrky, &wka, &mut wkb);
     for e in wkb.iter_mut() {
         *e = -*e;
     }
-    spctop(
-        ng,
-        ng,
-        &mut wkb,
-        &mut uu,
-        &spectral.xfactors,
-        &spectral.yfactors,
-        &spectral.xtrig,
-        &spectral.ytrig,
-    );
-    spctop(
-        ng,
-        ng,
-        &mut wkd,
-        &mut vv,
-        &spectral.xfactors,
-        &spectral.yfactors,
-        &spectral.xtrig,
-        &spectral.ytrig,
-    );
+    spectral.d2fft.spctop(&mut wkb, &mut uu);
+    spectral.d2fft.spctop(&mut wkd, &mut vv);
     //Add mean flow (uio,vio):
     uio = -hh.iter().zip(&uu).map(|(a, b)| a * b).sum::<f64>() * dsumi;
     for e in uu.iter_mut() {
@@ -223,21 +168,13 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         let mut gs_matrix = slice_to_2d(&gs, ng, ng);
         for i in 0..ng {
             for j in 0..ng {
-                gs_matrix[i][j] = spectral.filt[i][j] * (wka_matrix[i][j] - 2.0 * wkb_matrix[i][j]);
+                gs_matrix[i][j] =
+                    spectral.filt[[i, j]] * (wka_matrix[i][j] - 2.0 * wkb_matrix[i][j]);
             }
         }
         gs = _2d_to_vec(&gs_matrix);
         wka = gs.clone();
-        spctop(
-            ng,
-            ng,
-            &mut wka,
-            &mut gg,
-            &spectral.xfactors,
-            &spectral.yfactors,
-            &spectral.xtrig,
-            &spectral.ytrig,
-        );
+        spectral.d2fft.spctop(&mut wka, &mut gg);
 
         gg.iter()
             .zip(&ggpre)
@@ -271,23 +208,14 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         let mut ds_matrix = slice_to_2d(&ds, ng, ng);
         for i in 0..ng {
             for j in 0..ng {
-                ds_matrix[i][j] = spectral.helm[i][j]
-                    * (COF * wkb_matrix[i][j] - spectral.c2g2[i][j] * wka_matrix[i][j]);
+                ds_matrix[i][j] = spectral.helm[[i, j]]
+                    * (COF * wkb_matrix[i][j] - spectral.c2g2[[i, j]] * wka_matrix[i][j]);
             }
         }
         ds = _2d_to_vec(&ds_matrix);
 
         wka = ds.clone();
-        spctop(
-            ng,
-            ng,
-            &mut wka,
-            &mut dd,
-            &spectral.xfactors,
-            &spectral.yfactors,
-            &spectral.xtrig,
-            &spectral.ytrig,
-        );
+        spectral.d2fft.spctop(&mut wka, &mut dd);
         ddrmserr = dd
             .iter()
             .zip(&ddpre)
@@ -307,16 +235,7 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         for (i, e) in wkp.iter_mut().enumerate() {
             *e = COF * (qq[i] + hh[i] * (qq[i] - qbar)) - gg[i];
         }
-        ptospc(
-            ng,
-            ng,
-            &mut wkp,
-            &mut wkb,
-            &spectral.xfactors,
-            &spectral.yfactors,
-            &spectral.xtrig,
-            &spectral.ytrig,
-        );
+        spectral.d2fft.ptospc(&mut wkp, &mut wkb);
         fqbar = COF * qbar;
 
         let mut wka_matrix = slice_to_2d(&wka, ng, ng);
@@ -324,21 +243,12 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         for i in 0..ng {
             for j in 0..ng {
                 wka_matrix[i][j] =
-                    spectral.filt[i][j] * wkb_matrix[i][j] / (spectral.opak[i][j] - fqbar);
+                    spectral.filt[[i, j]] * wkb_matrix[i][j] / (spectral.opak[[i, j]] - fqbar);
             }
         }
         wka = _2d_to_vec(&wka_matrix);
 
-        spctop(
-            ng,
-            ng,
-            &mut wka,
-            &mut hh,
-            &spectral.xfactors,
-            &spectral.yfactors,
-            &spectral.xtrig,
-            &spectral.ytrig,
-        );
+        spectral.d2fft.spctop(&mut wka, &mut hh);
         //wkp: corrected de-aliased height field (to be hh below)
         for (i, e) in htot.iter_mut().enumerate() {
             *e = 1.0 + hh[i];
@@ -358,52 +268,34 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         }
 
         //Obtain velocity field (uu,vv):
-        ptospc(
-            ng,
-            ng,
-            &mut zz,
-            &mut wkb,
-            &spectral.xfactors,
-            &spectral.yfactors,
-            &spectral.xtrig,
-            &spectral.ytrig,
-        );
+        spectral.d2fft.ptospc(&mut zz, &mut wkb);
 
         let mut wka_matrix = slice_to_2d(&wka, ng, ng);
         let mut wkb_matrix = slice_to_2d(&wkb, ng, ng);
         for i in 0..ng {
             for j in 0..ng {
-                wka_matrix[i][j] = spectral.rlap[i][j] * wkb_matrix[i][j];
-                wkb_matrix[i][j] *= spectral.filt[i][j];
+                wka_matrix[i][j] = spectral.rlap[[i, j]] * wkb_matrix[i][j];
+                wkb_matrix[i][j] *= spectral.filt[[i, j]];
             }
         }
         wka = _2d_to_vec(&wka_matrix);
         wkb = _2d_to_vec(&wkb_matrix);
 
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut zz,
-            &spectral.xfactors,
-            &spectral.yfactors,
-            &spectral.xtrig,
-            &spectral.ytrig,
-        );
-        xderiv(ng, ng, &spectral.hrkx, &wka, &mut wkd);
-        yderiv(ng, ng, &spectral.hrky, &wka, &mut wkb);
+        spectral.d2fft.spctop(&mut wkb, &mut zz);
+        spectral.d2fft.xderiv(&spectral.hrkx, &wka, &mut wkd);
+        spectral.d2fft.yderiv(&spectral.hrky, &wka, &mut wkb);
 
         let mut wke_matrix = slice_to_2d(&wke, ng, ng);
         let ds_matrix = slice_to_2d(&ds, ng, ng);
         for i in 0..ng {
             for j in 0..ng {
-                wke_matrix[i][j] = spectral.rlap[i][j] * ds_matrix[i][j];
+                wke_matrix[i][j] = spectral.rlap[[i, j]] * ds_matrix[i][j];
             }
         }
         wke = _2d_to_vec(&wke_matrix);
 
-        xderiv(ng, ng, &spectral.hrkx, &wke, &mut wka);
-        yderiv(ng, ng, &spectral.hrky, &wke, &mut wkc);
+        spectral.d2fft.xderiv(&spectral.hrkx, &wke, &mut wka);
+        spectral.d2fft.yderiv(&spectral.hrky, &wke, &mut wkc);
 
         for (i, e) in wkb.iter_mut().enumerate() {
             *e = wka[i] - *e;
@@ -412,26 +304,8 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
             *e += wkc[i];
         }
 
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut uu,
-            &spectral.xfactors,
-            &spectral.yfactors,
-            &spectral.xtrig,
-            &spectral.ytrig,
-        );
-        spctop(
-            ng,
-            ng,
-            &mut wkd,
-            &mut vv,
-            &spectral.xfactors,
-            &spectral.yfactors,
-            &spectral.xtrig,
-            &spectral.ytrig,
-        );
+        spectral.d2fft.spctop(&mut wkb, &mut uu);
+        spectral.d2fft.spctop(&mut wkd, &mut vv);
 
         //Add mean flow (uio,vio):
         uio = -hh.iter().zip(&uu).map(|(a, b)| a * b).sum::<f64>() * dsumi;

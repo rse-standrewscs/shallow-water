@@ -4,31 +4,28 @@
 mod test;
 
 use {
-    crate::{
-        constants::*,
-        sta2dfft::{init2dfft, ptospc, spctop, xderiv, yderiv},
-        utils::{_2d_to_vec, _3d_to_vec, slice_to_2d, slice_to_3d},
-    },
+    crate::{constants::*, sta2dfft::D2FFT, utils::*},
     core::f64::consts::PI,
+    ndarray::Array2,
 };
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Spectral {
     // Spectral operators
-    pub hlap: Vec<Vec<f64>>,
-    pub glap: Vec<Vec<f64>>,
-    pub rlap: Vec<Vec<f64>>,
-    pub helm: Vec<Vec<f64>>,
+    pub hlap: Array2<f64>,
+    pub glap: Array2<f64>,
+    pub rlap: Array2<f64>,
+    pub helm: Array2<f64>,
 
-    pub c2g2: Vec<Vec<f64>>,
-    pub simp: Vec<Vec<f64>>,
-    pub rope: Vec<Vec<f64>>,
-    pub fope: Vec<Vec<f64>>,
+    pub c2g2: Array2<f64>,
+    pub simp: Array2<f64>,
+    pub rope: Array2<f64>,
+    pub fope: Array2<f64>,
 
-    pub filt: Vec<Vec<f64>>,
-    pub diss: Vec<Vec<f64>>,
-    pub opak: Vec<Vec<f64>>,
-    pub rdis: Vec<Vec<f64>>,
+    pub filt: Array2<f64>,
+    pub diss: Array2<f64>,
+    pub opak: Array2<f64>,
+    pub rdis: Array2<f64>,
 
     // Tridiagonal arrays for the pressure Poisson equation
     pub etdv: Vec<Vec<Vec<f64>>>,
@@ -47,10 +44,7 @@ pub struct Spectral {
     pub hrkx: Vec<f64>,
     pub hrky: Vec<f64>,
     pub rk: Vec<f64>,
-    pub xtrig: Vec<f64>,
-    pub ytrig: Vec<f64>,
-    pub xfactors: [usize; 5],
-    pub yfactors: [usize; 5],
+    pub d2fft: D2FFT,
 
     pub spmf: Vec<f64>,
     pub alk: Vec<f64>,
@@ -71,18 +65,18 @@ impl Spectral {
         let dzi = 1.0 / dz;
         let dzisq = dzi.powf(2.0);
 
-        let mut hlap = vec![vec![0.0; ng]; ng];
-        let mut glap = vec![vec![0.0; ng]; ng];
-        let mut rlap = vec![vec![0.0; ng]; ng];
-        let mut helm = vec![vec![0.0; ng]; ng];
-        let mut c2g2 = vec![vec![0.0; ng]; ng];
-        let mut simp = vec![vec![0.0; ng]; ng];
-        let mut rope = vec![vec![0.0; ng]; ng];
-        let mut fope = vec![vec![0.0; ng]; ng];
-        let mut filt = vec![vec![0.0; ng]; ng];
-        let mut diss = vec![vec![0.0; ng]; ng];
-        let mut opak = vec![vec![0.0; ng]; ng];
-        let mut rdis = vec![vec![0.0; ng]; ng];
+        let mut hlap = Array2::<f64>::zeros((ng, ng));
+        let mut glap = Array2::<f64>::zeros((ng, ng));
+        let mut rlap = Array2::<f64>::zeros((ng, ng));
+        let mut helm = Array2::<f64>::zeros((ng, ng));
+        let mut c2g2 = Array2::<f64>::zeros((ng, ng));
+        let mut simp = Array2::<f64>::zeros((ng, ng));
+        let mut rope = Array2::<f64>::zeros((ng, ng));
+        let mut fope = Array2::<f64>::zeros((ng, ng));
+        let mut filt = Array2::<f64>::zeros((ng, ng));
+        let mut diss = Array2::<f64>::zeros((ng, ng));
+        let mut opak = Array2::<f64>::zeros((ng, ng));
+        let mut rdis = Array2::<f64>::zeros((ng, ng));
         let mut etdv = vec![vec![vec![0.0; nz]; ng]; ng];
         let mut htdv = vec![vec![vec![0.0; nz]; ng]; ng];
         let mut ap = vec![vec![0.0; ng]; ng];
@@ -93,10 +87,6 @@ impl Spectral {
         let mut hrkx = vec![0.0; ng];
         let mut hrky = vec![0.0; ng];
         let mut rk = vec![0.0; ng];
-        let mut xtrig = vec![0.0; 2 * ng];
-        let mut ytrig = vec![0.0; 2 * ng];
-        let mut xfactors = [0; 5];
-        let mut yfactors = [0; 5];
         let mut spmf = vec![0.0; ng + 1];
         let mut alk = vec![0.0; ng];
         let mut kmag = vec![vec![0; ng]; ng];
@@ -115,18 +105,7 @@ impl Spectral {
         let anu: f64;
         let rkfsq: f64;
 
-        init2dfft(
-            ng,
-            ng,
-            2.0 * PI,
-            2.0 * PI,
-            &mut xfactors,
-            &mut yfactors,
-            &mut xtrig,
-            &mut ytrig,
-            &mut hrkx,
-            &mut hrky,
-        );
+        let d2fft = D2FFT::new(ng, ng, 2.0 * PI, 2.0 * PI, &mut hrkx, &mut hrky);
 
         //Define wavenumbers and filtered wavenumbers:
         rk[0] = 0.0;
@@ -176,46 +155,46 @@ impl Spectral {
             for kx in 0..ng {
                 rks = rk[kx].powf(2.0) + rk[ky].powf(2.0);
                 //grad^2:
-                hlap[kx][ky] = -rks;
+                hlap[[kx, ky]] = -rks;
                 //Spectral c^2*grad^2 - f^2 operator (G in paper):
-                opak[kx][ky] = -(FSQ + CSQ * rks);
+                opak[[kx, ky]] = -(FSQ + CSQ * rks);
                 //Hyperviscous operator:
-                diss[kx][ky] = anu * rks.powf(NNU);
+                diss[[kx, ky]] = anu * rks.powf(NNU);
                 //De-aliasing filter:
                 if rks > rkfsq {
-                    filt[kx][ky] = 0.0;
-                    glap[kx][ky] = 0.0;
-                    c2g2[kx][ky] = 0.0;
-                    rlap[kx][ky] = 0.0;
-                    helm[kx][ky] = 0.0;
-                    rope[kx][ky] = 0.0;
-                    rdis[kx][ky] = 0.0;
+                    filt[[kx, ky]] = 0.0;
+                    glap[[kx, ky]] = 0.0;
+                    c2g2[[kx, ky]] = 0.0;
+                    rlap[[kx, ky]] = 0.0;
+                    helm[[kx, ky]] = 0.0;
+                    rope[[kx, ky]] = 0.0;
+                    rdis[[kx, ky]] = 0.0;
                 } else {
-                    filt[kx][ky] = 1.0;
+                    filt[[kx, ky]] = 1.0;
                     //-g*grad^2:
-                    glap[kx][ky] = GRAVITY * rks;
+                    glap[[kx, ky]] = GRAVITY * rks;
                     //c^2*grad^2:
-                    c2g2[kx][ky] = -CSQ * rks;
+                    c2g2[[kx, ky]] = -CSQ * rks;
                     //grad^{-2} (inverse Laplacian):
-                    rlap[kx][ky] = -1.0 / (rks + 1.0E-20);
+                    rlap[[kx, ky]] = -1.0 / (rks + 1.0E-20);
                     //(c^2*grad^2 - f^2)^{-1} (G^{-1} in paper):
-                    helm[kx][ky] = 1.0 / opak[kx][ky];
+                    helm[[kx, ky]] = 1.0 / opak[[kx, ky]];
                     //c^2*grad^2/(c^2*grad^2 - f^2) (used in layer thickness inversion):
-                    rope[kx][ky] = c2g2[kx][ky] * helm[kx][ky];
-                    rdis[kx][ky] = dt2i + diss[kx][ky];
+                    rope[[kx, ky]] = c2g2[[kx, ky]] * helm[[kx, ky]];
+                    rdis[[kx, ky]] = dt2i + diss[[kx, ky]];
                 }
                 //Operators needed for semi-implicit time stepping:
-                rrsq = (dt2i + diss[kx][ky]).powf(2.0);
-                fope[kx][ky] = -c2g2[kx][ky] / (rrsq - opak[kx][ky]);
+                rrsq = (dt2i + diss[[kx, ky]]).powf(2.0);
+                fope[[kx, ky]] = -c2g2[[kx, ky]] / (rrsq - opak[[kx, ky]]);
                 //Semi-implicit operator for inverting divergence:
-                simp[kx][ky] = 1.0 / (rrsq + FSQ);
+                simp[[kx, ky]] = 1.0 / (rrsq + FSQ);
                 //Re-define damping operator for use in qd evolution:
-                diss[kx][ky] = 2.0 / (1.0 + dt2 * diss[kx][ky]);
+                diss[[kx, ky]] = 2.0 / (1.0 + dt2 * diss[[kx, ky]]);
             }
         }
 
         //Ensure area averages remain zero:
-        rlap[0][0] = 0.0;
+        rlap[[0, 0]] = 0.0;
 
         //Define theta and the vertical weight for trapezoidal integration:
         for iz in 0..=nz {
@@ -242,13 +221,13 @@ impl Spectral {
 
         for i in 0..ng {
             for j in 0..ng {
-                htdv[i][j][0] = filt[i][j] / a0b[i][j];
+                htdv[i][j][0] = filt[[i, j]] / a0b[i][j];
                 etdv[i][j][0] = -apb[i][j] * htdv[i][j][0];
                 for iz in 1..=nz - 2 {
-                    htdv[i][j][iz] = filt[i][j] / (a0[i][j] + ap[i][j] * etdv[i][j][iz - 1]);
+                    htdv[i][j][iz] = filt[[i, j]] / (a0[i][j] + ap[i][j] * etdv[i][j][iz - 1]);
                     etdv[i][j][iz] = -ap[i][j] * htdv[i][j][iz];
                 }
-                htdv[i][j][nz - 1] = filt[i][j] / (a0[i][j] + ap[i][j] * etdv[i][j][nz - 2]);
+                htdv[i][j][nz - 1] = filt[[i, j]] / (a0[i][j] + ap[i][j] * etdv[i][j][nz - 2]);
             }
         }
 
@@ -284,10 +263,7 @@ impl Spectral {
             hrkx,
             hrky,
             rk,
-            xtrig,
-            ytrig,
-            xfactors,
-            yfactors,
+            d2fft,
             spmf,
             alk,
             kmag,
@@ -339,13 +315,13 @@ impl Spectral {
             *e = 0.0;
         }
 
-        let mut wkh_matrix = slice_to_2d(&wkh, self.ng, self.ng);
-        let es_matrix = slice_to_3d(&es, self.ng, self.ng, self.nz + 1);
+        let mut wkh_matrix = viewmut2d(&mut wkh, self.ng, self.ng);
+        let es_matrix = view3d(&es, self.ng, self.ng, self.nz + 1);
 
         for iz in 0..=self.nz {
             for j in 0..self.ng {
                 for i in 0..self.ng {
-                    wkh_matrix[i][j] += self.weight[iz] * es_matrix[i][j][iz];
+                    wkh_matrix[[i, j]] += self.weight[iz] * es_matrix[[i, j, iz]];
                 }
             }
         }
@@ -353,10 +329,9 @@ impl Spectral {
         //Multiply by F = c^2*k^2/(f^2+c^2k^2) in spectral space:
         for i in 0..self.ng {
             for j in 0..self.ng {
-                wkh_matrix[i][j] *= self.rope[i][j];
+                wkh_matrix[[i, j]] *= self.rope[[i, j]];
             }
         }
-        wkh = _2d_to_vec(&wkh_matrix);
 
         //Initialise mean flow:
         uio = 0.0;
@@ -365,47 +340,43 @@ impl Spectral {
         //Complete inversion:
         for iz in 0..=self.nz {
             //Obtain layer thickness anomaly (spectral, in wka):
-            let es_matrix = slice_to_3d(&es, self.ng, self.ng, self.nz + 1);
-            let wkh_matrix = slice_to_2d(&wkh, self.ng, self.ng);
-            let mut wka_matrix = slice_to_2d(&wka, self.ng, self.ng);
+            let es_matrix = view3d(&es, self.ng, self.ng, self.nz + 1);
+            let wkh_matrix = view2d(&wkh, self.ng, self.ng);
+            let mut wka_matrix = viewmut2d(&mut wka, self.ng, self.ng);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    wka_matrix[i][j] = es_matrix[i][j][iz] - wkh_matrix[i][j];
+                    wka_matrix[[i, j]] = es_matrix[[i, j, iz]] - wkh_matrix[[i, j]];
                 }
             }
-            wka = _2d_to_vec(&wka_matrix);
 
             //Obtain relative vorticity (spectral, in wkb):
             //wkb=qs(:,:,iz)+COF*wka;
-            let qs_matrix = slice_to_3d(&qs, self.ng, self.ng, self.nz + 1);
-            let wka_matrix = slice_to_2d(&wka, self.ng, self.ng);
-            let mut wkb_matrix = slice_to_2d(&wkb, self.ng, self.ng);
+            let qs_matrix = view3d(&qs, self.ng, self.ng, self.nz + 1);
+            let wka_matrix = view2d(&wka, self.ng, self.ng);
+            let mut wkb_matrix = viewmut2d(&mut wkb, self.ng, self.ng);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    wkb_matrix[i][j] = qs_matrix[i][j][iz] + COF * wka_matrix[i][j];
+                    wkb_matrix[[i, j]] = qs_matrix[[i, j, iz]] + COF * wka_matrix[[i, j]];
                 }
             }
-            wkb = _2d_to_vec(&wkb_matrix);
 
             //Invert Laplace operator on zeta & delta to define velocity:
-            let wkb_matrix = slice_to_2d(&wkb, self.ng, self.ng);
-            let ds_matrix = slice_to_3d(&ds, self.ng, self.ng, self.nz + 1);
-            let mut wkc_matrix = slice_to_2d(&wkc, self.ng, self.ng);
-            let mut wkd_matrix = slice_to_2d(&wkd, self.ng, self.ng);
+            let wkb_matrix = view2d(&wkb, self.ng, self.ng);
+            let ds_matrix = view3d(&ds, self.ng, self.ng, self.nz + 1);
+            let mut wkc_matrix = viewmut2d(&mut wkc, self.ng, self.ng);
+            let mut wkd_matrix = viewmut2d(&mut wkd, self.ng, self.ng);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    wkc_matrix[i][j] = self.rlap[i][j] * wkb_matrix[i][j];
-                    wkd_matrix[i][j] = self.rlap[i][j] * ds_matrix[i][j][iz];
+                    wkc_matrix[[i, j]] = self.rlap[[i, j]] * wkb_matrix[[i, j]];
+                    wkd_matrix[[i, j]] = self.rlap[[i, j]] * ds_matrix[[i, j, iz]];
                 }
             }
-            wkc = _2d_to_vec(&wkc_matrix);
-            wkd = _2d_to_vec(&wkd_matrix);
 
             //Calculate derivatives spectrally:
-            xderiv(self.ng, self.ng, &self.hrkx, &wkd, &mut wke);
-            yderiv(self.ng, self.ng, &self.hrky, &wkd, &mut wkf);
-            xderiv(self.ng, self.ng, &self.hrkx, &wkc, &mut wkd);
-            yderiv(self.ng, self.ng, &self.hrky, &wkc, &mut wkg);
+            self.d2fft.xderiv(&self.hrkx, &wkd, &mut wke);
+            self.d2fft.yderiv(&self.hrky, &wkd, &mut wkf);
+            self.d2fft.xderiv(&self.hrkx, &wkc, &mut wkd);
+            self.d2fft.yderiv(&self.hrky, &wkc, &mut wkg);
 
             //Define velocity components:
             for (e, g) in wke.iter_mut().zip(&wkg) {
@@ -418,92 +389,44 @@ impl Spectral {
             //wkf=wkf+wkd;
 
             //Bring quantities back to physical space and store:
-            spctop(
-                self.ng,
-                self.ng,
-                &mut wka,
-                &mut wkc,
-                &self.xfactors,
-                &self.yfactors,
-                &self.xtrig,
-                &self.ytrig,
-            );
+            self.d2fft.spctop(&mut wka, &mut wkc);
 
-            let wkc_matrix = slice_to_2d(&wkc, self.ng, self.ng);
-            let mut r_matrix = slice_to_3d(&r, self.ng, self.ng, self.nz + 1);
+            let wkc_matrix = view2d(&wkc, self.ng, self.ng);
+            let mut r_matrix = viewmut3d(r, self.ng, self.ng, self.nz + 1);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    r_matrix[i][j][iz] = wkc_matrix[i][j];
+                    r_matrix[[i, j, iz]] = wkc_matrix[[i, j]];
                 }
             }
-            for (i, e) in _3d_to_vec(&r_matrix).iter().enumerate() {
-                r[i] = *e;
-            }
 
-            spctop(
-                self.ng,
-                self.ng,
-                &mut wkb,
-                &mut wkd,
-                &self.xfactors,
-                &self.yfactors,
-                &self.xtrig,
-                &self.ytrig,
-            );
+            self.d2fft.spctop(&mut wkb, &mut wkd);
 
-            let wkd_matrix = slice_to_2d(&wkd, self.ng, self.ng);
-            let mut zeta_matrix = slice_to_3d(&zeta, self.ng, self.ng, self.nz + 1);
+            let wkd_matrix = view2d(&wkd, self.ng, self.ng);
+            let mut zeta_matrix = viewmut3d(zeta, self.ng, self.ng, self.nz + 1);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    zeta_matrix[i][j][iz] = wkd_matrix[i][j];
+                    zeta_matrix[[i, j, iz]] = wkd_matrix[[i, j]];
                 }
             }
-            for (i, e) in _3d_to_vec(&zeta_matrix).iter().enumerate() {
-                zeta[i] = *e;
-            }
 
-            spctop(
-                self.ng,
-                self.ng,
-                &mut wke,
-                &mut wka,
-                &self.xfactors,
-                &self.yfactors,
-                &self.xtrig,
-                &self.ytrig,
-            );
+            self.d2fft.spctop(&mut wke, &mut wka);
 
-            let wka_matrix = slice_to_2d(&wka, self.ng, self.ng);
-            let mut u_matrix = slice_to_3d(&u, self.ng, self.ng, self.nz + 1);
+            let wka_matrix = view2d(&wka, self.ng, self.ng);
+            let mut u_matrix = viewmut3d(u, self.ng, self.ng, self.nz + 1);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    u_matrix[i][j][iz] = wka_matrix[i][j];
+                    u_matrix[[i, j, iz]] = wka_matrix[[i, j]];
                 }
             }
-            for (i, e) in _3d_to_vec(&u_matrix).iter().enumerate() {
-                u[i] = *e;
-            }
 
-            spctop(
-                self.ng,
-                self.ng,
-                &mut wkf,
-                &mut wkb,
-                &self.xfactors,
-                &self.yfactors,
-                &self.xtrig,
-                &self.ytrig,
-            );
+            self.d2fft.spctop(&mut wkf, &mut wkb);
 
-            let wkb_matrix = slice_to_2d(&wkb, self.ng, self.ng);
-            let mut v_matrix = slice_to_3d(&v, self.ng, self.ng, self.nz + 1);
+            let wkb_matrix = view2d(&wkb, self.ng, self.ng);
+            let mut v_matrix = viewmut3d(v, self.ng, self.ng, self.nz + 1);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    v_matrix[i][j][iz] = wkb_matrix[i][j];
+                    v_matrix[[i, j, iz]] = wkb_matrix[[i, j]];
                 }
-            }
-            for (i, e) in _3d_to_vec(&v_matrix).iter().enumerate() {
-                v[i] = *e;
             }
 
             //Accumulate mean flow (uio,vio):
@@ -539,91 +462,28 @@ impl Spectral {
             *e = aa[i];
         }
 
-        ptospc(
-            self.ng,
-            self.ng,
-            &mut wkb,
-            &mut wka,
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
+        self.d2fft.ptospc(&mut wkb, &mut wka);
         //Get derivatives of aa:
-        xderiv(self.ng, self.ng, &self.hrkx, &wka, &mut wkb);
-        spctop(
-            self.ng,
-            self.ng,
-            &mut wkb,
-            &mut ax,
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
-        yderiv(self.ng, self.ng, &self.hrky, &wka, &mut wkb);
-        spctop(
-            self.ng,
-            self.ng,
-            &mut wkb,
-            &mut ay,
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
+        self.d2fft.xderiv(&self.hrkx, &wka, &mut wkb);
+        self.d2fft.spctop(&mut wkb, &mut ax);
+        self.d2fft.yderiv(&self.hrky, &wka, &mut wkb);
+        self.d2fft.spctop(&mut wkb, &mut ay);
 
         for (i, e) in wkb.iter_mut().enumerate() {
             *e = bb[i];
         }
 
-        ptospc(
-            self.ng,
-            self.ng,
-            &mut wkb,
-            &mut wka,
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
+        self.d2fft.ptospc(&mut wkb, &mut wka);
         //Get derivatives of bb:
-        xderiv(self.ng, self.ng, &self.hrkx, &wka, &mut wkb);
-        spctop(
-            self.ng,
-            self.ng,
-            &mut wkb,
-            &mut bx,
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
-        yderiv(self.ng, self.ng, &self.hrky, &wka, &mut wkb);
-        spctop(
-            self.ng,
-            self.ng,
-            &mut wkb,
-            &mut by,
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
+        self.d2fft.xderiv(&self.hrkx, &wka, &mut wkb);
+        self.d2fft.spctop(&mut wkb, &mut bx);
+        self.d2fft.yderiv(&self.hrky, &wka, &mut wkb);
+        self.d2fft.spctop(&mut wkb, &mut by);
 
         for (i, e) in wkb.iter_mut().enumerate() {
             *e = ax[i] * by[i] - ay[i] * bx[i];
         }
-        ptospc(
-            self.ng,
-            self.ng,
-            &mut wkb,
-            cs,
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
+        self.d2fft.ptospc(&mut wkb, cs);
     }
 
     /// Computes the divergence of (aa,bb) and returns it in cs.
@@ -637,33 +497,15 @@ impl Spectral {
             wkp[i] = *e;
         }
 
-        ptospc(
-            self.ng,
-            self.ng,
-            &mut wkp,
-            &mut wka,
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
-        xderiv(self.ng, self.ng, &self.hrkx, &wka, &mut wkb);
+        self.d2fft.ptospc(&mut wkp, &mut wka);
+        self.d2fft.xderiv(&self.hrkx, &wka, &mut wkb);
 
         for (i, e) in bb.iter().enumerate() {
             wkp[i] = *e;
         }
 
-        ptospc(
-            self.ng,
-            self.ng,
-            &mut wkp,
-            &mut wka,
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
-        yderiv(self.ng, self.ng, &self.hrky, &wka, cs);
+        self.d2fft.ptospc(&mut wkp, &mut wka);
+        self.d2fft.yderiv(&self.hrky, &wka, cs);
 
         for (i, e) in cs.iter_mut().enumerate() {
             *e += wkb[i];
@@ -677,35 +519,22 @@ impl Spectral {
         let mut wks = vec![0.0; self.ng * self.ng];
 
         for iz in izbeg..=izend {
-            let mut wkp_matrix = slice_to_2d(&wkp, self.ng, self.ng);
-            let fp_matrix = slice_to_3d(&fp, self.ng, self.ng, self.nz + 1);
+            let mut wkp_matrix = viewmut2d(&mut wkp, self.ng, self.ng);
+            let fp_matrix = view3d(fp, self.ng, self.ng, self.nz + 1);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    wkp_matrix[i][j] = fp_matrix[i][j][iz];
+                    wkp_matrix[[i, j]] = fp_matrix[[i, j, iz]];
                 }
             }
-            wkp = _2d_to_vec(&wkp_matrix);
 
-            ptospc(
-                self.ng,
-                self.ng,
-                &mut wkp,
-                &mut wks,
-                &self.xfactors,
-                &self.yfactors,
-                &self.xtrig,
-                &self.ytrig,
-            );
+            self.d2fft.ptospc(&mut wkp, &mut wks);
 
-            let wks_matrix = slice_to_2d(&wks, self.ng, self.ng);
-            let mut fs_matrix = slice_to_3d(&fs, self.ng, self.ng, self.nz + 1);
+            let wks_matrix = view2d(&wks, self.ng, self.ng);
+            let mut fs_matrix = viewmut3d(fs, self.ng, self.ng, self.nz + 1);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    fs_matrix[i][j][iz] = wks_matrix[i][j];
+                    fs_matrix[[i, j, iz]] = wks_matrix[[i, j]];
                 }
-            }
-            for (i, e) in _3d_to_vec(&fs_matrix).iter().enumerate() {
-                fs[i] = *e;
             }
         }
     }
@@ -717,135 +546,77 @@ impl Spectral {
         let mut wkp = vec![0.0; self.ng * self.ng];
 
         for iz in izbeg..=izend {
-            let mut wks_matrix = slice_to_2d(&wks, self.ng, self.ng);
-            let fs_matrix = slice_to_3d(&fs, self.ng, self.ng, self.nz + 1);
+            let mut wks_matrix = viewmut2d(&mut wks, self.ng, self.ng);
+            let fs_matrix = view3d(fs, self.ng, self.ng, self.nz + 1);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    wks_matrix[i][j] = fs_matrix[i][j][iz];
+                    wks_matrix[[i, j]] = fs_matrix[[i, j, iz]];
                 }
             }
-            wks = _2d_to_vec(&wks_matrix);
 
-            spctop(
-                self.ng,
-                self.ng,
-                &mut wks,
-                &mut wkp,
-                &self.xfactors,
-                &self.yfactors,
-                &self.xtrig,
-                &self.ytrig,
-            );
+            self.d2fft.spctop(&mut wks, &mut wkp);
 
-            let wkp_matrix = slice_to_2d(&wkp, self.ng, self.ng);
-            let mut fp_matrix = slice_to_3d(&fp, self.ng, self.ng, self.nz + 1);
+            let wkp_matrix = view2d(&wkp, self.ng, self.ng);
+            let mut fp_matrix = viewmut3d(fp, self.ng, self.ng, self.nz + 1);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    fp_matrix[i][j][iz] = wkp_matrix[i][j];
+                    fp_matrix[[i, j, iz]] = wkp_matrix[[i, j]];
                 }
-            }
-            for (i, e) in _3d_to_vec(&fp_matrix).iter().enumerate() {
-                fp[i] = *e;
             }
         }
     }
 
     /// Filters (horizontally) a physical 3d field fp (overwrites fp)
     pub fn deal3d(&self, fp: &mut [f64]) {
-        let mut fp_matrix = slice_to_3d(fp, self.ng, self.ng, self.nz + 1);
+        let mut fp_matrix = viewmut3d(fp, self.ng, self.ng, self.nz + 1);
 
-        let mut wkp_matrix = vec![vec![0.0; self.ng]; self.ng];
-        let mut wks_matrix = vec![vec![0.0; self.ng]; self.ng];
+        let mut wkp_matrix = Array2::<f64>::zeros((self.ng, self.ng));
+        let mut wks_matrix = Array2::<f64>::zeros((self.ng, self.ng));
 
         for iz in 0..=self.nz {
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    wkp_matrix[i][j] = fp_matrix[i][j][iz];
+                    wkp_matrix[[i, j]] = fp_matrix[[i, j, iz]];
                 }
             }
 
-            let mut wkp = _2d_to_vec(wkp_matrix.as_slice());
-            let mut wks = _2d_to_vec(wks_matrix.as_slice());
-
-            ptospc(
-                self.ng,
-                self.ng,
-                &mut wkp,
-                &mut wks,
-                &self.xfactors,
-                &self.yfactors,
-                &self.xtrig,
-                &self.ytrig,
+            self.d2fft.ptospc(
+                wkp_matrix.as_slice_mut().unwrap(),
+                wks_matrix.as_slice_mut().unwrap(),
             );
 
-            wks_matrix = slice_to_2d(&wks, self.ng, self.ng);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    wks_matrix[i][j] *= self.filt[i][j];
+                    wks_matrix[[i, j]] *= self.filt[[i, j]];
                 }
             }
-            wks = _2d_to_vec(wks_matrix.as_slice());
 
-            spctop(
-                self.ng,
-                self.ng,
-                &mut wks,
-                &mut wkp,
-                &self.xfactors,
-                &self.yfactors,
-                &self.xtrig,
-                &self.ytrig,
+            self.d2fft.spctop(
+                wks_matrix.as_slice_mut().unwrap(),
+                wkp_matrix.as_slice_mut().unwrap(),
             );
 
-            wkp_matrix = slice_to_2d(&wkp, self.ng, self.ng);
             for i in 0..self.ng {
                 for j in 0..self.ng {
-                    fp_matrix[i][j][iz] = wkp_matrix[i][j];
+                    fp_matrix[[i, j, iz]] = wkp_matrix[[i, j]];
                 }
             }
-        }
-
-        for (i, e) in _3d_to_vec(&fp_matrix).iter().enumerate() {
-            fp[i] = *e;
         }
     }
 
     /// Filters (horizontally) a physical 2d field fp (overwrites fp)
     pub fn deal2d(&self, fp: &mut [f64]) {
-        let mut fs = vec![0.0; self.ng * self.ng];
+        let mut fs = Array2::<f64>::zeros((self.ng, self.ng));
 
-        ptospc(
-            self.ng,
-            self.ng,
-            fp,
-            fs.as_mut_slice(),
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
+        self.d2fft.ptospc(fp, fs.as_slice_mut().unwrap());
 
-        let mut fs_matrix = slice_to_2d(&fs, self.ng, self.ng);
         for i in 0..self.ng {
             for j in 0..self.ng {
-                fs_matrix[i][j] *= self.filt[i][j]
+                fs[[i, j]] *= self.filt[[i, j]]
             }
         }
 
-        for (i, e) in _2d_to_vec(&fs_matrix).iter().enumerate() {
-            fs[i] = *e;
-        }
-
-        spctop(
-            self.ng,
-            self.ng,
-            fs.as_mut_slice(),
-            fp,
-            &self.xfactors,
-            &self.yfactors,
-            &self.xtrig,
-            &self.ytrig,
-        );
+        self.d2fft.spctop(fs.as_slice_mut().unwrap(), fp);
     }
 
     /// Computes the 1d spectrum of a spectral field ss and returns the
@@ -854,7 +625,7 @@ impl Spectral {
         assert_eq!(self.ng * self.ng, ss.len());
         assert_eq!(self.ng + 1, spec.len());
 
-        let ss = slice_to_2d(ss, self.ng, self.ng);
+        let ss = view2d(ss, self.ng, self.ng);
 
         for k in 0..=self.kmax {
             spec[k] = 0.0;
@@ -862,25 +633,25 @@ impl Spectral {
 
         // x and y-independent mode:
         let k = self.kmag[0][0];
-        spec[k] += (1.0 / 4.0) * ss[0][0].powf(2.0);
+        spec[k] += (1.0 / 4.0) * ss[[0, 0]].powf(2.0);
 
         // y-independent mode:
         for kx in 1..self.ng {
             let k = self.kmag[kx][0];
-            spec[k] += (1.0 / 2.0) * ss[kx][0].powf(2.0)
+            spec[k] += (1.0 / 2.0) * ss[[kx, 0]].powf(2.0)
         }
 
         // x-independent mode:
         for ky in 1..self.ng {
             let k = self.kmag[0][ky];
-            spec[k] += (1.0 / 2.0) * ss[0][ky].powf(2.0)
+            spec[k] += (1.0 / 2.0) * ss[[0, ky]].powf(2.0)
         }
 
         // All other modes:
         for ky in 1..self.ng {
             for kx in 1..self.ng {
                 let k = self.kmag[kx][ky];
-                spec[k] += ss[kx][ky].powf(2.0)
+                spec[k] += ss[[kx, ky]].powf(2.0)
             }
         }
     }

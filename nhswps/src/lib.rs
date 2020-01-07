@@ -6,7 +6,6 @@ mod test;
 use shallow_water::{
     constants::*,
     spectral::Spectral,
-    sta2dfft::{ptospc, spctop, xderiv, yderiv},
     utils::{_2d_to_vec, _3d_to_vec, slice_to_2d, slice_to_3d},
 };
 
@@ -182,9 +181,9 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
     for iz in 0..=nz {
         for i in 0..ng {
             for j in 0..ng {
-                qs_matrix[i][j][iz] *= state.spectral.filt[i][j];
-                ds_matrix[i][j][iz] *= state.spectral.filt[i][j];
-                gs_matrix[i][j][iz] *= state.spectral.filt[i][j];
+                qs_matrix[i][j][iz] *= state.spectral.filt[[i, j]];
+                ds_matrix[i][j][iz] *= state.spectral.filt[[i, j]];
+                gs_matrix[i][j][iz] *= state.spectral.filt[[i, j]];
             }
         }
     }
@@ -388,7 +387,7 @@ pub fn advance(state: &mut State) {
         for iz in 0..=nz {
             for i in 0..ng {
                 for j in 0..ng {
-                    qs[i][j][iz] = state.spectral.diss[i][j]
+                    qs[i][j][iz] = state.spectral.diss[[i, j]]
                         * (qsm[i][j][iz] + dt4 * sqs[i][j][iz])
                         - qsi[i][j][iz];
                 }
@@ -429,7 +428,7 @@ pub fn advance(state: &mut State) {
 
         for i in 0..ng {
             for j in 0..ng {
-                ds[i][j][iz] = sgs[i][j][iz] + state.spectral.rdis[i][j] * sds[i][j][iz]; // 2*T_tilde_delta
+                ds[i][j][iz] = sgs[i][j][iz] + state.spectral.rdis[[i, j]] * sds[i][j][iz]; // 2*T_tilde_delta
                 wka_matrix[i][j] += state.spectral.weight[iz] * ds[i][j][iz];
                 wkb_matrix[i][j] += state.spectral.weight[iz] * sds[i][j][iz];
             }
@@ -444,7 +443,7 @@ pub fn advance(state: &mut State) {
 
         for i in 0..ng {
             for j in 0..ng {
-                wka[i][j] *= state.spectral.fope[i][j];
+                wka[i][j] *= state.spectral.fope[[i, j]];
             }
         }
 
@@ -455,7 +454,7 @@ pub fn advance(state: &mut State) {
 
         for i in 0..ng {
             for j in 0..ng {
-                wkb[i][j] *= state.spectral.c2g2[i][j];
+                wkb[i][j] *= state.spectral.c2g2[[i, j]];
             }
         }
 
@@ -474,10 +473,10 @@ pub fn advance(state: &mut State) {
             for j in 0..ng {
                 // simp = (R^2 + f^2)^{-1}
                 ds[i][j][iz] =
-                    state.spectral.simp[i][j] * (ds[i][j][iz] - wka[i][j]) - dsi[i][j][iz];
+                    state.spectral.simp[[i, j]] * (ds[i][j][iz] - wka[i][j]) - dsi[i][j][iz];
                 // 2*T_tilde_gamma
                 gs[i][j][iz] =
-                    wkb[i][j] - FSQ * sds[i][j][iz] + state.spectral.rdis[i][j] * sgs[i][j][iz];
+                    wkb[i][j] - FSQ * sds[i][j][iz] + state.spectral.rdis[[i, j]] * sgs[i][j][iz];
             }
         }
 
@@ -505,7 +504,7 @@ pub fn advance(state: &mut State) {
 
         for i in 0..ng {
             for j in 0..ng {
-                wka[i][j] *= state.spectral.fope[i][j];
+                wka[i][j] *= state.spectral.fope[[i, j]];
             }
         }
 
@@ -520,7 +519,7 @@ pub fn advance(state: &mut State) {
             for j in 0..ng {
                 // simp = (R^2 + f^2)^{-1}
                 gs[i][j][iz] =
-                    state.spectral.simp[i][j] * (gs[i][j][iz] - wka[i][j]) - gsi[i][j][iz];
+                    state.spectral.simp[[i, j]] * (gs[i][j][iz] - wka[i][j]) - gsi[i][j][iz];
             }
         }
 
@@ -556,7 +555,7 @@ pub fn advance(state: &mut State) {
 
             for i in 0..ng {
                 for j in 0..ng {
-                    qs[i][j][iz] = state.spectral.diss[i][j]
+                    qs[i][j][iz] = state.spectral.diss[[i, j]]
                         * (qsm[i][j][iz] + dt4 * sqs[i][j][iz])
                         - qsi[i][j][iz];
                 }
@@ -586,7 +585,7 @@ pub fn advance(state: &mut State) {
             for i in 0..ng {
                 for j in 0..ng {
                     // 2*T_tilde_delta
-                    ds[i][j][iz] = sgs[i][j][iz] + state.spectral.rdis[i][j] * sds[i][j][iz];
+                    ds[i][j][iz] = sgs[i][j][iz] + state.spectral.rdis[[i, j]] * sds[i][j][iz];
                     wka_matrix[i][j] += state.spectral.weight[iz] * ds[i][j][iz];
                     wkb_matrix[i][j] += state.spectral.weight[iz] * sds[i][j][iz];
                 }
@@ -603,9 +602,9 @@ pub fn advance(state: &mut State) {
             for i in 0..ng {
                 for j in 0..ng {
                     // fope = F operator
-                    wka_matrix[i][j] *= state.spectral.fope[i][j];
+                    wka_matrix[i][j] *= state.spectral.fope[[i, j]];
                     // c2g2 = c^2*Lap operator
-                    wkb_matrix[i][j] *= state.spectral.c2g2[i][j];
+                    wkb_matrix[i][j] *= state.spectral.c2g2[[i, j]];
                 }
                 wka = _2d_to_vec(&wka_matrix);
                 wkb = _2d_to_vec(&wkb_matrix);
@@ -624,10 +623,10 @@ pub fn advance(state: &mut State) {
                 for j in 0..ng {
                     // simp = (R^2 + f^2)^{-1}
                     ds[i][j][iz] =
-                        state.spectral.simp[i][j] * (ds[i][j][iz] - wka[i][j]) - dsi[i][j][iz];
+                        state.spectral.simp[[i, j]] * (ds[i][j][iz] - wka[i][j]) - dsi[i][j][iz];
                     // 2*T_tilde_gamma
-                    gs[i][j][iz] =
-                        wkb[i][j] - FSQ * sds[i][j][iz] + state.spectral.rdis[i][j] * sgs[i][j][iz];
+                    gs[i][j][iz] = wkb[i][j] - FSQ * sds[i][j][iz]
+                        + state.spectral.rdis[[i, j]] * sgs[i][j][iz];
                 }
             }
 
@@ -652,7 +651,7 @@ pub fn advance(state: &mut State) {
             for i in 0..ng {
                 for j in 0..ng {
                     // fope = F operator in paper
-                    wka_matrix[i][j] *= state.spectral.fope[i][j];
+                    wka_matrix[i][j] *= state.spectral.fope[[i, j]];
                 }
             }
 
@@ -667,7 +666,7 @@ pub fn advance(state: &mut State) {
                 for j in 0..ng {
                     // simp = (R^2 + f^2)^{-1}
                     gs[i][j][iz] =
-                        state.spectral.simp[i][j] * (gs[i][j][iz] - wka[i][j]) - gsi[i][j][iz];
+                        state.spectral.simp[[i, j]] * (gs[i][j][iz] - wka[i][j]) - gsi[i][j][iz];
                 }
             }
 
@@ -778,16 +777,7 @@ pub fn psolve(state: &mut State) {
         }
 
         // Return to physical space:
-        spctop(
-            ng,
-            ng,
-            &mut wkd,
-            &mut d2pdt2,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.spctop(&mut wkd, &mut d2pdt2);
         // Total source:
         {
             let mut wkp_matrix = slice_to_2d(&wkp, ng, ng);
@@ -805,16 +795,7 @@ pub fn psolve(state: &mut State) {
             wkp = _2d_to_vec(&wkp_matrix);
         }
         // Transform to spectral space for inversion below:
-        ptospc(
-            ng,
-            ng,
-            &mut wkp,
-            &mut wka,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.ptospc(&mut wkp, &mut wka);
         {
             let mut sp_matrix = slice_to_3d(&sp, ng, ng, nz + 1);
             let wka_matrix = slice_to_2d(&wka, ng, ng);
@@ -857,49 +838,19 @@ pub fn psolve(state: &mut State) {
             };
 
             // Calculate x & y derivatives of dp/dtheta:
-            xderiv(ng, ng, &state.spectral.hrkx, &wka, &mut wkb);
-            yderiv(ng, ng, &state.spectral.hrky, &wka, &mut wkc);
+            state
+                .spectral
+                .d2fft
+                .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
+            state
+                .spectral
+                .d2fft
+                .yderiv(&state.spectral.hrky, &wka, &mut wkc);
             // Return to physical space:
-            spctop(
-                ng,
-                ng,
-                &mut wka,
-                &mut dpdt,
-                &state.spectral.xfactors,
-                &state.spectral.yfactors,
-                &state.spectral.xtrig,
-                &state.spectral.ytrig,
-            );
-            spctop(
-                ng,
-                ng,
-                &mut wkb,
-                &mut d2pdxt,
-                &state.spectral.xfactors,
-                &state.spectral.yfactors,
-                &state.spectral.xtrig,
-                &state.spectral.ytrig,
-            );
-            spctop(
-                ng,
-                ng,
-                &mut wkc,
-                &mut d2pdyt,
-                &state.spectral.xfactors,
-                &state.spectral.yfactors,
-                &state.spectral.xtrig,
-                &state.spectral.ytrig,
-            );
-            spctop(
-                ng,
-                ng,
-                &mut wkd,
-                &mut d2pdt2,
-                &state.spectral.xfactors,
-                &state.spectral.yfactors,
-                &state.spectral.xtrig,
-                &state.spectral.ytrig,
-            );
+            state.spectral.d2fft.spctop(&mut wka, &mut dpdt);
+            state.spectral.d2fft.spctop(&mut wkb, &mut d2pdxt);
+            state.spectral.d2fft.spctop(&mut wkc, &mut d2pdyt);
+            state.spectral.d2fft.spctop(&mut wkd, &mut d2pdt2);
 
             // Total source:
             wkp = {
@@ -928,16 +879,7 @@ pub fn psolve(state: &mut State) {
             };
 
             // Transform to spectral space for inversion below:
-            ptospc(
-                ng,
-                ng,
-                &mut wkp,
-                &mut wka,
-                &state.spectral.xfactors,
-                &state.spectral.yfactors,
-                &state.spectral.xtrig,
-                &state.spectral.ytrig,
-            );
+            state.spectral.d2fft.ptospc(&mut wkp, &mut wka);
             sp = {
                 let mut sp_matrix = slice_to_3d(&sp, ng, ng, nz + 1);
                 let wka_matrix = slice_to_2d(&wka, ng, ng);
@@ -961,40 +903,19 @@ pub fn psolve(state: &mut State) {
             *e = 2.0 * *e - wkq[i];
         }
         wkp = dpdt.clone();
-        ptospc(
-            ng,
-            ng,
-            &mut wkp,
-            &mut wka,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.ptospc(&mut wkp, &mut wka);
         // Calculate x & y derivatives of dp/dtheta:
-        xderiv(ng, ng, &state.spectral.hrkx, &wka, &mut wkb);
-        yderiv(ng, ng, &state.spectral.hrky, &wka, &mut wkc);
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, &wka, &mut wkc);
         // Return to physical space:
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut d2pdxt,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
-        spctop(
-            ng,
-            ng,
-            &mut wkc,
-            &mut d2pdyt,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.spctop(&mut wkb, &mut d2pdxt);
+        state.spectral.d2fft.spctop(&mut wkc, &mut d2pdyt);
         // Total source:
         wkp = {
             let mut wkp = slice_to_2d(&vec![0.0; ng * ng], ng, ng);
@@ -1022,16 +943,7 @@ pub fn psolve(state: &mut State) {
         };
 
         // Transform to spectral space for inversion below:
-        ptospc(
-            ng,
-            ng,
-            &mut wkp,
-            &mut wka,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.ptospc(&mut wkp, &mut wka);
         sp = {
             let mut sp_matrix = slice_to_3d(&sp, ng, ng, nz + 1);
             let wka_matrix = slice_to_2d(&wka, ng, ng);
@@ -1236,37 +1148,19 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
     };
 
     // Fourier transform to spectral space:
-    ptospc(
-        ng,
-        ng,
-        &mut wkp,
-        &mut wka,
-        &state.spectral.xfactors,
-        &state.spectral.yfactors,
-        &state.spectral.xtrig,
-        &state.spectral.ytrig,
-    );
+    state.spectral.d2fft.ptospc(&mut wkp, &mut wka);
     // Apply -g*Lap_h operator:
     wka = {
         let mut wka_matrix = slice_to_2d(&wka, ng, ng);
         for i in 0..ng {
             for j in 0..ng {
-                wka_matrix[i][j] *= state.spectral.glap[i][j];
+                wka_matrix[i][j] *= state.spectral.glap[[i, j]];
             }
         }
         _2d_to_vec(&wka_matrix)
     };
     // Return to physical space:
-    spctop(
-        ng,
-        ng,
-        &mut wka,
-        &mut hsrc,
-        &state.spectral.xfactors,
-        &state.spectral.yfactors,
-        &state.spectral.xtrig,
-        &state.spectral.ytrig,
-    );
+    state.spectral.d2fft.spctop(&mut wka, &mut hsrc);
     // hsrc contains -g*Lap{h} in physical space.
 
     // Calculate u_theta, v_theta & w_theta:
@@ -1335,38 +1229,17 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
 
         _2d_to_vec(&wkq_matrix)
     };
-    ptospc(
-        ng,
-        ng,
-        &mut wkq,
-        &mut wka,
-        &state.spectral.xfactors,
-        &state.spectral.yfactors,
-        &state.spectral.xtrig,
-        &state.spectral.ytrig,
-    );
-    xderiv(ng, ng, &state.spectral.hrkx, &wka, &mut wkb);
-    spctop(
-        ng,
-        ng,
-        &mut wkb,
-        &mut ux,
-        &state.spectral.xfactors,
-        &state.spectral.yfactors,
-        &state.spectral.xtrig,
-        &state.spectral.ytrig,
-    );
-    yderiv(ng, ng, &state.spectral.hrky, &wka, &mut wkb);
-    spctop(
-        ng,
-        ng,
-        &mut wkb,
-        &mut uy,
-        &state.spectral.xfactors,
-        &state.spectral.yfactors,
-        &state.spectral.xtrig,
-        &state.spectral.ytrig,
-    );
+    state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
+    state
+        .spectral
+        .d2fft
+        .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
+    state.spectral.d2fft.spctop(&mut wkb, &mut ux);
+    state
+        .spectral
+        .d2fft
+        .yderiv(&state.spectral.hrky, &wka, &mut wkb);
+    state.spectral.d2fft.spctop(&mut wkb, &mut uy);
     wkq = {
         let mut wkq_matrix = slice_to_2d(&wkq, ng, ng);
         let v_matrix = slice_to_3d(&state.v, ng, ng, nz + 1);
@@ -1379,38 +1252,17 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
 
         _2d_to_vec(&wkq_matrix)
     };
-    ptospc(
-        ng,
-        ng,
-        &mut wkq,
-        &mut wka,
-        &state.spectral.xfactors,
-        &state.spectral.yfactors,
-        &state.spectral.xtrig,
-        &state.spectral.ytrig,
-    );
-    xderiv(ng, ng, &state.spectral.hrkx, &wka, &mut wkb);
-    spctop(
-        ng,
-        ng,
-        &mut wkb,
-        &mut vx,
-        &state.spectral.xfactors,
-        &state.spectral.yfactors,
-        &state.spectral.xtrig,
-        &state.spectral.ytrig,
-    );
-    yderiv(ng, ng, &state.spectral.hrky, &wka, &mut wkb);
-    spctop(
-        ng,
-        ng,
-        &mut wkb,
-        &mut vy,
-        &state.spectral.xfactors,
-        &state.spectral.yfactors,
-        &state.spectral.xtrig,
-        &state.spectral.ytrig,
-    );
+    state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
+    state
+        .spectral
+        .d2fft
+        .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
+    state.spectral.d2fft.spctop(&mut wkb, &mut vx);
+    state
+        .spectral
+        .d2fft
+        .yderiv(&state.spectral.hrky, &wka, &mut wkb);
+    state.spectral.d2fft.spctop(&mut wkb, &mut vy);
     wkq = {
         let mut wkq_matrix = slice_to_2d(&wkq, ng, ng);
         let ri_matrix = slice_to_3d(&state.ri, ng, ng, nz + 1);
@@ -1479,38 +1331,17 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
 
             _2d_to_vec(&wkq_matrix)
         };
-        ptospc(
-            ng,
-            ng,
-            &mut wkq,
-            &mut wka,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
-        xderiv(ng, ng, &state.spectral.hrkx, &wka, &mut wkb);
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut ux,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
-        yderiv(ng, ng, &state.spectral.hrky, &wka, &mut wkb);
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut uy,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
+        state.spectral.d2fft.spctop(&mut wkb, &mut ux);
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, &wka, &mut wkb);
+        state.spectral.d2fft.spctop(&mut wkb, &mut uy);
         wkq = {
             let mut wkq_matrix = slice_to_2d(&wkq, ng, ng);
             let v_matrix = slice_to_3d(&state.v, ng, ng, nz + 1);
@@ -1523,38 +1354,17 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
 
             _2d_to_vec(&wkq_matrix)
         };
-        ptospc(
-            ng,
-            ng,
-            &mut wkq,
-            &mut wka,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
-        xderiv(ng, ng, &state.spectral.hrkx, &wka, &mut wkb);
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut vx,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
-        yderiv(ng, ng, &state.spectral.hrky, &wka, &mut wkb);
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut vy,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
+        state.spectral.d2fft.spctop(&mut wkb, &mut vx);
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, &wka, &mut wkb);
+        state.spectral.d2fft.spctop(&mut wkb, &mut vy);
         wkq = {
             let mut wkq_matrix = slice_to_2d(&wkq, ng, ng);
             let w_matrix = slice_to_3d(&state.w, ng, ng, nz + 1);
@@ -1567,38 +1377,17 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
 
             _2d_to_vec(&wkq_matrix)
         };
-        ptospc(
-            ng,
-            ng,
-            &mut wkq,
-            &mut wka,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
-        xderiv(ng, ng, &state.spectral.hrkx, &wka, &mut wkb);
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut wx,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
-        yderiv(ng, ng, &state.spectral.hrky, &wka, &mut wkb);
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut wy,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
+        state.spectral.d2fft.spctop(&mut wkb, &mut wx);
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, &wka, &mut wkb);
+        state.spectral.d2fft.spctop(&mut wkb, &mut wy);
         // Calculate pressure source:
         let vt2d = {
             let mut vt2d = slice_to_2d(&vec![0.0; ng * ng], ng, ng);
@@ -1802,16 +1591,7 @@ pub fn coeffs(
         state
             .spectral
             .divs(&_2d_to_vec(&d2_sigx), &_2d_to_vec(&d2_sigy), &mut wka);
-        spctop(
-            ng,
-            ng,
-            &mut wka,
-            &mut wkp,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.spctop(&mut wka, &mut wkp);
         {
             let mut cpt1_matrix = slice_to_3d(&cpt1, ng, ng, nz + 1);
             let cpt2_matrix = slice_to_3d(&cpt2, ng, ng, nz + 1);
@@ -1845,16 +1625,7 @@ pub fn coeffs(
             .spectral
             .divs(&_2d_to_vec(&d2_sigx), &_2d_to_vec(&d2_sigy), &mut wka);
     }
-    spctop(
-        ng,
-        ng,
-        &mut wka,
-        &mut wkp,
-        &state.spectral.xfactors,
-        &state.spectral.yfactors,
-        &state.spectral.xtrig,
-        &state.spectral.ytrig,
-    );
+    state.spectral.d2fft.spctop(&mut wka, &mut wkp);
     {
         let mut cpt1_matrix = slice_to_3d(&cpt1, ng, ng, nz + 1);
         let cpt2_matrix = slice_to_3d(&cpt2, ng, ng, nz + 1);
@@ -1939,27 +1710,12 @@ pub fn vertical(state: &mut State) {
         }
         wkq = _2d_to_vec(&wkq_matrix);
 
-        ptospc(
-            ng,
-            ng,
-            &mut wkq,
-            &mut wka,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
-        xderiv(ng, ng, &state.spectral.hrkx, &wka, &mut wkb);
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut wkq,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
+        state.spectral.d2fft.spctop(&mut wkb, &mut wkq);
         state.zx = {
             let mut zx_matrix = slice_to_3d(&state.zx, ng, ng, nz + 1);
             let wkq_matrix = slice_to_2d(&wkq, ng, ng);
@@ -1970,17 +1726,11 @@ pub fn vertical(state: &mut State) {
             }
             _3d_to_vec(&zx_matrix)
         };
-        yderiv(ng, ng, &state.spectral.hrky, &wka, &mut wkb);
-        spctop(
-            ng,
-            ng,
-            &mut wkb,
-            &mut wkq,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, &wka, &mut wkb);
+        state.spectral.d2fft.spctop(&mut wkb, &mut wkq);
         state.zy = {
             let mut zy_matrix = slice_to_3d(&state.zy, ng, ng, nz + 1);
             let wkq_matrix = slice_to_2d(&wkq, ng, ng);
@@ -2007,17 +1757,11 @@ pub fn vertical(state: &mut State) {
             }
             _2d_to_vec(&wkq)
         };
-        ptospc(
-            ng,
-            ng,
-            &mut wkq,
-            &mut wka,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
-        xderiv(ng, ng, &state.spectral.hrkx, &wka, &mut wkb);
+        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
 
         // Calculate (v*rho'_theta)_y:
         wkq = {
@@ -2031,17 +1775,11 @@ pub fn vertical(state: &mut State) {
             }
             _2d_to_vec(&wkq)
         };
-        ptospc(
-            ng,
-            ng,
-            &mut wkq,
-            &mut wka,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
-        yderiv(ng, ng, &state.spectral.hrky, &wka, &mut wkc);
+        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, &wka, &mut wkc);
 
         // Apply de-aliasing filter and complete definition of A:
         state.aa = {
@@ -2051,7 +1789,7 @@ pub fn vertical(state: &mut State) {
 
             for i in 0..ng {
                 for j in 0..ng {
-                    aa[i][j][iz] = state.spectral.filt[i][j] * (wkb[i][j] + wkc[i][j]);
+                    aa[i][j][iz] = state.spectral.filt[[i, j]] * (wkb[i][j] + wkc[i][j]);
                 }
             }
 
@@ -2070,16 +1808,7 @@ pub fn vertical(state: &mut State) {
 
             _2d_to_vec(&wka)
         };
-        spctop(
-            ng,
-            ng,
-            &mut wka,
-            &mut wkq,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.spctop(&mut wka, &mut wkq);
         rsrc = {
             let mut rsrc = slice_to_3d(&rsrc, ng, ng, nz + 1);
             let wkq = slice_to_2d(&wkq, ng, ng);
@@ -2192,7 +1921,7 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
         //Note: aa contains div(u*rho_theta) in spectral space
         for i in 0..ng {
             for j in 0..ng {
-                wkd_matrix[i][j] *= state.spectral.c2g2[i][j];
+                wkd_matrix[i][j] *= state.spectral.c2g2[[i, j]];
             }
         }
 
@@ -2214,16 +1943,7 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
             }
             _2d_to_vec(&wka_matrix)
         };
-        spctop(
-            ng,
-            ng,
-            &mut wka,
-            &mut wkq,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.spctop(&mut wka, &mut wkq);
         // wkq contains the linearised PV in physical space
         let mut wkp_matrix = slice_to_2d(&wkp, ng, ng);
         let mut wkq_matrix = slice_to_2d(&wkq, ng, ng);
@@ -2274,7 +1994,7 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
             for i in 0..ng {
                 for j in 0..ng {
                     sqs_matrix[i][j][iz] =
-                        state.spectral.filt[i][j] * (wkb_matrix[i][j] - wka_matrix[i][j]);
+                        state.spectral.filt[[i, j]] * (wkb_matrix[i][j] - wka_matrix[i][j]);
                 }
             }
             for (i, e) in _3d_to_vec(&sqs_matrix).iter_mut().enumerate() {
@@ -2313,16 +2033,7 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
             _2d_to_vec(&wka_matrix)
         };
 
-        spctop(
-            ng,
-            ng,
-            &mut wka,
-            &mut dd,
-            &state.spectral.xfactors,
-            &state.spectral.yfactors,
-            &state.spectral.xtrig,
-            &state.spectral.ytrig,
-        );
+        state.spectral.d2fft.spctop(&mut wka, &mut dd);
 
         // Compute div(F*grad{z}-delta*{u,v}) (wkb in spectral space):
         {
@@ -2356,9 +2067,9 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
             let ps_matrix = slice_to_3d(&state.ps, ng, ng, nz + 1);
             for i in 0..ng {
                 for j in 0..ng {
-                    sds_matrix[i][j][iz] = state.spectral.filt[i][j]
+                    sds_matrix[i][j][iz] = state.spectral.filt[[i, j]]
                         * (2.0 * wkc_matrix[i][j] + wkb_matrix[i][j]
-                            - state.spectral.hlap[i][j] * ps_matrix[i][j][iz]);
+                            - state.spectral.hlap[[i, j]] * ps_matrix[i][j][iz]);
                 }
             }
             for (i, e) in _3d_to_vec(&sds_matrix).iter().enumerate() {

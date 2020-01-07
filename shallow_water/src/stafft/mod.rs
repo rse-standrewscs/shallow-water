@@ -53,10 +53,7 @@
 //! the sine modes (in reverse order ie. wave number increasing from n back to nw+1).
 //! [Here, for even n, nw=n/2, and for odd n, nw=(n-1)/2].
 
-use {
-    crate::utils::*,
-    core::f64::consts::PI,
-};
+use {crate::utils::*, core::f64::consts::PI};
 
 mod forward;
 mod reverse;
