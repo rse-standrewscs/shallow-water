@@ -53,7 +53,10 @@
 //! the sine modes (in reverse order ie. wave number increasing from n back to nw+1).
 //! [Here, for even n, nw=n/2, and for odd n, nw=(n-1)/2].
 
-use {crate::utils::*, core::f64::consts::PI};
+use {
+    crate::utils::*,
+    core::f64::consts::PI,
+};
 
 mod forward;
 mod reverse;
@@ -172,24 +175,17 @@ pub fn forfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
         rem /= 5;
         iloc = (rem - 1) * 5 * cum;
 
-        let cosine = slice_to_2d_nd(&trig[iloc..], cum, 4);
-        let sine = slice_to_2d_nd(&trig[n + iloc..], cum, 4);
-
-        let a = slice_to_3d_nd(if orig { xs } else { &wk.as_slice() }, m * rem, 5, cum);
-        let mut b = slice_to_3d_nd(if orig { &wk.as_slice() } else { xs }, m * rem, cum, 5);
-
-        forrdx5(&a, &mut b, m * rem, cum, &cosine, &sine);
+        let cosine = view2d(&trig[iloc..], cum, 4);
+        let sine = view2d(&trig[n + iloc..], cum, 4);
 
         if orig {
-            for (i, e) in _3d_to_vec_nd(&a).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&b);
+            let a = view3d(xs, m * rem, 5, cum);
+            let b = viewmut3d(&mut wk, m * rem, cum, 5);
+            forrdx5(a, b, m * rem, cum, cosine, sine);
         } else {
-            for (i, e) in _3d_to_vec_nd(&b).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&a);
+            let a = view3d(&wk, m * rem, 5, cum);
+            let b = viewmut3d(xs, m * rem, cum, 5);
+            forrdx5(a, b, m * rem, cum, cosine, sine);
         }
 
         orig = !orig;
@@ -201,24 +197,17 @@ pub fn forfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
         rem /= 3;
         iloc = (rem - 1) * 3 * cum;
 
-        let cosine = slice_to_2d_nd(&trig[iloc..], cum, 2);
-        let sine = slice_to_2d_nd(&trig[n + iloc..], cum, 2);
-
-        let a = slice_to_3d_nd(if orig { xs } else { &wk.as_slice() }, m * rem, 3, cum);
-        let mut b = slice_to_3d_nd(if orig { &wk.as_slice() } else { xs }, m * rem, cum, 3);
-
-        forrdx3(&a, &mut b, m * rem, cum, &cosine, &sine);
+        let cosine = view2d(&trig[iloc..], cum, 2);
+        let sine = view2d(&trig[n + iloc..], cum, 2);
 
         if orig {
-            for (i, e) in _3d_to_vec_nd(&a).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&b);
+            let a = view3d(xs, m * rem, 3, cum);
+            let b = viewmut3d(&mut wk, m * rem, cum, 3);
+            forrdx3(a, b, m * rem, cum, cosine, sine);
         } else {
-            for (i, e) in _3d_to_vec_nd(&b).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&a);
+            let a = view3d(&wk, m * rem, 3, cum);
+            let b = viewmut3d(xs, m * rem, cum, 3);
+            forrdx3(a, b, m * rem, cum, cosine, sine);
         }
 
         orig = !orig;
@@ -230,24 +219,17 @@ pub fn forfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
         rem /= 2;
         iloc = (rem - 1) * 2 * cum;
 
-        let cosine = slice_to_2d_nd(&trig[iloc..], cum, 1);
-        let sine = slice_to_2d_nd(&trig[n + iloc..], cum, 1);
-
-        let a = slice_to_3d_nd(if orig { xs } else { &wk.as_slice() }, m * rem, 2, cum);
-        let mut b = slice_to_3d_nd(if orig { &wk.as_slice() } else { xs }, m * rem, cum, 2);
-
-        forrdx2(&a, &mut b, m * rem, cum, &cosine, &sine);
+        let cosine = view2d(&trig[iloc..], cum, 1);
+        let sine = view2d(&trig[n + iloc..], cum, 1);
 
         if orig {
-            for (i, e) in _3d_to_vec_nd(&a).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&b);
+            let a = view3d(xs, m * rem, 2, cum);
+            let b = viewmut3d(&mut wk, m * rem, cum, 2);
+            forrdx2(a, b, m * rem, cum, cosine, sine);
         } else {
-            for (i, e) in _3d_to_vec_nd(&b).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&a);
+            let a = view3d(&wk, m * rem, 2, cum);
+            let b = viewmut3d(xs, m * rem, cum, 2);
+            forrdx2(a, b, m * rem, cum, cosine, sine);
         }
 
         orig = !orig;
@@ -259,24 +241,17 @@ pub fn forfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
         rem /= 4;
         iloc = (rem - 1) * 4 * cum;
 
-        let cosine = slice_to_2d_nd(&trig[iloc..], cum, 3);
-        let sine = slice_to_2d_nd(&trig[n + iloc..], cum, 3);
-
-        let a = slice_to_3d_nd(if orig { xs } else { &wk.as_slice() }, m * rem, 4, cum);
-        let mut b = slice_to_3d_nd(if orig { &wk.as_slice() } else { xs }, m * rem, cum, 4);
-
-        forrdx4(&a, &mut b, m * rem, cum, &cosine, &sine);
+        let cosine = view2d(&trig[iloc..], cum, 3);
+        let sine = view2d(&trig[n + iloc..], cum, 3);
 
         if orig {
-            for (i, e) in _3d_to_vec_nd(&a).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&b);
+            let a = view3d(xs, m * rem, 4, cum);
+            let b = viewmut3d(&mut wk, m * rem, cum, 4);
+            forrdx4(a, b, m * rem, cum, cosine, sine);
         } else {
-            for (i, e) in _3d_to_vec_nd(&b).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&a);
+            let a = view3d(&wk, m * rem, 4, cum);
+            let b = viewmut3d(xs, m * rem, cum, 4);
+            forrdx4(a, b, m * rem, cum, cosine, sine);
         }
 
         orig = !orig;
@@ -288,24 +263,17 @@ pub fn forfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
         rem /= 6;
         iloc = (rem - 1) * 6 * cum;
 
-        let cosine = slice_to_2d_nd(&trig[iloc..], cum, 5);
-        let sine = slice_to_2d_nd(&trig[n + iloc..], cum, 5);
-
-        let a = slice_to_3d_nd(if orig { xs } else { &wk.as_slice() }, m * rem, 6, cum);
-        let mut b = slice_to_3d_nd(if orig { &wk.as_slice() } else { xs }, m * rem, cum, 6);
-
-        forrdx6(&a, &mut b, m * rem, cum, &cosine, &sine);
+        let cosine = view2d(&trig[iloc..], cum, 5);
+        let sine = view2d(&trig[n + iloc..], cum, 5);
 
         if orig {
-            for (i, e) in _3d_to_vec_nd(&a).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&b);
+            let a = view3d(xs, m * rem, 6, cum);
+            let b = viewmut3d(&mut wk, m * rem, cum, 6);
+            forrdx6(a, b, m * rem, cum, cosine, sine);
         } else {
-            for (i, e) in _3d_to_vec_nd(&b).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&a);
+            let a = view3d(&wk, m * rem, 6, cum);
+            let b = viewmut3d(xs, m * rem, cum, 6);
+            forrdx6(a, b, m * rem, cum, cosine, sine);
         }
 
         orig = !orig;
@@ -364,24 +332,17 @@ pub fn revfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
         rem /= 6;
         iloc = (cum - 1) * 6 * rem;
 
-        let cosine = slice_to_2d_nd(&trig[iloc..], rem, 5);
-        let sine = slice_to_2d_nd(&trig[n + iloc..], rem, 5);
-
-        let a = slice_to_3d_nd(if orig { xs } else { &wk.as_slice() }, m * cum, rem, 6);
-        let mut b = slice_to_3d_nd(if orig { &wk.as_slice() } else { xs }, m * cum, 6, rem);
-
-        revrdx6(&a, &mut b, m * cum, rem, &cosine, &sine);
+        let cosine = view2d(&trig[iloc..], rem, 5);
+        let sine = view2d(&trig[n + iloc..], rem, 5);
 
         if orig {
-            for (i, e) in _3d_to_vec_nd(&a).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&b);
+            let a = view3d(xs, m * cum, rem, 6);
+            let b = viewmut3d(&mut wk, m * cum, 6, rem);
+            revrdx6(a, b, m * cum, rem, cosine, sine);
         } else {
-            for (i, e) in _3d_to_vec_nd(&b).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&a);
+            let a = view3d(&wk, m * cum, rem, 6);
+            let b = viewmut3d(xs, m * cum, 6, rem);
+            revrdx6(a, b, m * cum, rem, cosine, sine);
         }
 
         orig = !orig;
@@ -393,24 +354,17 @@ pub fn revfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
         rem /= 4;
         iloc = (cum - 1) * 4 * rem;
 
-        let cosine = slice_to_2d_nd(&trig[iloc..], rem, 3);
-        let sine = slice_to_2d_nd(&trig[n + iloc..], rem, 3);
-
-        let a = slice_to_3d_nd(if orig { xs } else { &wk.as_slice() }, m * cum, rem, 4);
-        let mut b = slice_to_3d_nd(if orig { &wk.as_slice() } else { xs }, m * cum, 4, rem);
-
-        revrdx4(&a, &mut b, m * cum, rem, &cosine, &sine);
+        let cosine = view2d(&trig[iloc..], rem, 3);
+        let sine = view2d(&trig[n + iloc..], rem, 3);
 
         if orig {
-            for (i, e) in _3d_to_vec_nd(&a).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&b);
+            let a = view3d(xs, m * cum, rem, 4);
+            let b = viewmut3d(&mut wk, m * cum, 4, rem);
+            revrdx4(a, b, m * cum, rem, cosine, sine);
         } else {
-            for (i, e) in _3d_to_vec_nd(&b).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&a);
+            let a = view3d(&wk, m * cum, rem, 4);
+            let b = viewmut3d(xs, m * cum, 4, rem);
+            revrdx4(a, b, m * cum, rem, cosine, sine);
         }
 
         orig = !orig;
@@ -422,23 +376,17 @@ pub fn revfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
         rem /= 2;
         iloc = (cum - 1) * 2 * rem;
 
-        let cosine = slice_to_2d_nd(&trig[iloc..], rem, 1);
-        let sine = slice_to_2d_nd(&trig[n + iloc..], rem, 1);
+        let cosine = view2d(&trig[iloc..], rem, 1);
+        let sine = view2d(&trig[n + iloc..], rem, 1);
 
-        let a = slice_to_3d_nd(if orig { xs } else { &wk.as_slice() }, m * cum, rem, 2);
-        let mut b = slice_to_3d_nd(if orig { &wk.as_slice() } else { xs }, m * cum, 2, rem);
-
-        revrdx2(&a, &mut b, m * cum, rem, &cosine, &sine);
         if orig {
-            for (i, e) in _3d_to_vec_nd(&a).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&b);
+            let a = view3d(xs, m * cum, rem, 2);
+            let b = viewmut3d(&mut wk, m * cum, 2, rem);
+            revrdx2(a, b, m * cum, rem, cosine, sine);
         } else {
-            for (i, e) in _3d_to_vec_nd(&b).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&a);
+            let a = view3d(&wk, m * cum, rem, 2);
+            let b = viewmut3d(xs, m * cum, 2, rem);
+            revrdx2(a, b, m * cum, rem, cosine, sine);
         }
 
         orig = !orig;
@@ -450,24 +398,17 @@ pub fn revfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
         rem /= 3;
         iloc = (cum - 1) * 3 * rem;
 
-        let cosine = slice_to_2d_nd(&trig[iloc..], rem, 2);
-        let sine = slice_to_2d_nd(&trig[n + iloc..], rem, 2);
-
-        let a = slice_to_3d_nd(if orig { xs } else { &wk.as_slice() }, m * cum, rem, 3);
-        let mut b = slice_to_3d_nd(if orig { &wk.as_slice() } else { xs }, m * cum, 3, rem);
-
-        revrdx3(&a, &mut b, m * cum, rem, &cosine, &sine);
+        let cosine = view2d(&trig[iloc..], rem, 2);
+        let sine = view2d(&trig[n + iloc..], rem, 2);
 
         if orig {
-            for (i, e) in _3d_to_vec_nd(&a).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&b);
+            let a = view3d(xs, m * cum, rem, 3);
+            let b = viewmut3d(&mut wk, m * cum, 3, rem);
+            revrdx3(a, b, m * cum, rem, cosine, sine);
         } else {
-            for (i, e) in _3d_to_vec_nd(&b).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&a);
+            let a = view3d(&wk, m * cum, rem, 3);
+            let b = viewmut3d(xs, m * cum, 3, rem);
+            revrdx3(a, b, m * cum, rem, cosine, sine);
         }
 
         orig = !orig;
@@ -479,24 +420,17 @@ pub fn revfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
         rem /= 5;
         iloc = (cum - 1) * 5 * rem;
 
-        let cosine = slice_to_2d_nd(&trig[iloc..], rem, 4);
-        let sine = slice_to_2d_nd(&trig[n + iloc..], rem, 4);
-
-        let a = slice_to_3d_nd(if orig { xs } else { &wk.as_slice() }, m * cum, rem, 5);
-        let mut b = slice_to_3d_nd(if orig { &wk.as_slice() } else { xs }, m * cum, 5, rem);
-
-        revrdx5(&a, &mut b, m * cum, rem, &cosine, &sine);
+        let cosine = view2d(&trig[iloc..], rem, 4);
+        let sine = view2d(&trig[n + iloc..], rem, 4);
 
         if orig {
-            for (i, e) in _3d_to_vec_nd(&a).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&b);
+            let a = view3d(xs, m * cum, rem, 5);
+            let b = viewmut3d(&mut wk, m * cum, 5, rem);
+            revrdx5(a, b, m * cum, rem, cosine, sine);
         } else {
-            for (i, e) in _3d_to_vec_nd(&b).iter().enumerate() {
-                xs[i] = *e;
-            }
-            wk = _3d_to_vec_nd(&a);
+            let a = view3d(&wk, m * cum, rem, 5);
+            let b = viewmut3d(xs, m * cum, 5, rem);
+            revrdx5(a, b, m * cum, rem, cosine, sine);
         }
 
         orig = !orig;

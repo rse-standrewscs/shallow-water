@@ -2,17 +2,17 @@
 use {
     crate::constants::*,
     core::f64::consts::FRAC_1_SQRT_2,
-    ndarray::{Array2, Array3, Axis},
+    ndarray::{ArrayView2, ArrayView3, ArrayViewMut3, Axis},
 };
 
 /// Radix six Hermitian to physical FFT with 'decimation in frequency'.
 pub fn revrdx6(
-    a: &Array3<f64>,
-    b: &mut Array3<f64>,
+    a: ArrayView3<f64>,
+    mut b: ArrayViewMut3<f64>,
     nv: usize,
     lv: usize,
-    cosine: &Array2<f64>,
-    sine: &Array2<f64>,
+    cosine: ArrayView2<f64>,
+    sine: ArrayView2<f64>,
 ) {
     assert_eq!(nv, a.len_of(Axis(0)));
     assert_eq!(lv, a.len_of(Axis(1)));
@@ -233,12 +233,12 @@ pub fn revrdx6(
 
 /// Radix five Hermitian to physical FFT with 'decimation in frequency'.
 pub fn revrdx5(
-    a: &Array3<f64>,
-    b: &mut Array3<f64>,
+    a: ArrayView3<f64>,
+    mut b: ArrayViewMut3<f64>,
     nv: usize,
     lv: usize,
-    cosine: &Array2<f64>,
-    sine: &Array2<f64>,
+    cosine: ArrayView2<f64>,
+    sine: ArrayView2<f64>,
 ) {
     assert_eq!(nv, a.len_of(Axis(0)));
     assert_eq!(lv, a.len_of(Axis(1)));
@@ -418,12 +418,12 @@ pub fn revrdx5(
 
 /// Radix four Hermitian to physical FFT with 'decimation in frequency'.
 pub fn revrdx4(
-    a: &Array3<f64>,
-    b: &mut Array3<f64>,
+    a: ArrayView3<f64>,
+    mut b: ArrayViewMut3<f64>,
     nv: usize,
     lv: usize,
-    cosine: &Array2<f64>,
-    sine: &Array2<f64>,
+    cosine: ArrayView2<f64>,
+    sine: ArrayView2<f64>,
 ) {
     assert_eq!(nv, a.len_of(Axis(0)));
     assert_eq!(lv, a.len_of(Axis(1)));
@@ -554,12 +554,12 @@ pub fn revrdx4(
 
 /// Radix three Hermitian to physical FFT with 'decimation in frequency'.
 pub fn revrdx3(
-    a: &Array3<f64>,
-    b: &mut Array3<f64>,
+    a: ArrayView3<f64>,
+    mut b: ArrayViewMut3<f64>,
     nv: usize,
     lv: usize,
-    cosine: &Array2<f64>,
-    sine: &Array2<f64>,
+    cosine: ArrayView2<f64>,
+    sine: ArrayView2<f64>,
 ) {
     assert_eq!(nv, a.len_of(Axis(0)));
     assert_eq!(lv, a.len_of(Axis(1)));
@@ -656,12 +656,12 @@ pub fn revrdx3(
 
 /// Radix two Hermitian to physical FFT with 'decimation in frequency'.
 pub fn revrdx2(
-    a: &Array3<f64>,
-    b: &mut Array3<f64>,
+    a: ArrayView3<f64>,
+    mut b: ArrayViewMut3<f64>,
     nv: usize,
     lv: usize,
-    cosine: &Array2<f64>,
-    sine: &Array2<f64>,
+    cosine: ArrayView2<f64>,
+    sine: ArrayView2<f64>,
 ) {
     assert_eq!(nv, a.len_of(Axis(0)));
     assert_eq!(lv, a.len_of(Axis(1)));

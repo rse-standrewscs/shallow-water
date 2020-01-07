@@ -2,17 +2,17 @@
 use {
     crate::constants::*,
     core::f64::consts::FRAC_1_SQRT_2,
-    ndarray::{Array2, Array3, Axis},
+    ndarray::{ArrayView2, ArrayView3, ArrayViewMut3, Axis},
 };
 
 /// Radix six physical to Hermitian FFT with 'decimation in time'.
 pub fn forrdx6(
-    a: &Array3<f64>,
-    b: &mut Array3<f64>,
+    a: ArrayView3<f64>,
+    mut b: ArrayViewMut3<f64>,
     nv: usize,
     lv: usize,
-    cosine: &Array2<f64>,
-    sine: &Array2<f64>,
+    cosine: ArrayView2<f64>,
+    sine: ArrayView2<f64>,
 ) {
     assert_eq!(nv, a.len_of(Axis(0)));
     assert_eq!(6, a.len_of(Axis(1)));
@@ -231,12 +231,12 @@ pub fn forrdx6(
 
 /// Radix five physical to Hermitian FFT with 'decimation in time'.
 pub fn forrdx5(
-    a: &Array3<f64>,
-    b: &mut Array3<f64>,
+    a: ArrayView3<f64>,
+    mut b: ArrayViewMut3<f64>,
     nv: usize,
     lv: usize,
-    cosine: &Array2<f64>,
-    sine: &Array2<f64>,
+    cosine: ArrayView2<f64>,
+    sine: ArrayView2<f64>,
 ) {
     assert_eq!(nv, a.len_of(Axis(0)));
     assert_eq!(5, a.len_of(Axis(1)));
@@ -414,12 +414,12 @@ pub fn forrdx5(
 
 /// Radix four physical to Hermitian FFT with 'decimation in time'.
 pub fn forrdx4(
-    a: &Array3<f64>,
-    b: &mut Array3<f64>,
+    a: ArrayView3<f64>,
+    mut b: ArrayViewMut3<f64>,
     nv: usize,
     lv: usize,
-    cosine: &Array2<f64>,
-    sine: &Array2<f64>,
+    cosine: ArrayView2<f64>,
+    sine: ArrayView2<f64>,
 ) {
     assert_eq!(nv, a.len_of(Axis(0)));
     assert_eq!(4, a.len_of(Axis(1)));
@@ -550,12 +550,12 @@ pub fn forrdx4(
 
 /// Radix three physical to Hermitian FFT with 'decimation in time'.
 pub fn forrdx3(
-    a: &Array3<f64>,
-    b: &mut Array3<f64>,
+    a: ArrayView3<f64>,
+    mut b: ArrayViewMut3<f64>,
     nv: usize,
     lv: usize,
-    cosine: &Array2<f64>,
-    sine: &Array2<f64>,
+    cosine: ArrayView2<f64>,
+    sine: ArrayView2<f64>,
 ) {
     assert_eq!(nv, a.len_of(Axis(0)));
     assert_eq!(3, a.len_of(Axis(1)));
@@ -651,12 +651,12 @@ pub fn forrdx3(
 
 /// Radix two physical to Hermitian FFT with 'decimation in time'.
 pub fn forrdx2(
-    a: &Array3<f64>,
-    b: &mut Array3<f64>,
+    a: ArrayView3<f64>,
+    mut b: ArrayViewMut3<f64>,
     nv: usize,
     lv: usize,
-    cosine: &Array2<f64>,
-    sine: &Array2<f64>,
+    cosine: ArrayView2<f64>,
+    sine: ArrayView2<f64>,
 ) {
     assert_eq!(nv, a.len_of(Axis(0)));
     assert_eq!(2, a.len_of(Axis(1)));
