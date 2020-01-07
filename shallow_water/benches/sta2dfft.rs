@@ -1,7 +1,7 @@
 use {
     byteorder::{ByteOrder, NetworkEndian},
     criterion::{criterion_group, criterion_main, Benchmark, Criterion},
-    shallow_water::sta2dfft::{ptospc, spctop},
+    shallow_water::sta2dfft::D2FFT,
 };
 
 pub fn criterion_benchmark(c: &mut Criterion) {
@@ -21,17 +21,17 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 .map(NetworkEndian::read_f64)
                 .collect::<Vec<f64>>();
 
+            let d2fft = D2FFT {
+                nx: 32,
+                ny: 32,
+                xfactors: [0, 2, 1, 0, 0],
+                yfactors: [0, 2, 1, 0, 0],
+                xtrig: trig.clone(),
+                ytrig: trig,
+            };
+
             b.iter(|| {
-                ptospc(
-                    32,
-                    32,
-                    &mut rvar,
-                    &mut svar,
-                    &[0, 2, 1, 0, 0],
-                    &[0, 2, 1, 0, 0],
-                    &trig,
-                    &trig,
-                );
+                d2fft.ptospc(&mut rvar, &mut svar);
             })
         }),
     );
@@ -52,17 +52,17 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 .map(NetworkEndian::read_f64)
                 .collect::<Vec<f64>>();
 
+            let d2fft = D2FFT {
+                nx: 32,
+                ny: 32,
+                xfactors: [0, 2, 1, 0, 0],
+                yfactors: [0, 2, 1, 0, 0],
+                xtrig: trig.clone(),
+                ytrig: trig,
+            };
+
             b.iter(|| {
-                spctop(
-                    32,
-                    32,
-                    &mut rvar,
-                    &mut svar,
-                    &[0, 2, 1, 0, 0],
-                    &[0, 2, 1, 0, 0],
-                    &trig,
-                    &trig,
-                );
+                d2fft.spctop(&mut rvar, &mut svar);
             })
         }),
     );

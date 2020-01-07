@@ -1,6 +1,6 @@
 use {
     super::*,
-    crate::utils::{assert_approx_eq_slice, slice_to_3d},
+    crate::utils::*,
     byteorder::{ByteOrder, NetworkEndian},
 };
 
@@ -386,7 +386,11 @@ mod init_spectral {
     #[test]
     fn hlap() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_hlap.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_hlap.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.hlap
         );
     }
@@ -394,7 +398,11 @@ mod init_spectral {
     #[test]
     fn glap() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_glap.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_glap.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.glap
         );
     }
@@ -402,7 +410,11 @@ mod init_spectral {
     #[test]
     fn rlap() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_rlap.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_rlap.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.rlap
         );
     }
@@ -410,7 +422,11 @@ mod init_spectral {
     #[test]
     fn helm() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_helm.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_helm.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.helm
         );
     }
@@ -418,7 +434,11 @@ mod init_spectral {
     #[test]
     fn c2g2() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_c2g2.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_c2g2.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.c2g2
         );
     }
@@ -426,7 +446,11 @@ mod init_spectral {
     #[test]
     fn simp() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_simp.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_simp.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.simp
         );
     }
@@ -434,7 +458,11 @@ mod init_spectral {
     #[test]
     fn rope() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_rope.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_rope.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.rope
         );
     }
@@ -442,7 +470,11 @@ mod init_spectral {
     #[test]
     fn fope() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_fope.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_fope.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.fope
         );
     }
@@ -450,7 +482,11 @@ mod init_spectral {
     #[test]
     fn filt() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_filt.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_filt.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.filt
         );
     }
@@ -458,7 +494,11 @@ mod init_spectral {
     #[test]
     fn diss() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_diss.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_diss.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.diss
         );
     }
@@ -466,7 +506,11 @@ mod init_spectral {
     #[test]
     fn opak() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_opak.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_opak.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.opak
         );
     }
@@ -474,7 +518,11 @@ mod init_spectral {
     #[test]
     fn rdis() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_rdis.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_rdis.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.rdis
         );
     }
@@ -563,7 +611,7 @@ mod init_spectral {
     fn xtrig() {
         assert_approx_eq_slice(
             &_1d_from_file!("testdata/init_spectral/32_4_xtrig.bin"),
-            &SPECTRAL_32_4.xtrig,
+            &SPECTRAL_32_4.d2fft.xtrig,
         );
     }
 
@@ -571,7 +619,7 @@ mod init_spectral {
     fn ytrig() {
         assert_approx_eq_slice(
             &_1d_from_file!("testdata/init_spectral/32_4_ytrig.bin"),
-            &SPECTRAL_32_4.ytrig,
+            &SPECTRAL_32_4.d2fft.ytrig,
         );
     }
 
@@ -585,8 +633,8 @@ mod init_spectral {
 
     #[test]
     fn factors() {
-        assert_eq!([0, 2, 1, 0, 0], SPECTRAL_32_4.xfactors);
-        assert_eq!([0, 2, 1, 0, 0], SPECTRAL_32_4.yfactors);
+        assert_eq!([0, 2, 1, 0, 0], SPECTRAL_32_4.d2fft.xfactors);
+        assert_eq!([0, 2, 1, 0, 0], SPECTRAL_32_4.d2fft.yfactors);
     }
 
     #[test]
