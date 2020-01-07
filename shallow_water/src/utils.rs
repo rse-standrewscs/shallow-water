@@ -1,4 +1,22 @@
-use ndarray::{Array2, Array3, Axis};
+use ndarray::{
+    Array2, Array3, ArrayView2, ArrayView3, ArrayViewMut2, ArrayViewMut3, Axis, ShapeBuilder,
+};
+
+pub fn view2d(xs: &[f64], x: usize, y: usize) -> ArrayView2<f64> {
+    ArrayView2::from_shape((x, y).strides((1, x)), xs).unwrap()
+}
+
+pub fn view3d(xs: &[f64], x: usize, y: usize, z: usize) -> ArrayView3<f64> {
+    ArrayView3::from_shape((x, y, z).strides((1, x, x * y)), xs).unwrap()
+}
+
+pub fn viewmut2d(xs: &mut [f64], x: usize, y: usize) -> ArrayViewMut2<f64> {
+    ArrayViewMut2::from_shape((x, y).strides((1, x)), xs).unwrap()
+}
+
+pub fn viewmut3d(xs: &mut [f64], x: usize, y: usize, z: usize) -> ArrayViewMut3<f64> {
+    ArrayViewMut3::from_shape((x, y, z).strides((1, x, x * y)), xs).unwrap()
+}
 
 pub fn slice_to_2d<T: Clone + Copy>(v: &[T], x: usize, y: usize) -> Vec<Vec<T>> {
     let mut out = vec![vec![v[0]; y]; x];
