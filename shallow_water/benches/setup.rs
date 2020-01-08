@@ -3,8 +3,19 @@ use {
     libbalinit::balinit,
     libswto3d::swto3d,
     libvstrip::init_pv_strip,
-    shallow_water::utils::_2d_to_vec,
 };
+
+fn _2d_to_vec<T: Clone + Copy>(v: &[Vec<T>]) -> Vec<T> {
+    let mut out = vec![v[0][0]; v.len() * v[0].len()];
+
+    for i in 0..v.len() {
+        for j in 0..v[0].len() {
+            out[v.len() * j + i] = v[i][j];
+        }
+    }
+
+    out
+}
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench(
@@ -14,7 +25,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = black_box(16);
                 let nz = black_box(4);
                 let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-                let (qq, dd, gg) = balinit(&_2d_to_vec(&qq), ng, nz);
+                let (qq, dd, gg) = balinit(qq.as_slice().unwrap(), ng, nz);
                 let (_, _, _) = swto3d(&qq, &dd, &gg, ng, nz);
             })
         })
@@ -28,7 +39,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = black_box(32);
                 let nz = black_box(4);
                 let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-                let (qq, dd, gg) = balinit(&_2d_to_vec(&qq), ng, nz);
+                let (qq, dd, gg) = balinit(qq.as_slice().unwrap(), ng, nz);
                 let (_, _, _) = swto3d(&qq, &dd, &gg, ng, nz);
             })
         })
@@ -42,7 +53,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = black_box(64);
                 let nz = black_box(16);
                 let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-                let (qq, dd, gg) = balinit(&_2d_to_vec(&qq), ng, nz);
+                let (qq, dd, gg) = balinit(qq.as_slice().unwrap(), ng, nz);
                 let (_, _, _) = swto3d(&qq, &dd, &gg, ng, nz);
             })
         })

@@ -8,9 +8,11 @@ edition = "2018"
 clap = "2.33.0"
 byteorder = "1.3.2"
 toml = "0.5.5"
+ndarray = { version = "0.13.0", features = ["approx"] }
 
 [dev-dependencies]
 approx = "0.3.2"
+shallow_water = { path = "../shallow_water" }
 
 [lib]
 name = "libvstrip"

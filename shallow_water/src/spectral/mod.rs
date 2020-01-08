@@ -6,7 +6,7 @@ mod test;
 use {
     crate::{constants::*, sta2dfft::D2FFT, utils::*},
     core::f64::consts::PI,
-    ndarray::Array2,
+    ndarray::{Array2, Array3},
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -28,9 +28,9 @@ pub struct Spectral {
     pub rdis: Array2<f64>,
 
     // Tridiagonal arrays for the pressure Poisson equation
-    pub etdv: Vec<Vec<Vec<f64>>>,
-    pub htdv: Vec<Vec<Vec<f64>>>,
-    pub ap: Vec<Vec<f64>>,
+    pub etdv: Array3<f64>,
+    pub htdv: Array3<f64>,
+    pub ap: Array2<f64>,
 
     // Tridiagonal arrays for the compact difference calculation of d/dz
     pub etd1: Vec<f64>,
@@ -48,7 +48,7 @@ pub struct Spectral {
 
     pub spmf: Vec<f64>,
     pub alk: Vec<f64>,
-    pub kmag: Vec<Vec<usize>>,
+    pub kmag: Array2<usize>,
     pub kmax: usize,
     pub kmaxred: usize,
 
@@ -77,9 +77,10 @@ impl Spectral {
         let mut diss = Array2::<f64>::zeros((ng, ng));
         let mut opak = Array2::<f64>::zeros((ng, ng));
         let mut rdis = Array2::<f64>::zeros((ng, ng));
-        let mut etdv = vec![vec![vec![0.0; nz]; ng]; ng];
-        let mut htdv = vec![vec![vec![0.0; nz]; ng]; ng];
-        let mut ap = vec![vec![0.0; ng]; ng];
+
+        let mut etdv = Array3::<f64>::zeros((ng, ng, nz));
+        let mut htdv = Array3::<f64>::zeros((ng, ng, nz));
+        let mut ap = Array2::<f64>::zeros((ng, ng));
         let mut etd1 = vec![0.0; nz];
         let mut htd1 = vec![0.0; nz];
         let mut theta = vec![0.0; nz + 1];
@@ -89,13 +90,13 @@ impl Spectral {
         let mut rk = vec![0.0; ng];
         let mut spmf = vec![0.0; ng + 1];
         let mut alk = vec![0.0; ng];
-        let mut kmag = vec![vec![0; ng]; ng];
+        let mut kmag = Array2::<usize>::zeros((ng, ng));
         let kmax;
         let kmaxred;
 
-        let mut a0 = vec![vec![0.0; ng]; ng];
-        let mut a0b = vec![vec![0.0; ng]; ng];
-        let mut apb = vec![vec![0.0; ng]; ng];
+        let mut a0 = Array2::<f64>::zeros((ng, ng));
+        let mut a0b = Array2::<f64>::zeros((ng, ng));
+        let mut apb = Array2::<f64>::zeros((ng, ng));
 
         let rkmax: f64;
         let mut rks: f64;
@@ -124,7 +125,7 @@ impl Spectral {
         for ky in 0..ng {
             for kx in 0..ng {
                 let k = ((rk[kx].powf(2.0) + rk[ky].powf(2.0)).sqrt()).round() as usize;
-                kmag[kx][ky] = k;
+                kmag[[kx, ky]] = k;
                 spmf[k] += 1.0;
             }
         }
@@ -211,23 +212,25 @@ impl Spectral {
         for ky in 0..ng {
             for kx in 0..ng {
                 rks = rk[kx].powf(2.0) + rk[ky].powf(2.0);
-                a0[kx][ky] = -2.0 * dzisq - (5.0 / 6.0) * rks;
-                a0b[kx][ky] = -dzisq - (1.0 / 3.0) * rks;
-                ap[kx][ky] = dzisq - (1.0 / 12.0) * rks;
-                apb[kx][ky] = dzisq - (1.0 / 6.0) * rks;
+                a0[[kx, ky]] = -2.0 * dzisq - (5.0 / 6.0) * rks;
+                a0b[[kx, ky]] = -dzisq - (1.0 / 3.0) * rks;
+                ap[[kx, ky]] = dzisq - (1.0 / 12.0) * rks;
+                apb[[kx, ky]] = dzisq - (1.0 / 6.0) * rks;
             }
         }
         //Tridiagonal arrays for the pressure:
 
         for i in 0..ng {
             for j in 0..ng {
-                htdv[i][j][0] = filt[[i, j]] / a0b[i][j];
-                etdv[i][j][0] = -apb[i][j] * htdv[i][j][0];
+                htdv[[i, j, 0]] = filt[[i, j]] / a0b[[i, j]];
+                etdv[[i, j, 0]] = -apb[[i, j]] * htdv[[i, j, 0]];
                 for iz in 1..=nz - 2 {
-                    htdv[i][j][iz] = filt[[i, j]] / (a0[i][j] + ap[i][j] * etdv[i][j][iz - 1]);
-                    etdv[i][j][iz] = -ap[i][j] * htdv[i][j][iz];
+                    htdv[[i, j, iz]] =
+                        filt[[i, j]] / (a0[[i, j]] + ap[[i, j]] * etdv[[i, j, iz - 1]]);
+                    etdv[[i, j, iz]] = -ap[[i, j]] * htdv[[i, j, iz]];
                 }
-                htdv[i][j][nz - 1] = filt[[i, j]] / (a0[i][j] + ap[i][j] * etdv[i][j][nz - 2]);
+                htdv[[i, j, nz - 1]] =
+                    filt[[i, j]] / (a0[[i, j]] + ap[[i, j]] * etdv[[i, j, nz - 2]]);
             }
         }
 
@@ -632,25 +635,25 @@ impl Spectral {
         }
 
         // x and y-independent mode:
-        let k = self.kmag[0][0];
+        let k = self.kmag[[0, 0]];
         spec[k] += (1.0 / 4.0) * ss[[0, 0]].powf(2.0);
 
         // y-independent mode:
         for kx in 1..self.ng {
-            let k = self.kmag[kx][0];
+            let k = self.kmag[[kx, 0]];
             spec[k] += (1.0 / 2.0) * ss[[kx, 0]].powf(2.0)
         }
 
         // x-independent mode:
         for ky in 1..self.ng {
-            let k = self.kmag[0][ky];
+            let k = self.kmag[[0, ky]];
             spec[k] += (1.0 / 2.0) * ss[[0, ky]].powf(2.0)
         }
 
         // All other modes:
         for ky in 1..self.ng {
             for kx in 1..self.ng {
-                let k = self.kmag[kx][ky];
+                let k = self.kmag[[kx, ky]];
                 spec[k] += ss[[kx, ky]].powf(2.0)
             }
         }

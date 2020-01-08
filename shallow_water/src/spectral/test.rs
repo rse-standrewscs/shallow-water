@@ -13,33 +13,6 @@ macro_rules! _1d_from_file {
     };
 }
 
-macro_rules! _2d_from_file {
-    ($name:expr) => {
-        slice_to_2d(
-            &include_bytes!($name)
-                .chunks(8)
-                .map(NetworkEndian::read_f64)
-                .collect::<Vec<f64>>(),
-            32,
-            32,
-        )
-    };
-}
-
-macro_rules! _3d_from_file {
-    ($name:expr) => {
-        slice_to_3d(
-            &include_bytes!($name)
-                .chunks(8)
-                .map(NetworkEndian::read_f64)
-                .collect::<Vec<f64>>(),
-            32,
-            32,
-            4,
-        )
-    };
-}
-
 mod main_invert {
     use super::*;
 
@@ -530,7 +503,12 @@ mod init_spectral {
     #[test]
     fn etdv() {
         assert_eq!(
-            _3d_from_file!("testdata/init_spectral/32_4_etdv.bin"),
+            view3d(
+                &_1d_from_file!("testdata/init_spectral/32_4_etdv.bin"),
+                32,
+                32,
+                4
+            ),
             SPECTRAL_32_4.etdv
         );
     }
@@ -538,7 +516,12 @@ mod init_spectral {
     #[test]
     fn htdv() {
         assert_eq!(
-            _3d_from_file!("testdata/init_spectral/32_4_htdv.bin"),
+            view3d(
+                &_1d_from_file!("testdata/init_spectral/32_4_htdv.bin"),
+                32,
+                32,
+                4
+            ),
             SPECTRAL_32_4.htdv
         );
     }
@@ -546,7 +529,11 @@ mod init_spectral {
     #[test]
     fn ap() {
         assert_eq!(
-            _2d_from_file!("testdata/init_spectral/32_4_ap.bin"),
+            view2d(
+                &_1d_from_file!("testdata/init_spectral/32_4_ap.bin"),
+                32,
+                32
+            ),
             SPECTRAL_32_4.ap
         );
     }
@@ -640,7 +627,7 @@ mod init_spectral {
     #[test]
     fn kmag() {
         assert_eq!(
-            slice_to_2d(
+            view2d(
                 &include_bytes!("testdata/init_spectral/32_4_kmag.bin")
                     .chunks(8)
                     .map(NetworkEndian::read_u64)

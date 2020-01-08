@@ -287,7 +287,7 @@ fn diagnose(state: &mut State) {
     let zrms = (vsumi * sum).sqrt();
 
     let s = format!(
-        "{:.5}   {:.6}   {:.6}   {:.6}   {:.6}\n",
+        "{:.5} {:.6} {:.6} {:.6} {:.6}\n",
         state.t,
         (1.0 / 2.0) * (zrms.powf(2.0)),
         zrms,
@@ -916,15 +916,15 @@ pub fn psolve(state: &mut State) {
 
             for i in 0..ng {
                 for j in 0..ng {
-                    ps_matrix[[i, j, 0]] = gg_matrix[[i, j, 0]] * state.spectral.htdv[i][j][0];
+                    ps_matrix[[i, j, 0]] = gg_matrix[[i, j, 0]] * state.spectral.htdv[[i, j, 0]];
                 }
             }
             for iz in 1..=nz - 1 {
                 for i in 0..ng {
                     for j in 0..ng {
                         ps_matrix[[i, j, iz]] = (gg_matrix[[i, j, iz]]
-                            - state.spectral.ap[i][j] * ps_matrix[[i, j, iz - 1]])
-                            * state.spectral.htdv[i][j][iz];
+                            - state.spectral.ap[[i, j]] * ps_matrix[[i, j, iz - 1]])
+                            * state.spectral.htdv[[i, j, iz]];
                     }
                 }
             }
@@ -932,7 +932,7 @@ pub fn psolve(state: &mut State) {
                 for i in 0..ng {
                     for j in 0..ng {
                         ps_matrix[[i, j, iz]] +=
-                            state.spectral.etdv[i][j][iz] * ps_matrix[[i, j, iz + 1]];
+                            state.spectral.etdv[[i, j, iz]] * ps_matrix[[i, j, iz + 1]];
                     }
                 }
             }
