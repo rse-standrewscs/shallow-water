@@ -20,31 +20,30 @@ fn main() {
     )
     .get_matches();
 
-    let mut parameters_string = String::new();
-    let mut f = File::open(
-        matches
-            .value_of("PARAMETERS_FILE")
-            .unwrap_or("parameters.toml"),
-    )
-    .unwrap();
-    f.read_to_string(&mut parameters_string).unwrap();
-    let config: Value = toml::from_str(&parameters_string).unwrap();
+    let ng = {
+        let mut parameters_string = String::new();
+        let mut f = File::open(
+            matches
+                .value_of("PARAMETERS_FILE")
+                .unwrap_or("parameters.toml"),
+        )
+        .unwrap();
+        f.read_to_string(&mut parameters_string).unwrap();
+        let config: Value = toml::from_str(&parameters_string).unwrap();
 
-    let qq = init_pv_strip(
         config["numerical"]["inversion_grid_resolution"]
             .as_integer()
-            .unwrap() as usize,
-        0.4,
-        0.02,
-        -0.01,
-    );
+            .unwrap() as usize
+    };
+
+    let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
 
     let mut f = File::create("qq_init.r8").unwrap();
     let mut buf = [0u8; 8];
     f.write_all(&buf).unwrap();
-    for x in 0..qq.len() {
-        for row in &qq {
-            LittleEndian::write_f64(&mut buf, row[x]);
+    for i in 0..ng {
+        for j in 0..ng {
+            LittleEndian::write_f64(&mut buf, qq[[j, i]]);
             f.write_all(&buf).unwrap();
         }
     }

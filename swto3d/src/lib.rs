@@ -1,4 +1,4 @@
-use shallow_water::utils::{_3d_to_vec, slice_to_2d, slice_to_3d};
+use shallow_water::utils::*;
 
 pub fn swto3d(
     ql2d: &[f64],
@@ -7,25 +7,31 @@ pub fn swto3d(
     ng: usize,
     nz: usize,
 ) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
-    let ql2d = slice_to_2d(ql2d, ng, ng);
-    let d2d = slice_to_2d(d2d, ng, ng);
-    let g2d = slice_to_2d(g2d, ng, ng);
+    let ql2d = view2d(ql2d, ng, ng);
+    let d2d = view2d(d2d, ng, ng);
+    let g2d = view2d(g2d, ng, ng);
 
-    let mut ql = slice_to_3d(&vec![0.0; ng * ng * (nz + 1)], ng, ng, nz + 1);
-    let mut d = slice_to_3d(&vec![0.0; ng * ng * (nz + 1)], ng, ng, nz + 1);
-    let mut g = slice_to_3d(&vec![0.0; ng * ng * (nz + 1)], ng, ng, nz + 1);
+    let mut gl = vec![0.0; ng * ng * (nz + 1)];
+    let mut d = vec![0.0; ng * ng * (nz + 1)];
+    let mut g = vec![0.0; ng * ng * (nz + 1)];
 
-    for iz in 0..=nz {
-        for i in 0..ng {
-            for j in 0..ng {
-                ql[i][j][iz] = ql2d[i][j];
-                d[i][j][iz] = d2d[i][j];
-                g[i][j][iz] = g2d[i][j];
+    {
+        let mut ql = viewmut3d(&mut gl, ng, ng, nz + 1);
+        let mut d = viewmut3d(&mut d, ng, ng, nz + 1);
+        let mut g = viewmut3d(&mut g, ng, ng, nz + 1);
+
+        for iz in 0..=nz {
+            for i in 0..ng {
+                for j in 0..ng {
+                    ql[[i, j, iz]] = ql2d[[i, j]];
+                    d[[i, j, iz]] = d2d[[i, j]];
+                    g[[i, j, iz]] = g2d[[i, j]];
+                }
             }
         }
     }
 
-    (_3d_to_vec(&ql), _3d_to_vec(&d), _3d_to_vec(&g))
+    (gl, d, g)
 }
 
 #[cfg(test)]
