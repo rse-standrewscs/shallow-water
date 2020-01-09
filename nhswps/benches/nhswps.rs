@@ -2,8 +2,22 @@ use {
     byteorder::{ByteOrder, NetworkEndian},
     criterion::{criterion_group, criterion_main, Benchmark, Criterion},
     libnhswps::{advance, coeffs, cpsource, psolve, source, vertical, Output, State},
+    ndarray::{Array3, ShapeBuilder},
     shallow_water::spectral::Spectral,
 };
+
+macro_rules! array3_from_file {
+    ($x:expr, $y:expr, $z:expr, $name:expr) => {
+        Array3::from_shape_vec(
+            ($x, $y, $z).strides((1, $x, $x * $y)),
+            include_bytes!($name)
+                .chunks(8)
+                .map(NetworkEndian::read_f64)
+                .collect::<Vec<f64>>(),
+        )
+        .unwrap();
+    };
+}
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench(
@@ -13,69 +27,36 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = 32;
                 let nz = 4;
 
-                let aa = include_bytes!("../src/testdata/source/32_4_aa.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let qs = include_bytes!("../src/testdata/source/32_4_qs.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let ds = include_bytes!("../src/testdata/source/32_4_ds.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let ps = include_bytes!("../src/testdata/source/32_4_ps.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let u = include_bytes!("../src/testdata/source/32_4_u.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let v = include_bytes!("../src/testdata/source/32_4_v.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let ri = include_bytes!("../src/testdata/source/32_4_ri.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let dpn = include_bytes!("../src/testdata/source/32_4_dpn.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let z = include_bytes!("../src/testdata/source/32_4_z.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zx = include_bytes!("../src/testdata/source/32_4_zx.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zy = include_bytes!("../src/testdata/source/32_4_zy.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
+                let aa = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_aa.bin");
+                let qs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_qs.bin");
+                let ds = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_ds.bin");
+                let ps = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_ps.bin");
+                let u = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_u.bin");
+                let v = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_v.bin");
+                let ri = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_ri.bin");
+                let dpn = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_dpn.bin");
+                let z = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_z.bin");
+                let zx = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_zx.bin");
+                let zy = array3_from_file!(ng, ng, nz + 1, "../src/testdata/source/32_4_zy.bin");
 
                 State {
                     spectral: Spectral::new(ng, nz),
                     u,
                     v,
-                    w: vec![0.0; ng * ng * (nz + 1)],
+                    w: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     z,
                     zx,
                     zy,
-                    r: vec![0.0; ng * ng * (nz + 1)],
+                    r: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     ri,
                     aa,
-                    zeta: vec![0.0; ng * ng * (nz + 1)],
-                    pn: vec![0.0; ng * ng * (nz + 1)],
+                    zeta: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    pn: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     dpn,
                     ps,
                     qs,
                     ds,
-                    gs: vec![0.0; ng * ng * (nz + 1)],
+                    gs: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     t: 0.0,
                     ngsave: 0,
                     itime: 0,
@@ -109,42 +90,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = 32;
                 let nz = 4;
 
-                let z = include_bytes!("../src/testdata/vertical/32_4_z.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zx = include_bytes!("../src/testdata/vertical/32_4_zx.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zy = include_bytes!("../src/testdata/vertical/32_4_zy.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let r = include_bytes!("../src/testdata/vertical/32_4_r.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let w = include_bytes!("../src/testdata/vertical/32_4_w.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let aa = include_bytes!("../src/testdata/vertical/32_4_aa.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let u = include_bytes!("../src/testdata/vertical/32_4_u.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let v = include_bytes!("../src/testdata/vertical/32_4_v.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let ds = include_bytes!("../src/testdata/vertical/32_4_ds.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
+                let z = array3_from_file!(ng, ng, nz + 1, "../src/testdata/vertical/32_4_z.bin");
+                let zx = array3_from_file!(ng, ng, nz + 1, "../src/testdata/vertical/32_4_zx.bin");
+                let zy = array3_from_file!(ng, ng, nz + 1, "../src/testdata/vertical/32_4_zy.bin");
+                let r = array3_from_file!(ng, ng, nz + 1, "../src/testdata/vertical/32_4_r.bin");
+                let w = array3_from_file!(ng, ng, nz + 1, "../src/testdata/vertical/32_4_w.bin");
+                let aa = array3_from_file!(ng, ng, nz + 1, "../src/testdata/vertical/32_4_aa.bin");
+                let u = array3_from_file!(ng, ng, nz + 1, "../src/testdata/vertical/32_4_u.bin");
+                let v = array3_from_file!(ng, ng, nz + 1, "../src/testdata/vertical/32_4_v.bin");
+                let ds = array3_from_file!(ng, ng, nz + 1, "../src/testdata/vertical/32_4_ds.bin");
 
                 State {
                     spectral: Spectral::new(ng, nz),
@@ -155,15 +109,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     zx,
                     zy,
                     r,
-                    ri: vec![0.0; ng * ng * (nz + 1)],
+                    ri: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     aa,
-                    zeta: vec![0.0; ng * ng * (nz + 1)],
-                    pn: vec![0.0; ng * ng * (nz + 1)],
-                    dpn: vec![0.0; ng * ng * (nz + 1)],
-                    ps: vec![0.0; ng * ng * (nz + 1)],
-                    qs: vec![0.0; ng * ng * (nz + 1)],
+                    zeta: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    pn: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    dpn: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    ps: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    qs: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     ds,
-                    gs: vec![0.0; ng * ng * (nz + 1)],
+                    gs: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     t: 0.0,
                     ngsave: 0,
                     itime: 0,
@@ -184,37 +138,28 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = 32;
                 let nz = 4;
 
-                let ri = include_bytes!("../src/testdata/coeffs/32_4_ri.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zx = include_bytes!("../src/testdata/coeffs/32_4_zx.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zy = include_bytes!("../src/testdata/coeffs/32_4_zy.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
+                let ri = array3_from_file!(ng, ng, nz + 1, "../src/testdata/coeffs/32_4_ri.bin");
+                let zx = array3_from_file!(ng, ng, nz + 1, "../src/testdata/coeffs/32_4_zx.bin");
+                let zy = array3_from_file!(ng, ng, nz + 1, "../src/testdata/coeffs/32_4_zy.bin");
 
                 State {
                     spectral: Spectral::new(ng, nz),
-                    u: vec![0.0; ng * ng * (nz + 1)],
-                    v: vec![0.0; ng * ng * (nz + 1)],
-                    w: vec![0.0; ng * ng * (nz + 1)],
-                    z: vec![0.0; ng * ng * (nz + 1)],
+                    u: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    v: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    w: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    z: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     zx,
                     zy,
-                    r: vec![0.0; ng * ng * (nz + 1)],
+                    r: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     ri,
-                    aa: vec![0.0; ng * ng * (nz + 1)],
-                    zeta: vec![0.0; ng * ng * (nz + 1)],
-                    pn: vec![0.0; ng * ng * (nz + 1)],
-                    dpn: vec![0.0; ng * ng * (nz + 1)],
-                    ps: vec![0.0; ng * ng * (nz + 1)],
-                    qs: vec![0.0; ng * ng * (nz + 1)],
-                    ds: vec![0.0; ng * ng * (nz + 1)],
-                    gs: vec![0.0; ng * ng * (nz + 1)],
+                    aa: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    zeta: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    pn: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    dpn: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    ps: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    qs: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    ds: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    gs: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     t: 0.0,
                     ngsave: 0,
                     itime: 0,
@@ -252,38 +197,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = 32;
                 let nz = 4;
 
-                let ri = include_bytes!("../src/testdata/cpsource/32_4_ri.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let u = include_bytes!("../src/testdata/cpsource/32_4_u.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let v = include_bytes!("../src/testdata/cpsource/32_4_v.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let w = include_bytes!("../src/testdata/cpsource/32_4_w.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let z = include_bytes!("../src/testdata/cpsource/32_4_z.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zeta = include_bytes!("../src/testdata/cpsource/32_4_zeta.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zx = include_bytes!("../src/testdata/cpsource/32_4_zx.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zy = include_bytes!("../src/testdata/cpsource/32_4_zy.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
+                let ri = array3_from_file!(ng, ng, nz + 1, "../src/testdata/cpsource/32_4_ri.bin");
+                let u = array3_from_file!(ng, ng, nz + 1, "../src/testdata/cpsource/32_4_u.bin");
+                let v = array3_from_file!(ng, ng, nz + 1, "../src/testdata/cpsource/32_4_v.bin");
+                let w = array3_from_file!(ng, ng, nz + 1, "../src/testdata/cpsource/32_4_w.bin");
+                let z = array3_from_file!(ng, ng, nz + 1, "../src/testdata/cpsource/32_4_z.bin");
+                let zeta =
+                    array3_from_file!(ng, ng, nz + 1, "../src/testdata/cpsource/32_4_zeta.bin");
+                let zx = array3_from_file!(ng, ng, nz + 1, "../src/testdata/cpsource/32_4_zx.bin");
+                let zy = array3_from_file!(ng, ng, nz + 1, "../src/testdata/cpsource/32_4_zy.bin");
 
                 State {
                     spectral: Spectral::new(ng, nz),
@@ -293,16 +215,16 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     z,
                     zx,
                     zy,
-                    r: vec![0.0; ng * ng * (nz + 1)],
+                    r: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     ri,
-                    aa: vec![0.0; ng * ng * (nz + 1)],
+                    aa: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     zeta,
-                    pn: vec![0.0; ng * ng * (nz + 1)],
-                    dpn: vec![0.0; ng * ng * (nz + 1)],
-                    ps: vec![0.0; ng * ng * (nz + 1)],
-                    qs: vec![0.0; ng * ng * (nz + 1)],
-                    ds: vec![0.0; ng * ng * (nz + 1)],
-                    gs: vec![0.0; ng * ng * (nz + 1)],
+                    pn: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    dpn: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    ps: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    qs: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    ds: Array3::<f64>::zeros((ng, ng, nz + 1)),
+                    gs: Array3::<f64>::zeros((ng, ng, nz + 1)),
                     t: 0.0,
                     ngsave: 0,
                     itime: 0,
@@ -328,70 +250,23 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = 32;
                 let nz = 4;
 
-                let ri = include_bytes!("../src/testdata/psolve/32_4_ri.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let r = include_bytes!("../src/testdata/psolve/32_4_r.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let u = include_bytes!("../src/testdata/psolve/32_4_u.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let v = include_bytes!("../src/testdata/psolve/32_4_v.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let w = include_bytes!("../src/testdata/psolve/32_4_w.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let z = include_bytes!("../src/testdata/psolve/32_4_z.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zeta = include_bytes!("../src/testdata/psolve/32_4_zeta.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zx = include_bytes!("../src/testdata/psolve/32_4_zx.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zy = include_bytes!("../src/testdata/psolve/32_4_zy.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let ps = include_bytes!("../src/testdata/psolve/32_4_ps.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let pn = include_bytes!("../src/testdata/psolve/32_4_pn.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let dpn = include_bytes!("../src/testdata/psolve/32_4_dpn.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let aa = include_bytes!("../src/testdata/psolve/32_4_aa.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let qs = include_bytes!("../src/testdata/psolve/32_4_qs.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let ds = include_bytes!("../src/testdata/psolve/32_4_ds.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let gs = include_bytes!("../src/testdata/psolve/32_4_gs.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
+                let ri = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_ri.bin");
+                let r = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_r.bin");
+                let u = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_u.bin");
+                let v = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_v.bin");
+                let w = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_w.bin");
+                let z = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_z.bin");
+                let zeta =
+                    array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_zeta.bin");
+                let zx = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_zx.bin");
+                let zy = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_zy.bin");
+                let ps = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_ps.bin");
+                let pn = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_pn.bin");
+                let dpn = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_dpn.bin");
+                let aa = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_aa.bin");
+                let qs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_qs.bin");
+                let ds = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_ds.bin");
+                let gs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/psolve/32_4_gs.bin");
 
                 State {
                     spectral: Spectral::new(ng, nz),
@@ -432,70 +307,23 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = 24;
                 let nz = 4;
 
-                let ri = include_bytes!("../src/testdata/advance/24_4_ri.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let r = include_bytes!("../src/testdata/advance/24_4_r.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let u = include_bytes!("../src/testdata/advance/24_4_u.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let v = include_bytes!("../src/testdata/advance/24_4_v.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let w = include_bytes!("../src/testdata/advance/24_4_w.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let z = include_bytes!("../src/testdata/advance/24_4_z.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zeta = include_bytes!("../src/testdata/advance/24_4_zeta.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zx = include_bytes!("../src/testdata/advance/24_4_zx.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let zy = include_bytes!("../src/testdata/advance/24_4_zy.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let ps = include_bytes!("../src/testdata/advance/24_4_ps.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let pn = include_bytes!("../src/testdata/advance/24_4_pn.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let dpn = include_bytes!("../src/testdata/advance/24_4_dpn.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let aa = include_bytes!("../src/testdata/advance/24_4_aa.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let qs = include_bytes!("../src/testdata/advance/24_4_qs.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let ds = include_bytes!("../src/testdata/advance/24_4_ds.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
-                let gs = include_bytes!("../src/testdata/advance/24_4_gs.bin")
-                    .chunks(8)
-                    .map(NetworkEndian::read_f64)
-                    .collect::<Vec<f64>>();
+                let ri = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_ri.bin");
+                let r = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_r.bin");
+                let u = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_u.bin");
+                let v = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_v.bin");
+                let w = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_w.bin");
+                let z = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_z.bin");
+                let zeta =
+                    array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_zeta.bin");
+                let zx = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_zx.bin");
+                let zy = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_zy.bin");
+                let ps = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_ps.bin");
+                let pn = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_pn.bin");
+                let dpn = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_dpn.bin");
+                let aa = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_aa.bin");
+                let qs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_qs.bin");
+                let ds = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_ds.bin");
+                let gs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_gs.bin");
 
                 State {
                     spectral: Spectral::new(ng, nz),
