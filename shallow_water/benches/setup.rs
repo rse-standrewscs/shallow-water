@@ -25,7 +25,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = black_box(16);
                 let nz = black_box(4);
                 let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-                let (qq, dd, gg) = balinit(qq.as_slice().unwrap(), ng, nz);
+                let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), ng, nz);
                 let (_, _, _) = swto3d(&qq, &dd, &gg, ng, nz);
             })
         })
@@ -39,7 +39,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = black_box(32);
                 let nz = black_box(4);
                 let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-                let (qq, dd, gg) = balinit(qq.as_slice().unwrap(), ng, nz);
+                let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), ng, nz);
                 let (_, _, _) = swto3d(&qq, &dd, &gg, ng, nz);
             })
         })
@@ -53,7 +53,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = black_box(64);
                 let nz = black_box(16);
                 let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-                let (qq, dd, gg) = balinit(qq.as_slice().unwrap(), ng, nz);
+                let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), ng, nz);
                 let (_, _, _) = swto3d(&qq, &dd, &gg, ng, nz);
             })
         })

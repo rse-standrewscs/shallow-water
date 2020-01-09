@@ -3,7 +3,10 @@
 #[cfg(test)]
 mod test;
 
-use shallow_water::{constants::*, spectral::Spectral, utils::*};
+use {
+    ndarray::{Array3, ShapeBuilder},
+    shallow_water::{constants::*, spectral::Spectral, utils::*},
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct Output {
@@ -35,36 +38,36 @@ pub struct State {
     pub spectral: Spectral,
 
     // Velocity field (physical
-    pub u: Vec<f64>,
-    pub v: Vec<f64>,
-    pub w: Vec<f64>,
+    pub u: Array3<f64>,
+    pub v: Array3<f64>,
+    pub w: Array3<f64>,
 
     // Layer heights and their x & y derivatives (physical)
-    pub z: Vec<f64>,
-    pub zx: Vec<f64>,
-    pub zy: Vec<f64>,
+    pub z: Array3<f64>,
+    pub zx: Array3<f64>,
+    pub zy: Array3<f64>,
 
     // Dimensionless layer thickness anomaly and inverse thickness (physical)
-    pub r: Vec<f64>,
-    pub ri: Vec<f64>,
+    pub r: Array3<f64>,
+    pub ri: Array3<f64>,
 
     // A = grad{u*rho'_theta} (spectral):
-    pub aa: Vec<f64>,
+    pub aa: Array3<f64>,
 
     // Relative vertical vorticity component (physical):
-    pub zeta: Vec<f64>,
+    pub zeta: Array3<f64>,
 
     // Non-hydrostatic pressure (p_n) and its first derivative wrt theta:
-    pub pn: Vec<f64>,
-    pub dpn: Vec<f64>,
+    pub pn: Array3<f64>,
+    pub dpn: Array3<f64>,
 
     // Non-hydrostatic pressure (p_n) in spectral space (called ps):
-    pub ps: Vec<f64>,
+    pub ps: Array3<f64>,
 
     // Prognostic fields q_l, delta and gamma (spectral):
-    pub qs: Vec<f64>,
-    pub ds: Vec<f64>,
-    pub gs: Vec<f64>,
+    pub qs: Array3<f64>,
+    pub ds: Array3<f64>,
+    pub gs: Array3<f64>,
 
     // Time:
     pub t: f64,
@@ -88,39 +91,45 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
     let tgsave = 0.25;
     let tsim = 25.0;
 
+    let arr3zero = Array3::<f64>::from_shape_vec(
+        (ng, ng, nz + 1).strides((1, ng, ng * ng)),
+        vec![0.0; ng * ng * (nz + 1)],
+    )
+    .unwrap();
+
     let mut state = State {
         spectral: Spectral::new(ng, nz),
 
-        u: vec![0.0; ng * ng * (nz + 1)],
-        v: vec![0.0; ng * ng * (nz + 1)],
-        w: vec![0.0; ng * ng * (nz + 1)],
+        u: arr3zero.clone(),
+        v: arr3zero.clone(),
+        w: arr3zero.clone(),
 
         // Layer heights and their x & y derivatives (physical)
-        z: vec![0.0; ng * ng * (nz + 1)],
-        zx: vec![0.0; ng * ng * (nz + 1)],
-        zy: vec![0.0; ng * ng * (nz + 1)],
+        z: arr3zero.clone(),
+        zx: arr3zero.clone(),
+        zy: arr3zero.clone(),
 
         // Dimensionless layer thickness anomaly and inverse thickness (physical)
-        r: vec![0.0; ng * ng * (nz + 1)],
-        ri: vec![0.0; ng * ng * (nz + 1)],
+        r: arr3zero.clone(),
+        ri: arr3zero.clone(),
 
         // A: grad{u*rho'_theta} (spectral):
-        aa: vec![0.0; ng * ng * (nz + 1)],
+        aa: arr3zero.clone(),
 
         // Relative vertical vorticity component (physical):
-        zeta: vec![0.0; ng * ng * (nz + 1)],
+        zeta: arr3zero.clone(),
 
         // Non-hydrostatic pressure (p_n) and its first derivative wrt theta:
-        pn: vec![0.0; ng * ng * (nz + 1)],
-        dpn: vec![0.0; ng * ng * (nz + 1)],
+        pn: arr3zero.clone(),
+        dpn: arr3zero.clone(),
 
         // Non-hydrostatic pressure (p_n) in spectral space (called ps):
-        ps: vec![0.0; ng * ng * (nz + 1)],
+        ps: arr3zero.clone(),
 
         // Prognostic fields q_l, delta and gamma (spectral):
-        qs: vec![0.0; ng * ng * (nz + 1)],
-        ds: vec![0.0; ng * ng * (nz + 1)],
-        gs: vec![0.0; ng * ng * (nz + 1)],
+        qs: arr3zero.clone(),
+        ds: arr3zero.clone(),
+        gs: arr3zero,
 
         // Time:
         t: 0.0,
@@ -136,55 +145,51 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
         output: Output::default(),
     };
 
-    state.spectral.ptospc3d(qq, &mut state.qs, 0, nz);
+    state
+        .spectral
+        .ptospc3d(qq, state.qs.as_slice_memory_order_mut().unwrap(), 0, nz);
     {
-        let mut qs_matrix = viewmut3d(&mut state.qs, ng, ng, nz + 1);
-
         for i in 0..=nz {
-            qs_matrix[[0, 0, i]] = 0.0;
+            state.qs[[0, 0, i]] = 0.0;
         }
     };
 
-    state.spectral.ptospc3d(dd, &mut state.ds, 0, nz);
+    state
+        .spectral
+        .ptospc3d(dd, state.ds.as_slice_memory_order_mut().unwrap(), 0, nz);
     {
-        let mut ds_matrix = viewmut3d(&mut state.ds, ng, ng, nz + 1);
-
         for i in 0..=nz {
-            ds_matrix[[0, 0, i]] = 0.0;
+            state.ds[[0, 0, i]] = 0.0;
         }
     };
 
-    state.spectral.ptospc3d(gg, &mut state.gs, 0, nz);
+    state
+        .spectral
+        .ptospc3d(gg, state.gs.as_slice_memory_order_mut().unwrap(), 0, nz);
     {
-        let mut gs_matrix = viewmut3d(&mut state.gs, ng, ng, nz + 1);
-
         for i in 0..=nz {
-            gs_matrix[[0, 0, i]] = 0.0;
+            state.gs[[0, 0, i]] = 0.0;
         }
     };
-
-    let mut qs_matrix = viewmut3d(&mut state.qs, ng, ng, nz + 1);
-    let mut ds_matrix = viewmut3d(&mut state.ds, ng, ng, nz + 1);
-    let mut gs_matrix = viewmut3d(&mut state.gs, ng, ng, nz + 1);
 
     for iz in 0..=nz {
         for i in 0..ng {
             for j in 0..ng {
-                qs_matrix[[i, j, iz]] *= state.spectral.filt[[i, j]];
-                ds_matrix[[i, j, iz]] *= state.spectral.filt[[i, j]];
-                gs_matrix[[i, j, iz]] *= state.spectral.filt[[i, j]];
+                state.qs[[i, j, iz]] *= state.spectral.filt[[i, j]];
+                state.ds[[i, j, iz]] *= state.spectral.filt[[i, j]];
+                state.gs[[i, j, iz]] *= state.spectral.filt[[i, j]];
             }
         }
     }
 
     state.spectral.main_invert(
-        &state.qs,
-        &state.ds,
-        &state.gs,
-        &mut state.r,
-        &mut state.u,
-        &mut state.v,
-        &mut state.zeta,
+        state.qs.as_slice_memory_order().unwrap(),
+        state.ds.as_slice_memory_order().unwrap(),
+        state.gs.as_slice_memory_order().unwrap(),
+        state.r.as_slice_memory_order_mut().unwrap(),
+        state.u.as_slice_memory_order_mut().unwrap(),
+        state.v.as_slice_memory_order_mut().unwrap(),
+        state.zeta.as_slice_memory_order_mut().unwrap(),
     );
 
     state.ngsave = (tgsave / dt) as usize;
@@ -200,13 +205,13 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
             // dimensionless layer thickness anomaly and horizontal velocity,
             // as well as the relative vertical vorticity (see spectral.f90):
             state.spectral.main_invert(
-                &state.qs,
-                &state.ds,
-                &state.gs,
-                &mut state.r,
-                &mut state.u,
-                &mut state.v,
-                &mut state.zeta,
+                state.qs.as_slice_memory_order().unwrap(),
+                state.ds.as_slice_memory_order().unwrap(),
+                state.gs.as_slice_memory_order().unwrap(),
+                state.r.as_slice_memory_order_mut().unwrap(),
+                state.u.as_slice_memory_order_mut().unwrap(),
+                state.v.as_slice_memory_order_mut().unwrap(),
+                state.zeta.as_slice_memory_order_mut().unwrap(),
             );
             //Note: qs, ds & gs are in spectral space while
             //      r, u, v and zeta are in physical space.
@@ -214,7 +219,7 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
             // and vertical velocity (w):
             psolve(&mut state);
             // Save field data:
-            savegrid(state.jtime + 1);
+            savegrid(&mut state);
 
             state.ggen = false;
         } else {
@@ -230,24 +235,40 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
     state.jtime = state.itime / state.ngsave;
     if state.ngsave * state.jtime == state.itime {
         state.spectral.main_invert(
-            &state.qs,
-            &state.ds,
-            &state.gs,
-            &mut state.r,
-            &mut state.u,
-            &mut state.v,
-            &mut state.zeta,
+            state.qs.as_slice_memory_order().unwrap(),
+            state.ds.as_slice_memory_order().unwrap(),
+            state.gs.as_slice_memory_order().unwrap(),
+            state.r.as_slice_memory_order_mut().unwrap(),
+            state.u.as_slice_memory_order_mut().unwrap(),
+            state.v.as_slice_memory_order_mut().unwrap(),
+            state.zeta.as_slice_memory_order_mut().unwrap(),
         );
         psolve(&mut state);
-        savegrid(state.jtime + 1);
+        savegrid(&mut state);
     }
 
     //finalise
     state.output
 }
 
-fn savegrid(igrid: usize) {
-    dbg!(igrid);
+fn savegrid(_state: &mut State) {
+    /*
+    let ng = state.spectral.ng;
+    let nz = state.spectral.nz;
+
+    let mut v3d = Array3::<usize>::zeros((ng, ng, nz + 1));
+    let mut wkp = Array2::<f64>::zeros((ng, ng));
+    let mut wkq = Array2::<f64>::zeros((ng, ng));
+    let mut wks = Array2::<f64>::zeros((ng, ng));
+    let mut zspec = Array1::<f64>::zeros((ng + 1));
+    let mut dspec = Array1::<f64>::zeros((ng + 1));
+    let mut gspec = Array1::<f64>::zeros((ng + 1));
+    let mut tmpspec = Array1::<f64>::zeros((ng + 1));
+
+    let mut ekin: f64;
+    let mut epot: f64;
+    let mut etot: f64;*/
+    //unimplemented!();
 }
 
 /// Computes various quantities every time step to monitor the flow evolution.
@@ -273,14 +294,13 @@ fn diagnose(state: &mut State) {
     // Compute rms vertical vorticity:
     let vsumi = 1.0 / (ng * ng * nz) as f64;
 
-    let zeta = view3d(&state.zeta, ng, ng, nz + 1);
     let mut sum = 0.0;
     for i in 0..ng {
         for j in 0..ng {
-            sum += (1.0 / 2.0) * zeta[[i, j, 0]].powf(2.0);
-            sum += (1.0 / 2.0) * zeta[[i, j, nz]].powf(2.0);
+            sum += (1.0 / 2.0) * state.zeta[[i, j, 0]].powf(2.0);
+            sum += (1.0 / 2.0) * state.zeta[[i, j, nz]].powf(2.0);
             for k in 1..=nz - 1 {
-                sum += zeta[[i, j, k]].powf(2.0);
+                sum += state.zeta[[i, j, k]].powf(2.0);
             }
         }
     }
@@ -295,6 +315,7 @@ fn diagnose(state: &mut State) {
         umax
     );
 
+    //println!("{}", &s);
     state.output.monitor += &s;
 }
 
@@ -332,13 +353,13 @@ pub fn advance(state: &mut State) {
     // Invert PV and compute velocity at current time level, say t=t^n:
     if state.ggen {
         state.spectral.main_invert(
-            &state.qs,
-            &state.ds,
-            &state.gs,
-            &mut state.r,
-            &mut state.u,
-            &mut state.v,
-            &mut state.zeta,
+            state.qs.as_slice_memory_order().unwrap(),
+            state.ds.as_slice_memory_order().unwrap(),
+            state.gs.as_slice_memory_order().unwrap(),
+            state.r.as_slice_memory_order_mut().unwrap(),
+            state.u.as_slice_memory_order_mut().unwrap(),
+            state.v.as_slice_memory_order_mut().unwrap(),
+            state.zeta.as_slice_memory_order_mut().unwrap(),
         );
         psolve(state);
     }
@@ -356,21 +377,21 @@ pub fn advance(state: &mut State) {
     source(state, &mut sqs, &mut sds, &mut sgs);
 
     //Update PV field:
+    let qs_slice = state.qs.as_slice_memory_order().unwrap();
     for (i, e) in qsi.iter_mut().enumerate() {
-        *e = state.qs[i];
+        *e = qs_slice[i];
     }
     for (i, e) in qsm.iter_mut().enumerate() {
-        *e = state.qs[i] + dt4 * sqs[i];
+        *e = qs_slice[i] + dt4 * sqs[i];
     }
     {
-        let mut qs = viewmut3d(&mut state.qs, ng, ng, nz + 1);
         let qsm = view3d(&qsm, ng, ng, nz + 1);
         let sqs = view3d(&sqs, ng, ng, nz + 1);
         let qsi = view3d(&qsi, ng, ng, nz + 1);
         for iz in 0..=nz {
             for i in 0..ng {
                 for j in 0..ng {
-                    qs[[i, j, iz]] = state.spectral.diss[[i, j]]
+                    state.qs[[i, j, iz]] = state.spectral.diss[[i, j]]
                         * (qsm[[i, j, iz]] + dt4 * sqs[[i, j, iz]])
                         - qsi[[i, j, iz]];
                 }
@@ -380,12 +401,14 @@ pub fn advance(state: &mut State) {
 
     // Update divergence and acceleration divergence:
     let dsi = state.ds.clone();
+    let dsi_slice = dsi.as_slice_memory_order().unwrap();
     let gsi = state.gs.clone();
+    let gsi_slice = gsi.as_slice_memory_order().unwrap();
     for (i, e) in nds.iter_mut().enumerate() {
-        *e = sds[i] + dt4i * dsi[i];
+        *e = sds[i] + dt4i * dsi_slice[i];
     }
     for (i, e) in ngs.iter_mut().enumerate() {
-        *e = sgs[i] + dt4i * gsi[i];
+        *e = sgs[i] + dt4i * gsi_slice[i];
     }
     for (i, e) in sds.iter_mut().enumerate() {
         // 2*N_tilde_delta
@@ -402,7 +425,6 @@ pub fn advance(state: &mut State) {
         *e = 0.0;
     }
     for iz in 0..=nz {
-        let mut ds = viewmut3d(&mut state.ds, ng, ng, nz + 1);
         let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
         let mut wkb_matrix = viewmut2d(&mut wkb, ng, ng);
         let sgs = view3d(&sgs, ng, ng, nz + 1);
@@ -410,8 +432,9 @@ pub fn advance(state: &mut State) {
 
         for i in 0..ng {
             for j in 0..ng {
-                ds[[i, j, iz]] = sgs[[i, j, iz]] + state.spectral.rdis[[i, j]] * sds[[i, j, iz]]; // 2*T_tilde_delta
-                wka_matrix[[i, j]] += state.spectral.weight[iz] * ds[[i, j, iz]];
+                state.ds[[i, j, iz]] =
+                    sgs[[i, j, iz]] + state.spectral.rdis[[i, j]] * sds[[i, j, iz]]; // 2*T_tilde_delta
+                wka_matrix[[i, j]] += state.spectral.weight[iz] * state.ds[[i, j, iz]];
                 wkb_matrix[[i, j]] += state.spectral.weight[iz] * sds[[i, j, iz]];
             }
         }
@@ -435,9 +458,6 @@ pub fn advance(state: &mut State) {
         }
     }; // c2g2 = c^2*Lap operator
     for iz in 0..=nz {
-        let mut ds = viewmut3d(&mut state.ds, ng, ng, nz + 1);
-        let mut gs = viewmut3d(&mut state.gs, ng, ng, nz + 1);
-        let dsi = view3d(&dsi, ng, ng, nz + 1);
         let sds = view3d(&sds, ng, ng, nz + 1);
         let sgs = view3d(&sgs, ng, ng, nz + 1);
         let wka = view2d(&wka, ng, ng);
@@ -446,10 +466,11 @@ pub fn advance(state: &mut State) {
         for i in 0..ng {
             for j in 0..ng {
                 // simp = (R^2 + f^2)^{-1}
-                ds[[i, j, iz]] =
-                    state.spectral.simp[[i, j]] * (ds[[i, j, iz]] - wka[[i, j]]) - dsi[[i, j, iz]];
+                state.ds[[i, j, iz]] = state.spectral.simp[[i, j]]
+                    * (state.ds[[i, j, iz]] - wka[[i, j]])
+                    - dsi[[i, j, iz]];
                 // 2*T_tilde_gamma
-                gs[[i, j, iz]] = wkb[[i, j]] - FSQ * sds[[i, j, iz]]
+                state.gs[[i, j, iz]] = wkb[[i, j]] - FSQ * sds[[i, j, iz]]
                     + state.spectral.rdis[[i, j]] * sgs[[i, j, iz]];
             }
         }
@@ -460,11 +481,10 @@ pub fn advance(state: &mut State) {
     }
     for iz in 0..=nz {
         let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
-        let gs = view3d(&state.gs, ng, ng, nz + 1);
 
         for i in 0..ng {
             for j in 0..ng {
-                wka_matrix[[i, j]] += state.spectral.weight[iz] * gs[[i, j, iz]];
+                wka_matrix[[i, j]] += state.spectral.weight[iz] * state.gs[[i, j, iz]];
             }
         }
     }
@@ -478,15 +498,14 @@ pub fn advance(state: &mut State) {
         }
     } // fope = F operator in paper
     for iz in 0..=nz {
-        let mut gs = viewmut3d(&mut state.gs, ng, ng, nz + 1);
-        let gsi = view3d(&gsi, ng, ng, nz + 1);
         let wka = view2d(&wka, ng, ng);
 
         for i in 0..ng {
             for j in 0..ng {
                 // simp = (R^2 + f^2)^{-1}
-                gs[[i, j, iz]] =
-                    state.spectral.simp[[i, j]] * (gs[[i, j, iz]] - wka[[i, j]]) - gsi[[i, j, iz]];
+                state.gs[[i, j, iz]] = state.spectral.simp[[i, j]]
+                    * (state.gs[[i, j, iz]] - wka[[i, j]])
+                    - gsi[[i, j, iz]];
             }
         }
     }
@@ -495,13 +514,13 @@ pub fn advance(state: &mut State) {
     for _ in 1..=niter {
         // Perform inversion at t^{n+1} from estimated quantities:
         state.spectral.main_invert(
-            &state.qs,
-            &state.ds,
-            &state.gs,
-            &mut state.r,
-            &mut state.u,
-            &mut state.v,
-            &mut state.zeta,
+            state.qs.as_slice_memory_order().unwrap(),
+            state.ds.as_slice_memory_order().unwrap(),
+            state.gs.as_slice_memory_order().unwrap(),
+            state.r.as_slice_memory_order_mut().unwrap(),
+            state.u.as_slice_memory_order_mut().unwrap(),
+            state.v.as_slice_memory_order_mut().unwrap(),
+            state.zeta.as_slice_memory_order_mut().unwrap(),
         );
 
         // Compute pressure, etc:
@@ -513,14 +532,13 @@ pub fn advance(state: &mut State) {
 
         // Update PV field:
         for iz in 0..=nz {
-            let mut qs = viewmut3d(&mut state.qs, ng, ng, nz + 1);
             let qsm = view3d(&qsm, ng, ng, nz + 1);
             let sqs = view3d(&sqs, ng, ng, nz + 1);
             let qsi = view3d(&qsi, ng, ng, nz + 1);
 
             for i in 0..ng {
                 for j in 0..ng {
-                    qs[[i, j, iz]] = state.spectral.diss[[i, j]]
+                    state.qs[[i, j, iz]] = state.spectral.diss[[i, j]]
                         * (qsm[[i, j, iz]] + dt4 * sqs[[i, j, iz]])
                         - qsi[[i, j, iz]];
                 }
@@ -539,7 +557,6 @@ pub fn advance(state: &mut State) {
         wka = vec![0.0; ng * ng];
         wkb = vec![0.0; ng * ng];
         for iz in 0..=nz {
-            let mut ds = viewmut3d(&mut state.ds, ng, ng, nz + 1);
             let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
             let mut wkb_matrix = viewmut2d(&mut wkb, ng, ng);
             let sgs = view3d(&sgs, ng, ng, nz + 1);
@@ -548,9 +565,9 @@ pub fn advance(state: &mut State) {
             for i in 0..ng {
                 for j in 0..ng {
                     // 2*T_tilde_delta
-                    ds[[i, j, iz]] =
+                    state.ds[[i, j, iz]] =
                         sgs[[i, j, iz]] + state.spectral.rdis[[i, j]] * sds[[i, j, iz]];
-                    wka_matrix[[i, j]] += state.spectral.weight[iz] * ds[[i, j, iz]];
+                    wka_matrix[[i, j]] += state.spectral.weight[iz] * state.ds[[i, j, iz]];
                     wkb_matrix[[i, j]] += state.spectral.weight[iz] * sds[[i, j, iz]];
                 }
             }
@@ -569,9 +586,6 @@ pub fn advance(state: &mut State) {
             }
         }
         for iz in 0..=nz {
-            let mut ds = viewmut3d(&mut state.ds, ng, ng, nz + 1);
-            let mut gs = viewmut3d(&mut state.gs, ng, ng, nz + 1);
-            let dsi = view3d(&dsi, ng, ng, nz + 1);
             let sgs = view3d(&sgs, ng, ng, nz + 1);
             let sds = view3d(&sds, ng, ng, nz + 1);
             let wka = view2d(&wka, ng, ng);
@@ -580,10 +594,11 @@ pub fn advance(state: &mut State) {
             for i in 0..ng {
                 for j in 0..ng {
                     // simp = (R^2 + f^2)^{-1}
-                    ds[[i, j, iz]] = state.spectral.simp[[i, j]] * (ds[[i, j, iz]] - wka[[i, j]])
+                    state.ds[[i, j, iz]] = state.spectral.simp[[i, j]]
+                        * (state.ds[[i, j, iz]] - wka[[i, j]])
                         - dsi[[i, j, iz]];
                     // 2*T_tilde_gamma
-                    gs[[i, j, iz]] = wkb[[i, j]] - FSQ * sds[[i, j, iz]]
+                    state.gs[[i, j, iz]] = wkb[[i, j]] - FSQ * sds[[i, j, iz]]
                         + state.spectral.rdis[[i, j]] * sgs[[i, j, iz]];
                 }
             }
@@ -591,11 +606,10 @@ pub fn advance(state: &mut State) {
         wka = vec![0.0; ng * ng];
         for iz in 0..=nz {
             let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
-            let gs = view3d(&state.gs, ng, ng, nz + 1);
 
             for i in 0..ng {
                 for j in 0..ng {
-                    wka_matrix[[i, j]] += state.spectral.weight[iz] * gs[[i, j, iz]];
+                    wka_matrix[[i, j]] += state.spectral.weight[iz] * state.gs[[i, j, iz]];
                 }
             }
         }
@@ -610,14 +624,13 @@ pub fn advance(state: &mut State) {
             }
         }
         for iz in 0..=nz {
-            let mut gs = viewmut3d(&mut state.gs, ng, ng, nz + 1);
-            let gsi = view3d(&gsi, ng, ng, nz + 1);
             let wka = view2d(&wka, ng, ng);
 
             for i in 0..ng {
                 for j in 0..ng {
                     // simp = (R^2 + f^2)^{-1}
-                    gs[[i, j, iz]] = state.spectral.simp[[i, j]] * (gs[[i, j, iz]] - wka[[i, j]])
+                    state.gs[[i, j, iz]] = state.spectral.simp[[i, j]]
+                        * (state.gs[[i, j, iz]] - wka[[i, j]])
                         - gsi[[i, j, iz]];
                 }
             }
@@ -672,10 +685,16 @@ pub fn psolve(state: &mut State) {
     let mut wkd = vec![0.0; ng * ng];
 
     // Calculate 1/(1+rho'_theta) and de-aliase:
-    for (i, e) in state.ri.iter_mut().enumerate() {
-        *e = 1.0 / (1.0 + state.r[i]);
+    for i in 0..ng {
+        for j in 0..ng {
+            for k in 0..=nz {
+                state.ri[[i, j, k]] = 1.0 / (1.0 + state.r[[i, j, k]]);
+            }
+        }
     }
-    state.spectral.deal3d(&mut state.ri);
+    state
+        .spectral
+        .deal3d(state.ri.as_slice_memory_order_mut().unwrap());
 
     // Calcuate layer heights z and z_x & z_y, vertical velocity w
     // and A = grad(u*rho'_theta):
@@ -695,12 +714,16 @@ pub fn psolve(state: &mut State) {
     let mut iter = 0;
     while errp > toler && iter < nitmax {
         // Get spectral coefficients for pressure:
-        state.spectral.ptospc3d(&state.pn, &mut state.ps, 0, nz - 1);
+        state.spectral.ptospc3d(
+            state.pn.as_slice_memory_order().unwrap(),
+            state.ps.as_slice_memory_order_mut().unwrap(),
+            0,
+            nz - 1,
+        );
         {
-            let mut ps_matrix = viewmut3d(&mut state.ps, ng, ng, nz + 1);
             for i in 0..ng {
                 for j in 0..ng {
-                    ps_matrix[[i, j, nz]] = 0.0;
+                    state.ps[[i, j, nz]] = 0.0;
                 }
             }
         }
@@ -712,13 +735,11 @@ pub fn psolve(state: &mut State) {
         // d^2p/dtheta^2:
         {
             let mut wkd_matrix = viewmut2d(&mut wkd, ng, ng);
-            let ps_matrix = view3d(&state.ps, ng, ng, nz + 1);
-
             for i in 0..ng {
                 for j in 0..ng {
-                    wkd_matrix[[i, j]] = (2.0 * ps_matrix[[i, j, 0]] - 5.0 * ps_matrix[[i, j, 1]]
-                        + 4.0 * ps_matrix[[i, j, 2]]
-                        - ps_matrix[[i, j, 3]])
+                    wkd_matrix[[i, j]] = (2.0 * state.ps[[i, j, 0]] - 5.0 * state.ps[[i, j, 1]]
+                        + 4.0 * state.ps[[i, j, 2]]
+                        - state.ps[[i, j, 3]])
                         * dzisq;
                 }
             }
@@ -757,23 +778,20 @@ pub fn psolve(state: &mut State) {
             wkq = d2pdt2.clone();
             {
                 let mut wka = viewmut2d(&mut wka, ng, ng);
-                let ps_matrix = view3d(&state.ps, ng, ng, nz + 1);
 
                 for i in 0..ng {
                     for j in 0..ng {
-                        wka[[i, j]] =
-                            (ps_matrix[[i, j, iz + 1]] - ps_matrix[[i, j, iz - 1]]) * hdzi;
+                        wka[[i, j]] = (state.ps[[i, j, iz + 1]] - state.ps[[i, j, iz - 1]]) * hdzi;
                     }
                 }
             }
             {
                 let mut wkd = viewmut2d(&mut wkd, ng, ng);
-                let ps_matrix = view3d(&state.ps, ng, ng, nz + 1);
 
                 for i in 0..ng {
                     for j in 0..ng {
-                        wkd[[i, j]] = (ps_matrix[[i, j, iz + 1]] - 2.0 * ps_matrix[[i, j, iz]]
-                            + ps_matrix[[i, j, iz - 1]])
+                        wkd[[i, j]] = (state.ps[[i, j, iz + 1]] - 2.0 * state.ps[[i, j, iz]]
+                            + state.ps[[i, j, iz - 1]])
                             * dzisq;
                     }
                 }
@@ -895,8 +913,6 @@ pub fn psolve(state: &mut State) {
         {
             let mut gg_matrix = viewmut3d(&mut gg, ng, ng, nz + 1);
             let sp_matrix = view3d(&sp, ng, ng, nz + 1);
-            let mut ps_matrix = viewmut3d(&mut state.ps, ng, ng, nz + 1);
-
             for i in 0..ng {
                 for j in 0..ng {
                     gg_matrix[[i, j, 0]] =
@@ -916,14 +932,14 @@ pub fn psolve(state: &mut State) {
 
             for i in 0..ng {
                 for j in 0..ng {
-                    ps_matrix[[i, j, 0]] = gg_matrix[[i, j, 0]] * state.spectral.htdv[[i, j, 0]];
+                    state.ps[[i, j, 0]] = gg_matrix[[i, j, 0]] * state.spectral.htdv[[i, j, 0]];
                 }
             }
             for iz in 1..=nz - 1 {
                 for i in 0..ng {
                     for j in 0..ng {
-                        ps_matrix[[i, j, iz]] = (gg_matrix[[i, j, iz]]
-                            - state.spectral.ap[[i, j]] * ps_matrix[[i, j, iz - 1]])
+                        state.ps[[i, j, iz]] = (gg_matrix[[i, j, iz]]
+                            - state.spectral.ap[[i, j]] * state.ps[[i, j, iz - 1]])
                             * state.spectral.htdv[[i, j, iz]];
                     }
                 }
@@ -931,27 +947,30 @@ pub fn psolve(state: &mut State) {
             for iz in (0..=nz - 2).rev() {
                 for i in 0..ng {
                     for j in 0..ng {
-                        ps_matrix[[i, j, iz]] +=
-                            state.spectral.etdv[[i, j, iz]] * ps_matrix[[i, j, iz + 1]];
+                        state.ps[[i, j, iz]] +=
+                            state.spectral.etdv[[i, j, iz]] * state.ps[[i, j, iz + 1]];
                     }
                 }
             }
-            //dbg!(&_3d_to_vec(&ps_matrix));
 
             for i in 0..ng {
                 for j in 0..ng {
-                    ps_matrix[[i, j, nz]] = 0.0;
+                    state.ps[[i, j, nz]] = 0.0;
                 }
             }
 
             // Transform to physical space:
-            state.spectral.spctop3d(&state.ps, &mut state.pn, 0, nz - 1);
+            state.spectral.spctop3d(
+                state.ps.as_slice_memory_order().unwrap(),
+                state.pn.as_slice_memory_order_mut().unwrap(),
+                0,
+                nz - 1,
+            );
 
             {
-                let mut pn_matrix = viewmut3d(&mut state.pn, ng, ng, nz + 1);
                 for i in 0..ng {
                     for j in 0..ng {
-                        pn_matrix[[i, j, nz]] = 0.0;
+                        state.pn[[i, j, nz]] = 0.0;
                     }
                 }
             };
@@ -986,19 +1005,18 @@ pub fn psolve(state: &mut State) {
     // Calculate 1st derivative of pressure using 4th-order compact differences:
     {
         let mut gg = viewmut3d(&mut gg, ng, ng, nz + 1);
-        let ps = view3d(&state.ps, ng, ng, nz + 1);
         let sp = view3d(&sp, ng, ng, nz + 1);
 
         for iz in 1..=nz - 1 {
             for i in 0..ng {
                 for j in 0..ng {
-                    gg[[i, j, iz]] = (ps[[i, j, iz + 1]] - ps[[i, j, iz - 1]]) * hdzi;
+                    gg[[i, j, iz]] = (state.ps[[i, j, iz + 1]] - state.ps[[i, j, iz - 1]]) * hdzi;
                 }
             }
         }
         for i in 0..ng {
             for j in 0..ng {
-                gg[[i, j, nz]] = dz6 * sp[[i, j, nz]] - ps[[i, j, nz - 1]] * dzi;
+                gg[[i, j, nz]] = dz6 * sp[[i, j, nz]] - state.ps[[i, j, nz - 1]] * dzi;
             }
         }
 
@@ -1032,7 +1050,9 @@ pub fn psolve(state: &mut State) {
     }
 
     // Transform to physical space:
-    state.spectral.spctop3d(&gg, &mut state.dpn, 1, nz);
+    state
+        .spectral
+        .spctop3d(&gg, state.dpn.as_slice_memory_order_mut().unwrap(), 1, nz);
 }
 
 /// Finds the part of the pressure source which does not vary
@@ -1064,12 +1084,11 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
     // Calculate part which is independent of z, -g*Lap_h{h}:
     // wkp = h;
     {
-        let z_matrix = view3d(&state.z, ng, ng, nz + 1);
         let mut wkp_matrix = viewmut2d(&mut wkp, ng, ng);
 
         for i in 0..ng {
             for j in 0..ng {
-                wkp_matrix[[i, j]] = z_matrix[[i, j, nz]];
+                wkp_matrix[[i, j]] = state.z[[i, j, nz]];
             }
         }
     }
@@ -1093,19 +1112,16 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
     let mut ut_matrix = viewmut3d(&mut ut, ng, ng, nz + 1);
     let mut vt_matrix = viewmut3d(&mut vt, ng, ng, nz + 1);
     let mut wt_matrix = viewmut3d(&mut wt, ng, ng, nz + 1);
-    let u_matrix = view3d(&state.u, ng, ng, nz + 1);
-    let v_matrix = view3d(&state.v, ng, ng, nz + 1);
-    let w_matrix = view3d(&state.w, ng, ng, nz + 1);
 
     // Lower boundary (use higher order formula):
     for i in 0..ng {
         for j in 0..ng {
-            ut_matrix[[i, j, 0]] = hdzi
-                * (4.0 * u_matrix[[i, j, 1]] - 3.0 * u_matrix[[i, j, 0]] - u_matrix[[i, j, 2]]);
-            vt_matrix[[i, j, 0]] = hdzi
-                * (4.0 * v_matrix[[i, j, 1]] - 3.0 * v_matrix[[i, j, 0]] - v_matrix[[i, j, 2]]);
-            wt_matrix[[i, j, 0]] = hdzi
-                * (4.0 * w_matrix[[i, j, 1]] - 3.0 * w_matrix[[i, j, 0]] - w_matrix[[i, j, 2]]);
+            ut_matrix[[i, j, 0]] =
+                hdzi * (4.0 * state.u[[i, j, 1]] - 3.0 * state.u[[i, j, 0]] - state.u[[i, j, 2]]);
+            vt_matrix[[i, j, 0]] =
+                hdzi * (4.0 * state.v[[i, j, 1]] - 3.0 * state.v[[i, j, 0]] - state.v[[i, j, 2]]);
+            wt_matrix[[i, j, 0]] =
+                hdzi * (4.0 * state.w[[i, j, 1]] - 3.0 * state.w[[i, j, 0]] - state.w[[i, j, 2]]);
         }
     }
 
@@ -1113,12 +1129,9 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
     for iz in 1..nz {
         for i in 0..ng {
             for j in 0..ng {
-                ut_matrix[[i, j, iz]] =
-                    hdzi * (u_matrix[[i, j, iz + 1]] - u_matrix[[i, j, iz - 1]]);
-                vt_matrix[[i, j, iz]] =
-                    hdzi * (v_matrix[[i, j, iz + 1]] - v_matrix[[i, j, iz - 1]]);
-                wt_matrix[[i, j, iz]] =
-                    hdzi * (w_matrix[[i, j, iz + 1]] - w_matrix[[i, j, iz - 1]]);
+                ut_matrix[[i, j, iz]] = hdzi * (state.u[[i, j, iz + 1]] - state.u[[i, j, iz - 1]]);
+                vt_matrix[[i, j, iz]] = hdzi * (state.v[[i, j, iz + 1]] - state.v[[i, j, iz - 1]]);
+                wt_matrix[[i, j, iz]] = hdzi * (state.w[[i, j, iz + 1]] - state.w[[i, j, iz - 1]]);
             }
         }
     }
@@ -1127,14 +1140,14 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
     for i in 0..ng {
         for j in 0..ng {
             ut_matrix[[i, j, nz]] = hdzi
-                * (3.0 * u_matrix[[i, j, nz]] + u_matrix[[i, j, nz - 2]]
-                    - 4.0 * u_matrix[[i, j, nz - 1]]);
+                * (3.0 * state.u[[i, j, nz]] + state.u[[i, j, nz - 2]]
+                    - 4.0 * state.u[[i, j, nz - 1]]);
             vt_matrix[[i, j, nz]] = hdzi
-                * (3.0 * v_matrix[[i, j, nz]] + v_matrix[[i, j, nz - 2]]
-                    - 4.0 * v_matrix[[i, j, nz - 1]]);
+                * (3.0 * state.v[[i, j, nz]] + state.v[[i, j, nz - 2]]
+                    - 4.0 * state.v[[i, j, nz - 1]]);
             wt_matrix[[i, j, nz]] = hdzi
-                * (3.0 * w_matrix[[i, j, nz]] + w_matrix[[i, j, nz - 2]]
-                    - 4.0 * w_matrix[[i, j, nz - 1]]);
+                * (3.0 * state.w[[i, j, nz]] + state.w[[i, j, nz - 2]]
+                    - 4.0 * state.w[[i, j, nz - 1]]);
         }
     }
 
@@ -1144,11 +1157,10 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
     // Calculate u_x, u_y, v_x & v_y:
     {
         let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-        let u_matrix = view3d(&state.u, ng, ng, nz + 1);
 
         for i in 0..ng {
             for j in 0..ng {
-                wkq_matrix[[i, j]] = u_matrix[[i, j, 0]];
+                wkq_matrix[[i, j]] = state.u[[i, j, 0]];
             }
         }
     };
@@ -1165,11 +1177,10 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
     state.spectral.d2fft.spctop(&mut wkb, &mut uy);
     {
         let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-        let v_matrix = view3d(&state.v, ng, ng, nz + 1);
 
         for i in 0..ng {
             for j in 0..ng {
-                wkq_matrix[[i, j]] = v_matrix[[i, j, 0]];
+                wkq_matrix[[i, j]] = state.v[[i, j, 0]];
             }
         }
     };
@@ -1186,12 +1197,11 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
     state.spectral.d2fft.spctop(&mut wkb, &mut vy);
     {
         let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-        let ri_matrix = view3d(&state.ri, ng, ng, nz + 1);
         let wt_matrix = view3d(&wt, ng, ng, nz + 1);
 
         for i in 0..ng {
             for j in 0..ng {
-                wkq_matrix[[i, j]] = ri_matrix[[i, j, 0]] * wt_matrix[[i, j, 0]];
+                wkq_matrix[[i, j]] = state.ri[[i, j, 0]] * wt_matrix[[i, j, 0]];
             }
         }
     };
@@ -1200,10 +1210,9 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
         let mut zeta2d = vec![0.0; ng * ng];
         {
             let mut zeta2d = viewmut2d(&mut zeta2d, ng, ng);
-            let zeta_matrix = view3d(&state.zeta, ng, ng, nz + 1);
             for i in 0..ng {
                 for j in 0..ng {
-                    zeta2d[[i, j]] = zeta_matrix[[i, j, 0]];
+                    zeta2d[[i, j]] = state.zeta[[i, j, 0]];
                 }
             }
         }
@@ -1236,11 +1245,10 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
         // Calculate u_x, u_y, v_x, v_y, w_x, w_y:
         {
             let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-            let u_matrix = view3d(&state.u, ng, ng, nz + 1);
 
             for i in 0..ng {
                 for j in 0..ng {
-                    wkq_matrix[[i, j]] = u_matrix[[i, j, iz]];
+                    wkq_matrix[[i, j]] = state.u[[i, j, iz]];
                 }
             }
         }
@@ -1257,11 +1265,10 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
         state.spectral.d2fft.spctop(&mut wkb, &mut uy);
         {
             let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-            let v_matrix = view3d(&state.v, ng, ng, nz + 1);
 
             for i in 0..ng {
                 for j in 0..ng {
-                    wkq_matrix[[i, j]] = v_matrix[[i, j, iz]];
+                    wkq_matrix[[i, j]] = state.v[[i, j, iz]];
                 }
             }
         }
@@ -1278,11 +1285,10 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
         state.spectral.d2fft.spctop(&mut wkb, &mut vy);
         {
             let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-            let w_matrix = view3d(&state.w, ng, ng, nz + 1);
 
             for i in 0..ng {
                 for j in 0..ng {
-                    wkq_matrix[[i, j]] = w_matrix[[i, j, iz]];
+                    wkq_matrix[[i, j]] = state.w[[i, j, iz]];
                 }
             }
         }
@@ -1334,22 +1340,20 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
         let mut zx2d = vec![0.0; ng * ng];
         {
             let mut zx2d = viewmut2d(&mut zx2d, ng, ng);
-            let zx_matrix = view3d(&state.zx, ng, ng, nz + 1);
 
             for i in 0..ng {
                 for j in 0..ng {
-                    zx2d[[i, j]] = zx_matrix[[i, j, iz]];
+                    zx2d[[i, j]] = state.zx[[i, j, iz]];
                 }
             }
         }
         let mut zy2d = vec![0.0; ng * ng];
         {
             let mut zy2d = viewmut2d(&mut zy2d, ng, ng);
-            let zy_matrix = view3d(&state.zy, ng, ng, nz + 1);
 
             for i in 0..ng {
                 for j in 0..ng {
-                    zy2d[[i, j]] = zy_matrix[[i, j, iz]];
+                    zy2d[[i, j]] = state.zy[[i, j, iz]];
                 }
             }
         }
@@ -1379,10 +1383,9 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
             let mut zeta2d = vec![0.0; ng * ng];
             {
                 let mut zeta2d = viewmut2d(&mut zeta2d, ng, ng);
-                let zeta_matrix = view3d(&state.zeta, ng, ng, nz + 1);
                 for i in 0..ng {
                     for j in 0..ng {
-                        zeta2d[[i, j]] = zeta_matrix[[i, j, iz]];
+                        zeta2d[[i, j]] = state.zeta[[i, j, iz]];
                     }
                 }
             };
@@ -1390,10 +1393,10 @@ pub fn cpsource(state: &State, sp0: &mut [f64]) {
             let mut ri2d = vec![0.0; ng * ng];
             {
                 let mut ri2d = viewmut2d(&mut ri2d, ng, ng);
-                let ri_matrix = view3d(&state.ri, ng, ng, nz + 1);
+
                 for i in 0..ng {
                     for j in 0..ng {
-                        ri2d[[i, j]] = ri_matrix[[i, j, iz]];
+                        ri2d[[i, j]] = state.ri[[i, j, iz]];
                     }
                 }
             }
@@ -1441,18 +1444,21 @@ pub fn coeffs(
     let mut wka = vec![0.0; ng * ng];
 
     // Compute sigx and sigy and de-alias:
+    let ri_slice = state.ri.as_slice_memory_order().unwrap();
+    let zx_slice = state.zx.as_slice_memory_order().unwrap();
     for (i, e) in sigx.iter_mut().enumerate() {
-        *e = state.ri[i] * state.zx[i];
+        *e = ri_slice[i] * zx_slice[i];
     }
+    let zy_slice = state.zy.as_slice_memory_order().unwrap();
     for (i, e) in sigy.iter_mut().enumerate() {
-        *e = state.ri[i] * state.zy[i];
+        *e = ri_slice[i] * zy_slice[i];
     }
     state.spectral.deal3d(sigx);
     state.spectral.deal3d(sigy);
 
     // Compute cpt2 and de-alias:
     for (i, e) in cpt2.iter_mut().enumerate() {
-        *e = 1.0 - state.ri[i].powf(2.0) - sigx[i].powf(2.0) - sigy[i].powf(2.0);
+        *e = 1.0 - ri_slice[i].powf(2.0) - sigx[i].powf(2.0) - sigy[i].powf(2.0);
     }
     state.spectral.deal3d(cpt2);
 
@@ -1563,19 +1569,17 @@ pub fn vertical(state: &mut State) {
     // Find z by trapezoidal integration of rho_theta (integrate over
     // rho'_theta then add theta to the result):
     {
-        let mut z_matrix = viewmut3d(&mut state.z, ng, ng, nz + 1);
-        let r_matrix = view3d(&state.r, ng, ng, nz + 1);
         for i in 0..ng {
             for j in 0..ng {
-                z_matrix[[i, j, 1]] = dz2 * (r_matrix[[i, j, 0]] + r_matrix[[i, j, 1]]);
+                state.z[[i, j, 1]] = dz2 * (state.r[[i, j, 0]] + state.r[[i, j, 1]]);
             }
         }
 
         for iz in 1..nz {
             for i in 0..ng {
                 for j in 0..ng {
-                    z_matrix[[i, j, iz + 1]] = z_matrix[[i, j, iz]]
-                        + dz2 * (r_matrix[[i, j, iz]] + r_matrix[[i, j, iz + 1]]);
+                    state.z[[i, j, iz + 1]] =
+                        state.z[[i, j, iz]] + dz2 * (state.r[[i, j, iz]] + state.r[[i, j, iz + 1]]);
                 }
             }
         }
@@ -1583,19 +1587,17 @@ pub fn vertical(state: &mut State) {
 
     for iz in 1..=nz {
         // Add on theta (a linear function) to complete definition of z:
-        let mut z_matrix = viewmut3d(&mut state.z, ng, ng, nz + 1);
         for i in 0..ng {
             for j in 0..ng {
-                z_matrix[[i, j, iz]] += state.spectral.theta[iz];
+                state.z[[i, j, iz]] += state.spectral.theta[iz];
             }
         }
 
         // Calculate z_x & z_y:
         let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-        let z_matrix = view3d(&state.z, ng, ng, nz + 1);
         for i in 0..ng {
             for j in 0..ng {
-                wkq_matrix[[i, j]] = z_matrix[[i, j, iz]];
+                wkq_matrix[[i, j]] = state.z[[i, j, iz]];
             }
         }
 
@@ -1606,11 +1608,10 @@ pub fn vertical(state: &mut State) {
             .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
         state.spectral.d2fft.spctop(&mut wkb, &mut wkq);
         {
-            let mut zx_matrix = viewmut3d(&mut state.zx, ng, ng, nz + 1);
             let wkq_matrix = view2d(&wkq, ng, ng);
             for i in 0..ng {
                 for j in 0..ng {
-                    zx_matrix[[i, j, iz]] = wkq_matrix[[i, j]];
+                    state.zx[[i, j, iz]] = wkq_matrix[[i, j]];
                 }
             }
         }
@@ -1620,11 +1621,10 @@ pub fn vertical(state: &mut State) {
             .yderiv(&state.spectral.hrky, &wka, &mut wkb);
         state.spectral.d2fft.spctop(&mut wkb, &mut wkq);
         {
-            let mut zy_matrix = viewmut3d(&mut state.zy, ng, ng, nz + 1);
             let wkq_matrix = view2d(&wkq, ng, ng);
             for i in 0..ng {
                 for j in 0..ng {
-                    zy_matrix[[i, j, iz]] = wkq_matrix[[i, j]];
+                    state.zy[[i, j, iz]] = wkq_matrix[[i, j]];
                 }
             }
         }
@@ -1635,11 +1635,10 @@ pub fn vertical(state: &mut State) {
         // Calculate (u*rho'_theta)_x:
         {
             let mut wkq = viewmut2d(&mut wkq, ng, ng);
-            let u = view3d(&state.u, ng, ng, nz + 1);
-            let r = view3d(&state.r, ng, ng, nz + 1);
+
             for i in 0..ng {
                 for j in 0..ng {
-                    wkq[[i, j]] = u[[i, j, iz]] * r[[i, j, iz]];
+                    wkq[[i, j]] = state.u[[i, j, iz]] * state.r[[i, j, iz]];
                 }
             }
         }
@@ -1652,11 +1651,10 @@ pub fn vertical(state: &mut State) {
         // Calculate (v*rho'_theta)_y:
         {
             let mut wkq = viewmut2d(&mut wkq, ng, ng);
-            let v = view3d(&state.v, ng, ng, nz + 1);
-            let r = view3d(&state.r, ng, ng, nz + 1);
+
             for i in 0..ng {
                 for j in 0..ng {
-                    wkq[[i, j]] = v[[i, j, iz]] * r[[i, j, iz]];
+                    wkq[[i, j]] = state.v[[i, j, iz]] * state.r[[i, j, iz]];
                 }
             }
         }
@@ -1668,24 +1666,23 @@ pub fn vertical(state: &mut State) {
 
         // Apply de-aliasing filter and complete definition of A:
         {
-            let mut aa = viewmut3d(&mut state.aa, ng, ng, nz + 1);
             let wkb = view2d(&wkb, ng, ng);
             let wkc = view2d(&wkc, ng, ng);
 
             for i in 0..ng {
                 for j in 0..ng {
-                    aa[[i, j, iz]] = state.spectral.filt[[i, j]] * (wkb[[i, j]] + wkc[[i, j]]);
+                    state.aa[[i, j, iz]] =
+                        state.spectral.filt[[i, j]] * (wkb[[i, j]] + wkc[[i, j]]);
                 }
             }
         }
         // Need -(A + delta) in physical space for computing w just below:
         {
             let mut wka = viewmut2d(&mut wka, ng, ng);
-            let aa = view3d(&state.aa, ng, ng, nz + 1);
-            let ds = view3d(&state.ds, ng, ng, nz + 1);
+
             for i in 0..ng {
                 for j in 0..ng {
-                    wka[[i, j]] = aa[[i, j, iz]] + ds[[i, j, iz]];
+                    wka[[i, j]] = state.aa[[i, j, iz]] + state.ds[[i, j, iz]];
                 }
             }
         }
@@ -1704,22 +1701,20 @@ pub fn vertical(state: &mut State) {
 
     // Calculate vertical velocity (0 at iz = 0):
     {
-        let mut w = viewmut3d(&mut state.w, ng, ng, nz + 1);
         let rsrc = view3d(&rsrc, ng, ng, nz + 1);
         for i in 0..ng {
             for j in 0..ng {
-                w[[i, j, 1]] = dz2 * (rsrc[[i, j, 0]] + rsrc[[i, j, 1]]);
+                state.w[[i, j, 1]] = dz2 * (rsrc[[i, j, 0]] + rsrc[[i, j, 1]]);
             }
         }
     }
     for iz in 1..nz {
         {
-            let mut w = viewmut3d(&mut state.w, ng, ng, nz + 1);
             let rsrc = view3d(&rsrc, ng, ng, nz + 1);
             for i in 0..ng {
                 for j in 0..ng {
-                    w[[i, j, iz + 1]] =
-                        w[[i, j, iz]] + dz2 * (rsrc[[i, j, iz]] + rsrc[[i, j, iz + 1]]);
+                    state.w[[i, j, iz + 1]] =
+                        state.w[[i, j, iz]] + dz2 * (rsrc[[i, j, iz]] + rsrc[[i, j, iz + 1]]);
                 }
             }
         };
@@ -1729,25 +1724,20 @@ pub fn vertical(state: &mut State) {
     for iz in 1..=nz {
         {
             let mut wkq = viewmut2d(&mut wkq, ng, ng);
-            let u = view3d(&state.u, ng, ng, nz + 1);
-            let v = view3d(&state.v, ng, ng, nz + 1);
-            let zx = view3d(&state.zx, ng, ng, nz + 1);
-            let zy = view3d(&state.zy, ng, ng, nz + 1);
-
             for i in 0..ng {
                 for j in 0..ng {
-                    wkq[[i, j]] = u[[i, j, iz]] * zx[[i, j, iz]] + v[[i, j, iz]] * zy[[i, j, iz]];
+                    wkq[[i, j]] = state.u[[i, j, iz]] * state.zx[[i, j, iz]]
+                        + state.v[[i, j, iz]] * state.zy[[i, j, iz]];
                 }
             }
         }
         state.spectral.deal2d(&mut wkq);
         {
-            let mut w = viewmut3d(&mut state.w, ng, ng, nz + 1);
             let wkq = view2d(&wkq, ng, ng);
 
             for i in 0..ng {
                 for j in 0..ng {
-                    w[[i, j, iz]] += wkq[[i, j]];
+                    state.w[[i, j, iz]] += wkq[[i, j]];
                 }
             }
         }
@@ -1782,12 +1772,11 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
 
     {
         //Calculate vertically-independent part of gs source (wkd):
-        let aa_matrix = view3d(&state.aa, ng, ng, nz + 1);
         let mut wkd_matrix = viewmut2d(&mut wkd, ng, ng);
         for iz in 0..=nz {
             for i in 0..ng {
                 for j in 0..ng {
-                    wkd_matrix[[i, j]] += state.spectral.weight[iz] * aa_matrix[[i, j, iz]];
+                    wkd_matrix[[i, j]] += state.spectral.weight[iz] * state.aa[[i, j, iz]];
                 }
             }
         }
@@ -1807,10 +1796,9 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
         // Compute div(ql*u,ql*v) (wka in spectral space):
         {
             let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
-            let qs_matrix = view3d(&state.qs, ng, ng, nz + 1);
             for i in 0..ng {
                 for j in 0..ng {
-                    wka_matrix[[i, j]] = qs_matrix[[i, j, iz]];
+                    wka_matrix[[i, j]] = state.qs[[i, j, iz]];
                 }
             }
         };
@@ -1818,12 +1806,11 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
         // wkq contains the linearised PV in physical space
         let mut wkp_matrix = viewmut2d(&mut wkp, ng, ng);
         let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-        let u_matrix = view3d(&state.u, ng, ng, nz + 1);
-        let v_matrix = view3d(&state.v, ng, ng, nz + 1);
+
         for i in 0..ng {
             for j in 0..ng {
-                wkp_matrix[[i, j]] = wkq_matrix[[i, j]] * u_matrix[[i, j, iz]];
-                wkq_matrix[[i, j]] *= v_matrix[[i, j, iz]];
+                wkp_matrix[[i, j]] = wkq_matrix[[i, j]] * state.u[[i, j, iz]];
+                wkq_matrix[[i, j]] *= state.v[[i, j, iz]];
             }
         }
         // Compute spectral divergence from physical fields:
@@ -1832,21 +1819,18 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
         // Compute Jacobian of F = (1/rho_theta)*dP'/dtheta & z (wkb, spectral):
         {
             let mut ff_matrix = viewmut2d(&mut ff, ng, ng);
-            let ri_matrix = view3d(&state.ri, ng, ng, nz + 1);
-            let dpn_matrix = view3d(&state.dpn, ng, ng, nz + 1);
             for i in 0..ng {
                 for j in 0..ng {
-                    ff_matrix[[i, j]] = ri_matrix[[i, j, iz]] * dpn_matrix[[i, j, iz]];
+                    ff_matrix[[i, j]] = state.ri[[i, j, iz]] * state.dpn[[i, j, iz]];
                 }
             }
         }
         state.spectral.deal2d(&mut ff);
         {
             let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-            let z_matrix = view3d(&state.z, ng, ng, nz + 1);
             for i in 0..ng {
                 for j in 0..ng {
-                    wkq_matrix[[i, j]] = z_matrix[[i, j, iz]];
+                    wkq_matrix[[i, j]] = state.z[[i, j, iz]];
                 }
             }
         }
@@ -1873,12 +1857,10 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
         {
             let mut d2u = viewmut2d(&mut d2u, ng, ng);
             let mut d2v = viewmut2d(&mut d2v, ng, ng);
-            let u_matrix = view3d(&state.u, ng, ng, nz + 1);
-            let v_matrix = view3d(&state.v, ng, ng, nz + 1);
             for i in 0..ng {
                 for j in 0..ng {
-                    d2u[[i, j]] = u_matrix[[i, j, iz]];
-                    d2v[[i, j]] = v_matrix[[i, j, iz]];
+                    d2u[[i, j]] = state.u[[i, j, iz]];
+                    d2v[[i, j]] = state.v[[i, j, iz]];
                 }
             }
         }
@@ -1887,10 +1869,9 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
         // Convert ds to physical space as dd:
         {
             let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
-            let ds_matrix = view3d(&state.ds, ng, ng, nz + 1);
             for i in 0..ng {
                 for j in 0..ng {
-                    wka_matrix[[i, j]] = ds_matrix[[i, j, iz]];
+                    wka_matrix[[i, j]] = state.ds[[i, j, iz]];
                 }
             }
         }
@@ -1903,17 +1884,13 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
             let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
             let ff_matrix = view2d(&ff, ng, ng);
             let dd_matrix = view2d(&dd, ng, ng);
-            let zx_matrix = view3d(&state.zx, ng, ng, nz + 1);
-            let zy_matrix = view3d(&state.zy, ng, ng, nz + 1);
-            let u_matrix = view3d(&state.u, ng, ng, nz + 1);
-            let v_matrix = view3d(&state.v, ng, ng, nz + 1);
 
             for i in 0..ng {
                 for j in 0..ng {
-                    wkp_matrix[[i, j]] = ff_matrix[[i, j]] * zx_matrix[[i, j, iz]]
-                        - dd_matrix[[i, j]] * u_matrix[[i, j, iz]];
-                    wkq_matrix[[i, j]] = ff_matrix[[i, j]] * zy_matrix[[i, j, iz]]
-                        - dd_matrix[[i, j]] * v_matrix[[i, j, iz]];
+                    wkp_matrix[[i, j]] = ff_matrix[[i, j]] * state.zx[[i, j, iz]]
+                        - dd_matrix[[i, j]] * state.u[[i, j, iz]];
+                    wkq_matrix[[i, j]] = ff_matrix[[i, j]] * state.zy[[i, j, iz]]
+                        - dd_matrix[[i, j]] * state.v[[i, j, iz]];
                 }
             }
             state.spectral.divs(&wkp, &wkq, &mut wkb);
@@ -1924,12 +1901,11 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
             let mut sds_matrix = viewmut3d(sds, ng, ng, nz + 1);
             let wkc_matrix = view2d(&wkc, ng, ng);
             let wkb_matrix = view2d(&wkb, ng, ng);
-            let ps_matrix = view3d(&state.ps, ng, ng, nz + 1);
             for i in 0..ng {
                 for j in 0..ng {
                     sds_matrix[[i, j, iz]] = state.spectral.filt[[i, j]]
                         * (2.0 * wkc_matrix[[i, j]] + wkb_matrix[[i, j]]
-                            - state.spectral.hlap[[i, j]] * ps_matrix[[i, j, iz]]);
+                            - state.spectral.hlap[[i, j]] * state.ps[[i, j, iz]]);
                 }
             }
         }
@@ -1939,12 +1915,11 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
             let mut sgs_matrix = viewmut3d(sgs, ng, ng, nz + 1);
             let sqs_matrix = view3d(&sqs, ng, ng, nz + 1);
             let wkd_matrix = view2d(&wkd, ng, ng);
-            let aa_matrix = view3d(&state.aa, ng, ng, nz + 1);
 
             for i in 0..ng {
                 for j in 0..ng {
                     sgs_matrix[[i, j, iz]] = COF * sqs_matrix[[i, j, iz]] + wkd_matrix[[i, j]]
-                        - FSQ * aa_matrix[[i, j, iz]];
+                        - FSQ * state.aa[[i, j, iz]];
                 }
             }
         }
