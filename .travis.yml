@@ -29,11 +29,11 @@ jobs:
         - cargo fmt --all -- --check
     - stage: test
       script:
-        - cargo test --all-features --no-fail-fast --all
+        - cargo test --release --all-features --no-fail-fast --all
     - stage: coverage
       script: |
         cargo install cargo-tarpaulin || true
-        cargo tarpaulin -v --out Xml
+        cargo tarpaulin -v --ignore-tests --out Xml
         bash <(curl -s https://codecov.io/bash)
 
 notifications:
