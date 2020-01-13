@@ -1,7 +1,8 @@
 use {
     byteorder::{ByteOrder, NetworkEndian},
     criterion::{criterion_group, criterion_main, Benchmark, Criterion},
-    shallow_water::spectral::Spectral,
+    ndarray::{Array3, ShapeBuilder},
+    shallow_water::{array3_from_file, spectral::Spectral},
 };
 
 macro_rules! _1d_from_file {
@@ -18,17 +19,45 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         "spectral",
         Benchmark::new("main_invert", |b| {
             let spectral = Spectral::new(48, 6);
-            let qs = _1d_from_file!("../src/spectral/testdata/main_invert/48_6_qs.bin");
-            let ds = _1d_from_file!("../src/spectral/testdata/main_invert/48_6_ds.bin");
-            let gs = _1d_from_file!("../src/spectral/testdata/main_invert/48_6_gs.bin");
-            let mut r = vec![0.0; 48 * 48 * 7];
-            let mut u = vec![0.0; 48 * 48 * 7];
-            let mut v = vec![0.0; 48 * 48 * 7];
-            let mut zeta = vec![0.0; 48 * 48 * 7];
+            let qs = array3_from_file!(
+                48,
+                48,
+                7,
+                "../src/spectral/testdata/main_invert/48_6_qs.bin"
+            );
+            let ds = array3_from_file!(
+                48,
+                48,
+                7,
+                "../src/spectral/testdata/main_invert/48_6_ds.bin"
+            );
+            let gs = array3_from_file!(
+                48,
+                48,
+                7,
+                "../src/spectral/testdata/main_invert/48_6_gs.bin"
+            );
+            let mut r = Array3::from_shape_vec(
+                (48, 48, 7).strides((1, 48, 48 * 48)),
+                vec![0.0; 48 * 48 * 7],
+            )
+            .unwrap();
+            let mut u = r.clone();
+            let mut v = r.clone();
+            let mut zeta = r.clone();
 
-            b.iter(|| spectral.main_invert(&qs, &ds, &gs, &mut r, &mut u, &mut v, &mut zeta))
+            b.iter(|| {
+                spectral.main_invert(
+                    qs.view(),
+                    ds.view(),
+                    gs.view(),
+                    r.view_mut(),
+                    u.view_mut(),
+                    v.view_mut(),
+                    zeta.view_mut(),
+                )
+            })
         })
-        .sample_size(10),
     );
     c.bench(
         "spectral",
@@ -40,7 +69,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
             b.iter(|| spectral.jacob(&aa, &bb, &mut cs))
         })
-        .sample_size(10),
     );
     c.bench(
         "spectral",
@@ -52,7 +80,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
             b.iter(|| spectral.divs(&aa, &bb, &mut cs))
         })
-        .sample_size(10),
     );
     c.bench(
         "spectral",
@@ -63,7 +90,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
             b.iter(|| spectral.ptospc3d(&fp, &mut fs, 0, 3))
         })
-        .sample_size(10),
     );
     c.bench(
         "spectral",
@@ -74,7 +100,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
             b.iter(|| spectral.spctop3d(&fs, &mut fp, 0, 3))
         })
-        .sample_size(10),
     );
     c.bench(
         "spectral",
@@ -84,7 +109,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
             b.iter(|| spectral.deal3d(&mut fp))
         })
-        .sample_size(10),
     );
     c.bench(
         "spectral",
@@ -94,7 +118,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
             b.iter(|| spectral.deal2d(&mut fp))
         })
-        .sample_size(10),
     );
     c.bench(
         "spectral",

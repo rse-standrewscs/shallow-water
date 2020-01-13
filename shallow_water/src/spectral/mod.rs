@@ -6,7 +6,7 @@ mod test;
 use {
     crate::{constants::*, sta2dfft::D2FFT, utils::*},
     core::f64::consts::PI,
-    ndarray::{Array2, Array3},
+    ndarray::{Array2, Array3, ArrayView3, ArrayViewMut3, Axis, ShapeBuilder, Zip},
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -220,10 +220,16 @@ impl Spectral {
         }
         //Tridiagonal arrays for the pressure:
 
+        Zip::from(&mut htdv.index_axis_mut(Axis(2), 0))
+            .and(&filt)
+            .and(&a0b)
+            .apply(|htdv, filt, a0b| *htdv = filt / a0b);
+        Zip::from(&mut etdv.index_axis_mut(Axis(2), 0))
+            .and(&apb)
+            .and(&htdv.index_axis(Axis(2), 0))
+            .apply(|etdv, apb, htdv| *etdv = -apb * htdv);
         for i in 0..ng {
             for j in 0..ng {
-                htdv[[i, j, 0]] = filt[[i, j]] / a0b[[i, j]];
-                etdv[[i, j, 0]] = -apb[[i, j]] * htdv[[i, j, 0]];
                 for iz in 1..=nz - 2 {
                     htdv[[i, j, iz]] =
                         filt[[i, j]] / (a0[[i, j]] + ap[[i, j]] * etdv[[i, j, iz - 1]]);
@@ -281,105 +287,109 @@ impl Spectral {
     /// (all in spectral space), this routine computes the dimensionless
     /// layer thickness anomaly and horizontal velocity, as well as the
     /// relative vertical vorticity in physical space.
-    #[allow(clippy::cognitive_complexity)]
     pub fn main_invert(
         &self,
-        qs: &[f64],
-        ds: &[f64],
-        gs: &[f64],
-        r: &mut [f64],
-        u: &mut [f64],
-        v: &mut [f64],
-        zeta: &mut [f64],
+        qs: ArrayView3<f64>,
+        ds: ArrayView3<f64>,
+        gs: ArrayView3<f64>,
+        mut r: ArrayViewMut3<f64>,
+        mut u: ArrayViewMut3<f64>,
+        mut v: ArrayViewMut3<f64>,
+        mut zeta: ArrayViewMut3<f64>,
     ) {
-        let dsumi = 1.0 / (self.ng * self.ng) as f64;
+        let ng = self.ng;
+        let nz = self.nz;
+        let dsumi = 1.0 / (ng * ng) as f64;
 
-        let mut es = vec![0.0; self.ng * self.ng * (self.nz + 1)];
+        let mut es = Array3::<f64>::from_shape_vec(
+            (ng, ng, nz + 1).strides((1, ng, ng * ng)),
+            vec![0.0; ng * ng * (nz + 1)],
+        )
+        .unwrap();
 
-        let mut wka = vec![0.0; self.ng * self.ng];
-        let mut wkb = vec![0.0; self.ng * self.ng];
-        let mut wkc = vec![0.0; self.ng * self.ng];
-        let mut wkd = vec![0.0; self.ng * self.ng];
-        let mut wke = vec![0.0; self.ng * self.ng];
-        let mut wkf = vec![0.0; self.ng * self.ng];
-        let mut wkg = vec![0.0; self.ng * self.ng];
-        let mut wkh = vec![0.0; self.ng * self.ng];
+        let mut wka =
+            Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
+        let mut wkb = wka.clone();
+        let mut wkc = wka.clone();
+        let mut wkd = wka.clone();
+        let mut wke = wka.clone();
+        let mut wkf = wka.clone();
+        let mut wkg = wka.clone();
+        let mut wkh = wka.clone();
 
         let mut uio: f64;
         let mut vio: f64;
 
         //Define eta = gamma_l/f^2 - q_l/f (spectral):
-        for (i, e) in es.iter_mut().enumerate() {
-            *e = COFI * (COFI * gs[i] - qs[i]);
-        }
+        Zip::from(&mut es)
+            .and(gs)
+            .and(qs)
+            .apply(|es, gs, qs| *es = COFI * (COFI * gs - qs));
 
         //Compute vertical average of eta (store in wkh):
-        for e in wkh.iter_mut() {
-            *e = 0.0;
-        }
+        wkh.fill(0.0);
 
-        let mut wkh_matrix = viewmut2d(&mut wkh, self.ng, self.ng);
-        let es_matrix = view3d(&es, self.ng, self.ng, self.nz + 1);
-
-        for iz in 0..=self.nz {
-            for j in 0..self.ng {
-                for i in 0..self.ng {
-                    wkh_matrix[[i, j]] += self.weight[iz] * es_matrix[[i, j, iz]];
-                }
-            }
+        for iz in 0..=nz {
+            Zip::from(&mut wkh)
+                .and(&es.index_axis(Axis(2), iz))
+                .apply(|wkh, es| *wkh += self.weight[iz] * es);
         }
 
         //Multiply by F = c^2*k^2/(f^2+c^2k^2) in spectral space:
-        for i in 0..self.ng {
-            for j in 0..self.ng {
-                wkh_matrix[[i, j]] *= self.rope[[i, j]];
-            }
-        }
+        Zip::from(&mut wkh)
+            .and(&self.rope)
+            .apply(|wkh, rope| *wkh *= rope);
 
         //Initialise mean flow:
         uio = 0.0;
         vio = 0.0;
 
         //Complete inversion:
-        for iz in 0..=self.nz {
+        (0..=nz).for_each(|iz| {
             //Obtain layer thickness anomaly (spectral, in wka):
-            let es_matrix = view3d(&es, self.ng, self.ng, self.nz + 1);
-            let wkh_matrix = view2d(&wkh, self.ng, self.ng);
-            let mut wka_matrix = viewmut2d(&mut wka, self.ng, self.ng);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    wka_matrix[[i, j]] = es_matrix[[i, j, iz]] - wkh_matrix[[i, j]];
-                }
-            }
+            Zip::from(&mut wka)
+                .and(&es.index_axis(Axis(2), iz))
+                .and(&wkh)
+                .apply(|wka, es, wkh| *wka = es - wkh);
 
             //Obtain relative vorticity (spectral, in wkb):
             //wkb=qs(:,:,iz)+COF*wka;
-            let qs_matrix = view3d(&qs, self.ng, self.ng, self.nz + 1);
-            let wka_matrix = view2d(&wka, self.ng, self.ng);
-            let mut wkb_matrix = viewmut2d(&mut wkb, self.ng, self.ng);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    wkb_matrix[[i, j]] = qs_matrix[[i, j, iz]] + COF * wka_matrix[[i, j]];
-                }
-            }
+            Zip::from(&mut wkb)
+                .and(&qs.index_axis(Axis(2), iz))
+                .and(&wka)
+                .apply(|wkb, qs, wka| *wkb = qs + COF * wka);
 
             //Invert Laplace operator on zeta & delta to define velocity:
-            let wkb_matrix = view2d(&wkb, self.ng, self.ng);
-            let ds_matrix = view3d(&ds, self.ng, self.ng, self.nz + 1);
-            let mut wkc_matrix = viewmut2d(&mut wkc, self.ng, self.ng);
-            let mut wkd_matrix = viewmut2d(&mut wkd, self.ng, self.ng);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    wkc_matrix[[i, j]] = self.rlap[[i, j]] * wkb_matrix[[i, j]];
-                    wkd_matrix[[i, j]] = self.rlap[[i, j]] * ds_matrix[[i, j, iz]];
-                }
-            }
+            Zip::from(&mut wkc)
+                .and(&self.rlap)
+                .and(&wkb)
+                .apply(|wkc, rlap, wkb| *wkc = rlap * wkb);
+            Zip::from(&mut wkd)
+                .and(&self.rlap)
+                .and(&ds.index_axis(Axis(2), iz))
+                .apply(|wkd, rlap, ds| *wkd = rlap * ds);
 
             //Calculate derivatives spectrally:
-            self.d2fft.xderiv(&self.hrkx, &wkd, &mut wke);
-            self.d2fft.yderiv(&self.hrky, &wkd, &mut wkf);
-            self.d2fft.xderiv(&self.hrkx, &wkc, &mut wkd);
-            self.d2fft.yderiv(&self.hrky, &wkc, &mut wkg);
+            self.d2fft.xderiv(
+                &self.hrkx,
+                wkd.as_slice_memory_order().unwrap(),
+                wke.as_slice_memory_order_mut().unwrap(),
+            );
+            self.d2fft.yderiv(
+                &self.hrky,
+                wkd.as_slice_memory_order().unwrap(),
+                wkf.as_slice_memory_order_mut().unwrap(),
+            );
+            self.d2fft.xderiv(
+                &self.hrkx,
+                wkc.as_slice_memory_order().unwrap(),
+                wkd.as_slice_memory_order_mut().unwrap(),
+            );
+            self.d2fft.yderiv(
+                &self.hrky,
+                wkc.as_slice_memory_order().unwrap(),
+                wkg.as_slice_memory_order_mut().unwrap(),
+            );
 
             //Define velocity components:
             for (e, g) in wke.iter_mut().zip(&wkg) {
@@ -392,45 +402,33 @@ impl Spectral {
             //wkf=wkf+wkd;
 
             //Bring quantities back to physical space and store:
-            self.d2fft.spctop(&mut wka, &mut wkc);
+            self.d2fft.spctop(
+                wka.as_slice_memory_order_mut().unwrap(),
+                wkc.as_slice_memory_order_mut().unwrap(),
+            );
 
-            let wkc_matrix = view2d(&wkc, self.ng, self.ng);
-            let mut r_matrix = viewmut3d(r, self.ng, self.ng, self.nz + 1);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    r_matrix[[i, j, iz]] = wkc_matrix[[i, j]];
-                }
-            }
+            r.index_axis_mut(Axis(2), iz).assign(&wkc);
 
-            self.d2fft.spctop(&mut wkb, &mut wkd);
+            self.d2fft.spctop(
+                wkb.as_slice_memory_order_mut().unwrap(),
+                wkd.as_slice_memory_order_mut().unwrap(),
+            );
 
-            let wkd_matrix = view2d(&wkd, self.ng, self.ng);
-            let mut zeta_matrix = viewmut3d(zeta, self.ng, self.ng, self.nz + 1);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    zeta_matrix[[i, j, iz]] = wkd_matrix[[i, j]];
-                }
-            }
+            zeta.index_axis_mut(Axis(2), iz).assign(&wkd);
 
-            self.d2fft.spctop(&mut wke, &mut wka);
+            self.d2fft.spctop(
+                wke.as_slice_memory_order_mut().unwrap(),
+                wka.as_slice_memory_order_mut().unwrap(),
+            );
 
-            let wka_matrix = view2d(&wka, self.ng, self.ng);
-            let mut u_matrix = viewmut3d(u, self.ng, self.ng, self.nz + 1);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    u_matrix[[i, j, iz]] = wka_matrix[[i, j]];
-                }
-            }
+            u.index_axis_mut(Axis(2), iz).assign(&wka);
 
-            self.d2fft.spctop(&mut wkf, &mut wkb);
+            self.d2fft.spctop(
+                wkf.as_slice_memory_order_mut().unwrap(),
+                wkb.as_slice_memory_order_mut().unwrap(),
+            );
 
-            let wkb_matrix = view2d(&wkb, self.ng, self.ng);
-            let mut v_matrix = viewmut3d(v, self.ng, self.ng, self.nz + 1);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    v_matrix[[i, j, iz]] = wkb_matrix[[i, j]];
-                }
-            }
+            v.index_axis_mut(Axis(2), iz).assign(&wkb);
 
             //Accumulate mean flow (uio,vio):
             let sum_ca = wkc.iter().zip(&wka).map(|(a, b)| a * b).sum::<f64>();
@@ -438,7 +436,7 @@ impl Spectral {
 
             uio -= self.weight[iz] * sum_ca * dsumi;
             vio -= self.weight[iz] * sum_cb * dsumi;
-        }
+        });
 
         //Add mean flow:
         for e in u.iter_mut() {
@@ -524,21 +522,15 @@ impl Spectral {
         for iz in izbeg..=izend {
             let mut wkp_matrix = viewmut2d(&mut wkp, self.ng, self.ng);
             let fp_matrix = view3d(fp, self.ng, self.ng, self.nz + 1);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    wkp_matrix[[i, j]] = fp_matrix[[i, j, iz]];
-                }
+            {
+                wkp_matrix.assign(&fp_matrix.index_axis(Axis(2), iz));
             }
 
             self.d2fft.ptospc(&mut wkp, &mut wks);
 
             let wks_matrix = view2d(&wks, self.ng, self.ng);
             let mut fs_matrix = viewmut3d(fs, self.ng, self.ng, self.nz + 1);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    fs_matrix[[i, j, iz]] = wks_matrix[[i, j]];
-                }
-            }
+            fs_matrix.index_axis_mut(Axis(2), iz).assign(&wks_matrix);
         }
     }
 
@@ -551,21 +543,15 @@ impl Spectral {
         for iz in izbeg..=izend {
             let mut wks_matrix = viewmut2d(&mut wks, self.ng, self.ng);
             let fs_matrix = view3d(fs, self.ng, self.ng, self.nz + 1);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    wks_matrix[[i, j]] = fs_matrix[[i, j, iz]];
-                }
+            {
+                wks_matrix.assign(&fs_matrix.index_axis(Axis(2), iz));
             }
 
             self.d2fft.spctop(&mut wks, &mut wkp);
 
             let wkp_matrix = view2d(&wkp, self.ng, self.ng);
             let mut fp_matrix = viewmut3d(fp, self.ng, self.ng, self.nz + 1);
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    fp_matrix[[i, j, iz]] = wkp_matrix[[i, j]];
-                }
-            }
+            fp_matrix.index_axis_mut(Axis(2), iz).assign(&wkp_matrix);
         }
     }
 
@@ -577,33 +563,23 @@ impl Spectral {
         let mut wks_matrix = Array2::<f64>::zeros((self.ng, self.ng));
 
         for iz in 0..=self.nz {
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    wkp_matrix[[i, j]] = fp_matrix[[i, j, iz]];
-                }
-            }
+            wkp_matrix.assign(&fp_matrix.index_axis(Axis(2), iz));
 
             self.d2fft.ptospc(
                 wkp_matrix.as_slice_mut().unwrap(),
                 wks_matrix.as_slice_mut().unwrap(),
             );
 
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    wks_matrix[[i, j]] *= self.filt[[i, j]];
-                }
-            }
+            Zip::from(&mut wks_matrix)
+                .and(&self.filt)
+                .apply(|wks, filt| *wks *= filt);
 
             self.d2fft.spctop(
                 wks_matrix.as_slice_mut().unwrap(),
                 wkp_matrix.as_slice_mut().unwrap(),
             );
 
-            for i in 0..self.ng {
-                for j in 0..self.ng {
-                    fp_matrix[[i, j, iz]] = wkp_matrix[[i, j]];
-                }
-            }
+            fp_matrix.index_axis_mut(Axis(2), iz).assign(&wkp_matrix);
         }
     }
 
@@ -613,11 +589,9 @@ impl Spectral {
 
         self.d2fft.ptospc(fp, fs.as_slice_mut().unwrap());
 
-        for i in 0..self.ng {
-            for j in 0..self.ng {
-                fs[[i, j]] *= self.filt[[i, j]]
-            }
-        }
+        Zip::from(&mut fs)
+            .and(&self.filt)
+            .apply(|fs, filt| *fs *= filt);
 
         self.d2fft.spctop(fs.as_slice_mut().unwrap(), fp);
     }
@@ -641,20 +615,20 @@ impl Spectral {
         // y-independent mode:
         for kx in 1..self.ng {
             let k = self.kmag[[kx, 0]];
-            spec[k] += (1.0 / 2.0) * ss[[kx, 0]].powf(2.0)
+            spec[k] += (1.0 / 2.0) * ss[[kx, 0]].powf(2.0);
         }
 
         // x-independent mode:
         for ky in 1..self.ng {
             let k = self.kmag[[0, ky]];
-            spec[k] += (1.0 / 2.0) * ss[[0, ky]].powf(2.0)
+            spec[k] += (1.0 / 2.0) * ss[[0, ky]].powf(2.0);
         }
 
         // All other modes:
         for ky in 1..self.ng {
             for kx in 1..self.ng {
                 let k = self.kmag[[kx, ky]];
-                spec[k] += ss[[kx, ky]].powf(2.0)
+                spec[k] += ss[[kx, ky]].powf(2.0);
             }
         }
     }
