@@ -185,13 +185,13 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
     }
 
     state.spectral.main_invert(
-        state.qs.as_slice_memory_order().unwrap(),
-        state.ds.as_slice_memory_order().unwrap(),
-        state.gs.as_slice_memory_order().unwrap(),
-        state.r.as_slice_memory_order_mut().unwrap(),
-        state.u.as_slice_memory_order_mut().unwrap(),
-        state.v.as_slice_memory_order_mut().unwrap(),
-        state.zeta.as_slice_memory_order_mut().unwrap(),
+        state.qs.view(),
+        state.ds.view(),
+        state.gs.view(),
+        state.r.view_mut(),
+        state.u.view_mut(),
+        state.v.view_mut(),
+        state.zeta.view_mut(),
     );
 
     state.ngsave = (tgsave / dt).round() as usize;
@@ -207,13 +207,13 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
             // dimensionless layer thickness anomaly and horizontal velocity,
             // as well as the relative vertical vorticity (see spectral.f90):
             state.spectral.main_invert(
-                state.qs.as_slice_memory_order().unwrap(),
-                state.ds.as_slice_memory_order().unwrap(),
-                state.gs.as_slice_memory_order().unwrap(),
-                state.r.as_slice_memory_order_mut().unwrap(),
-                state.u.as_slice_memory_order_mut().unwrap(),
-                state.v.as_slice_memory_order_mut().unwrap(),
-                state.zeta.as_slice_memory_order_mut().unwrap(),
+                state.qs.view(),
+                state.ds.view(),
+                state.gs.view(),
+                state.r.view_mut(),
+                state.u.view_mut(),
+                state.v.view_mut(),
+                state.zeta.view_mut(),
             );
 
             //Note: qs, ds & gs are in spectral space while
@@ -239,13 +239,13 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
     state.jtime = state.itime / state.ngsave;
     if state.ngsave * state.jtime == state.itime {
         state.spectral.main_invert(
-            state.qs.as_slice_memory_order().unwrap(),
-            state.ds.as_slice_memory_order().unwrap(),
-            state.gs.as_slice_memory_order().unwrap(),
-            state.r.as_slice_memory_order_mut().unwrap(),
-            state.u.as_slice_memory_order_mut().unwrap(),
-            state.v.as_slice_memory_order_mut().unwrap(),
-            state.zeta.as_slice_memory_order_mut().unwrap(),
+            state.qs.view(),
+            state.ds.view(),
+            state.gs.view(),
+            state.r.view_mut(),
+            state.u.view_mut(),
+            state.v.view_mut(),
+            state.zeta.view_mut(),
         );
         psolve(&mut state);
         savegrid(&mut state);
@@ -674,13 +674,13 @@ pub fn advance(state: &mut State) {
     // Invert PV and compute velocity at current time level, say t=t^n:
     if state.ggen {
         state.spectral.main_invert(
-            state.qs.as_slice_memory_order().unwrap(),
-            state.ds.as_slice_memory_order().unwrap(),
-            state.gs.as_slice_memory_order().unwrap(),
-            state.r.as_slice_memory_order_mut().unwrap(),
-            state.u.as_slice_memory_order_mut().unwrap(),
-            state.v.as_slice_memory_order_mut().unwrap(),
-            state.zeta.as_slice_memory_order_mut().unwrap(),
+            state.qs.view(),
+            state.ds.view(),
+            state.gs.view(),
+            state.r.view_mut(),
+            state.u.view_mut(),
+            state.v.view_mut(),
+            state.zeta.view_mut(),
         );
         psolve(state);
     }
@@ -835,13 +835,13 @@ pub fn advance(state: &mut State) {
     for _ in 1..=niter {
         // Perform inversion at t^{n+1} from estimated quantities:
         state.spectral.main_invert(
-            state.qs.as_slice_memory_order().unwrap(),
-            state.ds.as_slice_memory_order().unwrap(),
-            state.gs.as_slice_memory_order().unwrap(),
-            state.r.as_slice_memory_order_mut().unwrap(),
-            state.u.as_slice_memory_order_mut().unwrap(),
-            state.v.as_slice_memory_order_mut().unwrap(),
-            state.zeta.as_slice_memory_order_mut().unwrap(),
+            state.qs.view(),
+            state.ds.view(),
+            state.gs.view(),
+            state.r.view_mut(),
+            state.u.view_mut(),
+            state.v.view_mut(),
+            state.zeta.view_mut(),
         );
 
         // Compute pressure, etc:
@@ -1008,13 +1008,9 @@ pub fn psolve(state: &mut State) {
     let mut wkd = vec![0.0; ng * ng];
 
     // Calculate 1/(1+rho'_theta) and de-aliase:
-    for i in 0..ng {
-        for j in 0..ng {
-            for k in 0..=nz {
-                state.ri[[i, j, k]] = 1.0 / (1.0 + state.r[[i, j, k]]);
-            }
-        }
-    }
+    Zip::from(&mut state.ri)
+        .and(&state.r)
+        .apply(|ri, r| *ri = 1.0 / (1.0 + r));
     state
         .spectral
         .deal3d(state.ri.as_slice_memory_order_mut().unwrap());
@@ -1043,30 +1039,22 @@ pub fn psolve(state: &mut State) {
             0,
             nz - 1,
         );
-        {
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.ps[[i, j, nz]] = 0.0;
-                }
-            }
-        }
+        state.ps.index_axis_mut(Axis(2), nz).fill(0.0);
 
         // Compute pressure derivatives needed in the non-constant part of the
         // source S_1 and add to S_0 (in sp0) to form total source S (sp):
 
         // Lower boundary at iz = 0 (use dp/dtheta = 0):
         // d^2p/dtheta^2:
-        {
-            let mut wkd_matrix = viewmut2d(&mut wkd, ng, ng);
-            for i in 0..ng {
-                for j in 0..ng {
-                    wkd_matrix[[i, j]] = (2.0 * state.ps[[i, j, 0]] - 5.0 * state.ps[[i, j, 1]]
-                        + 4.0 * state.ps[[i, j, 2]]
-                        - state.ps[[i, j, 3]])
-                        * dzisq;
-                }
-            }
-        }
+        let mut wkd_matrix = viewmut2d(&mut wkd, ng, ng);
+        Zip::from(&mut wkd_matrix)
+            .and(&state.ps.index_axis(Axis(2), 0))
+            .and(&state.ps.index_axis(Axis(2), 1))
+            .and(&state.ps.index_axis(Axis(2), 2))
+            .and(&state.ps.index_axis(Axis(2), 3))
+            .apply(|wkd, ps0, ps1, ps2, ps3| {
+                *wkd = (2.0 * ps0 - 5.0 * ps1 + 4.0 * ps2 - ps3) * dzisq
+            });
 
         // Return to physical space:
         state.spectral.d2fft.spctop(&mut wkd, &mut d2pdt2);
@@ -1077,23 +1065,18 @@ pub fn psolve(state: &mut State) {
             let cpt2_matrix = view3d(&cpt2, ng, ng, nz + 1);
             let d2pdt2_matrix = view2d(&d2pdt2, ng, ng);
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    wkp_matrix[[i, j]] =
-                        sp0_matrix[[i, j, 0]] + cpt2_matrix[[i, j, 0]] * d2pdt2_matrix[[i, j]];
-                }
-            }
+            Zip::from(&mut wkp_matrix)
+                .and(sp0_matrix.index_axis(Axis(2), 0))
+                .and(cpt2_matrix.index_axis(Axis(2), 0))
+                .and(d2pdt2_matrix)
+                .apply(|wkp, sp0, cpt2, d2pdt2| *wkp = sp0 + cpt2 * d2pdt2);
         }
         // Transform to spectral space for inversion below:
         state.spectral.d2fft.ptospc(&mut wkp, &mut wka);
         {
             let mut sp_matrix = viewmut3d(&mut sp, ng, ng, nz + 1);
             let wka_matrix = view2d(&wka, ng, ng);
-            for i in 0..ng {
-                for j in 0..ng {
-                    sp_matrix[[i, j, 0]] = wka_matrix[[i, j]];
-                }
-            }
+            sp_matrix.index_axis_mut(Axis(2), 0).assign(&wka_matrix);
         }
 
         // Interior grid points:
@@ -1102,22 +1085,19 @@ pub fn psolve(state: &mut State) {
             {
                 let mut wka = viewmut2d(&mut wka, ng, ng);
 
-                for i in 0..ng {
-                    for j in 0..ng {
-                        wka[[i, j]] = (state.ps[[i, j, iz + 1]] - state.ps[[i, j, iz - 1]]) * hdzi;
-                    }
-                }
+                Zip::from(&mut wka)
+                    .and(&state.ps.index_axis(Axis(2), iz + 1))
+                    .and(&state.ps.index_axis(Axis(2), iz - 1))
+                    .apply(|wka, psp, psm| *wka = (psp - psm) * hdzi);
             }
             {
                 let mut wkd = viewmut2d(&mut wkd, ng, ng);
 
-                for i in 0..ng {
-                    for j in 0..ng {
-                        wkd[[i, j]] = (state.ps[[i, j, iz + 1]] - 2.0 * state.ps[[i, j, iz]]
-                            + state.ps[[i, j, iz - 1]])
-                            * dzisq;
-                    }
-                }
+                Zip::from(&mut wkd)
+                    .and(&state.ps.index_axis(Axis(2), iz + 1))
+                    .and(&state.ps.index_axis(Axis(2), iz))
+                    .and(&state.ps.index_axis(Axis(2), iz - 1))
+                    .apply(|wkd, psp, ps, psm| *wkd = (psp - 2.0 * ps + psm) * dzisq)
             }
 
             // Calculate x & y derivatives of dp/dtheta:
@@ -1148,15 +1128,19 @@ pub fn psolve(state: &mut State) {
                 let d2pdt2 = view2d(&d2pdt2, ng, ng);
                 let dpdt = view2d(&dpdt, ng, ng);
 
-                for i in 0..ng {
-                    for j in 0..ng {
-                        wkp[[i, j]] = sp0[[i, j, iz]]
-                            + sigx[[i, j, iz]] * d2pdxt[[i, j]]
-                            + sigy[[i, j, iz]] * d2pdyt[[i, j]]
-                            + cpt2[[i, j, iz]] * d2pdt2[[i, j]]
-                            + cpt1[[i, j, iz]] * dpdt[[i, j]];
-                    }
-                }
+                wkp.assign(&sp0.index_axis(Axis(2), iz));
+                Zip::from(&mut wkp)
+                    .and(&sigx.index_axis(Axis(2), iz))
+                    .and(&d2pdxt)
+                    .and(&sigy.index_axis(Axis(2), iz))
+                    .and(&d2pdyt)
+                    .apply(|wkp, sigx, d2pdxt, sigy, d2pdyt| *wkp += sigx * d2pdxt + sigy * d2pdyt);
+                Zip::from(&mut wkp)
+                    .and(&cpt1.index_axis(Axis(2), iz))
+                    .and(&dpdt)
+                    .and(&cpt2.index_axis(Axis(2), iz))
+                    .and(&d2pdt2)
+                    .apply(|wkp, cpt1, dpdt, cpt2, d2pdt2| *wkp += cpt1 * dpdt + cpt2 * d2pdt2);
             }
 
             // Transform to spectral space for inversion below:
@@ -1165,11 +1149,7 @@ pub fn psolve(state: &mut State) {
                 let mut sp_matrix = viewmut3d(&mut sp, ng, ng, nz + 1);
                 let wka_matrix = view2d(&wka, ng, ng);
 
-                for i in 0..ng {
-                    for j in 0..ng {
-                        sp_matrix[[i, j, iz]] = wka_matrix[[i, j]];
-                    }
-                }
+                sp_matrix.index_axis_mut(Axis(2), iz).assign(&wka_matrix);
             };
         }
 
@@ -1208,15 +1188,19 @@ pub fn psolve(state: &mut State) {
             let d2pdt2 = view2d(&d2pdt2, ng, ng);
             let dpdt = view2d(&dpdt, ng, ng);
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    wkp[[i, j]] = sp0[[i, j, nz]]
-                        + sigx[[i, j, nz]] * d2pdxt[[i, j]]
-                        + sigy[[i, j, nz]] * d2pdyt[[i, j]]
-                        + cpt2[[i, j, nz]] * d2pdt2[[i, j]]
-                        + cpt1[[i, j, nz]] * dpdt[[i, j]];
-                }
-            }
+            wkp.assign(&sp0.index_axis(Axis(2), nz));
+            Zip::from(&mut wkp)
+                .and(&sigx.index_axis(Axis(2), nz))
+                .and(&d2pdxt)
+                .and(&sigy.index_axis(Axis(2), nz))
+                .and(&d2pdyt)
+                .apply(|wkp, sigx, d2pdxt, sigy, d2pdyt| *wkp += sigx * d2pdxt + sigy * d2pdyt);
+            Zip::from(&mut wkp)
+                .and(&cpt1.index_axis(Axis(2), nz))
+                .and(&dpdt)
+                .and(&cpt2.index_axis(Axis(2), nz))
+                .and(&d2pdt2)
+                .apply(|wkp, cpt1, dpdt, cpt2, d2pdt2| *wkp += cpt1 * dpdt + cpt2 * d2pdt2);
         };
 
         // Transform to spectral space for inversion below:
@@ -1225,23 +1209,17 @@ pub fn psolve(state: &mut State) {
             let mut sp_matrix = viewmut3d(&mut sp, ng, ng, nz + 1);
             let wka_matrix = view2d(&wka, ng, ng);
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    sp_matrix[[i, j, nz]] = wka_matrix[[i, j]];
-                }
-            }
+            sp_matrix.index_axis_mut(Axis(2), nz).assign(&wka_matrix);
         };
 
         // Solve tridiagonal problem for pressure in spectral space:
         {
             let mut gg_matrix = viewmut3d(&mut gg, ng, ng, nz + 1);
             let sp_matrix = view3d(&sp, ng, ng, nz + 1);
-            for i in 0..ng {
-                for j in 0..ng {
-                    gg_matrix[[i, j, 0]] =
-                        (1.0 / 3.0) * sp_matrix[[i, j, 0]] + (1.0 / 6.0) * sp_matrix[[i, j, 1]];
-                }
-            }
+            Zip::from(&mut gg_matrix.index_axis_mut(Axis(2), 0))
+                .and(sp_matrix.index_axis(Axis(2), 0))
+                .and(sp_matrix.index_axis(Axis(2), 1))
+                .apply(|gg, sp0, sp1| *gg = (1.0 / 3.0) * sp0 + (1.0 / 6.0) * sp1);
 
             for iz in 1..=nz - 1 {
                 for i in 0..ng {
@@ -1253,11 +1231,11 @@ pub fn psolve(state: &mut State) {
                 }
             }
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.ps[[i, j, 0]] = gg_matrix[[i, j, 0]] * state.spectral.htdv[[i, j, 0]];
-                }
-            }
+            Zip::from(&mut state.ps.index_axis_mut(Axis(2), 0))
+                .and(gg_matrix.index_axis(Axis(2), 0))
+                .and(state.spectral.htdv.index_axis(Axis(2), 0))
+                .apply(|ps, gg, htdv| *ps = gg * htdv);
+
             for iz in 1..=nz - 1 {
                 for i in 0..ng {
                     for j in 0..ng {
@@ -1276,11 +1254,7 @@ pub fn psolve(state: &mut State) {
                 }
             }
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.ps[[i, j, nz]] = 0.0;
-                }
-            }
+            state.ps.index_axis_mut(Axis(2), nz).fill(0.0);
 
             // Transform to physical space:
             state.spectral.spctop3d(
@@ -1290,13 +1264,7 @@ pub fn psolve(state: &mut State) {
                 nz - 1,
             );
 
-            {
-                for i in 0..ng {
-                    for j in 0..ng {
-                        state.pn[[i, j, nz]] = 0.0;
-                    }
-                }
-            };
+            state.pn.index_axis_mut(Axis(2), nz).fill(0.0);
         }
 
         // Monitor convergence

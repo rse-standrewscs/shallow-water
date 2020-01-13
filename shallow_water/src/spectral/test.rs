@@ -1,6 +1,7 @@
 use {
     super::*,
-    crate::utils::*,
+    crate::{array3_from_file, utils::*},
+    approx::assert_abs_diff_eq,
     byteorder::{ByteOrder, NetworkEndian},
 };
 
@@ -17,132 +18,115 @@ mod main_invert {
     use super::*;
 
     #[test]
-    fn _18_2_r() {
+    fn _18_2() {
         let spectral = Spectral::new(18, 2);
 
-        let qs = _1d_from_file!("testdata/main_invert/18_2_qs.bin");
-        let ds = _1d_from_file!("testdata/main_invert/18_2_ds.bin");
-        let gs = _1d_from_file!("testdata/main_invert/18_2_gs.bin");
+        let qs = array3_from_file!(18, 18, 3, "testdata/main_invert/18_2_qs.bin");
+        let ds = array3_from_file!(18, 18, 3, "testdata/main_invert/18_2_ds.bin");
+        let gs = array3_from_file!(18, 18, 3, "testdata/main_invert/18_2_gs.bin");
 
-        let mut r = vec![0.0; 18 * 18 * 3];
-        let mut u = vec![0.0; 18 * 18 * 3];
-        let mut v = vec![0.0; 18 * 18 * 3];
-        let mut zeta = vec![0.0; 18 * 18 * 3];
+        let mut r = Array3::from_shape_vec(
+            (18, 18, 3).strides((1, 18, 18 * 18)),
+            vec![0.0; 18 * 18 * 3],
+        )
+        .unwrap();
+        let mut u = r.clone();
+        let mut v = r.clone();
+        let mut zeta = r.clone();
 
-        let r2 = _1d_from_file!("testdata/main_invert/18_2_r.bin");
+        let r2 = array3_from_file!(18, 18, 3, "testdata/main_invert/18_2_r.bin");
+        let u2 = array3_from_file!(18, 18, 3, "testdata/main_invert/18_2_u.bin");
+        let v2 = array3_from_file!(18, 18, 3, "testdata/main_invert/18_2_v.bin");
+        let zeta2 = array3_from_file!(18, 18, 3, "testdata/main_invert/18_2_zeta.bin");
 
-        spectral.main_invert(&qs, &ds, &gs, &mut r, &mut u, &mut v, &mut zeta);
+        spectral.main_invert(
+            qs.view(),
+            ds.view(),
+            gs.view(),
+            r.view_mut(),
+            u.view_mut(),
+            v.view_mut(),
+            zeta.view_mut(),
+        );
 
-        assert_approx_eq_slice(&r2, &r);
-    }
-    #[test]
-    fn _18_2_u() {
-        let spectral = Spectral::new(18, 2);
-
-        let qs = _1d_from_file!("testdata/main_invert/18_2_qs.bin");
-        let ds = _1d_from_file!("testdata/main_invert/18_2_ds.bin");
-        let gs = _1d_from_file!("testdata/main_invert/18_2_gs.bin");
-
-        let mut r = vec![0.0; 18 * 18 * 3];
-        let mut u = vec![0.0; 18 * 18 * 3];
-        let mut v = vec![0.0; 18 * 18 * 3];
-        let mut zeta = vec![0.0; 18 * 18 * 3];
-
-        let u2 = _1d_from_file!("testdata/main_invert/18_2_u.bin");
-
-        spectral.main_invert(&qs, &ds, &gs, &mut r, &mut u, &mut v, &mut zeta);
-
-        assert_approx_eq_slice(&u2, &u);
-    }
-    #[test]
-    fn _18_2_v() {
-        let spectral = Spectral::new(18, 2);
-
-        let qs = _1d_from_file!("testdata/main_invert/18_2_qs.bin");
-        let ds = _1d_from_file!("testdata/main_invert/18_2_ds.bin");
-        let gs = _1d_from_file!("testdata/main_invert/18_2_gs.bin");
-
-        let mut r = vec![0.0; 18 * 18 * 3];
-        let mut u = vec![0.0; 18 * 18 * 3];
-        let mut v = vec![0.0; 18 * 18 * 3];
-        let mut zeta = vec![0.0; 18 * 18 * 3];
-
-        let v2 = _1d_from_file!("testdata/main_invert/18_2_v.bin");
-
-        spectral.main_invert(&qs, &ds, &gs, &mut r, &mut u, &mut v, &mut zeta);
-
-        assert_approx_eq_slice(&v2, &v);
-    }
-    #[test]
-    fn _18_2_zeta() {
-        let spectral = Spectral::new(18, 2);
-
-        let qs = _1d_from_file!("testdata/main_invert/18_2_qs.bin");
-        let ds = _1d_from_file!("testdata/main_invert/18_2_ds.bin");
-        let gs = _1d_from_file!("testdata/main_invert/18_2_gs.bin");
-
-        let mut r = vec![0.0; 18 * 18 * 3];
-        let mut u = vec![0.0; 18 * 18 * 3];
-        let mut v = vec![0.0; 18 * 18 * 3];
-        let mut zeta = vec![0.0; 18 * 18 * 3];
-
-        let zeta2 = _1d_from_file!("testdata/main_invert/18_2_zeta.bin");
-
-        spectral.main_invert(&qs, &ds, &gs, &mut r, &mut u, &mut v, &mut zeta);
-
-        assert_approx_eq_slice(&zeta2, &zeta);
+        assert_abs_diff_eq!(r2, r, epsilon = 1.0E-10);
+        assert_abs_diff_eq!(u2, u, epsilon = 1.0E-10);
+        assert_abs_diff_eq!(v2, v, epsilon = 1.0E-10);
+        assert_abs_diff_eq!(zeta2, zeta, epsilon = 1.0E-10);
     }
 
     #[test]
     fn _30_4() {
         let spectral = Spectral::new(30, 4);
 
-        let qs = _1d_from_file!("testdata/main_invert/30_4_qs.bin");
-        let ds = _1d_from_file!("testdata/main_invert/30_4_ds.bin");
-        let gs = _1d_from_file!("testdata/main_invert/30_4_gs.bin");
+        let qs = array3_from_file!(30, 30, 5, "testdata/main_invert/30_4_qs.bin");
+        let ds = array3_from_file!(30, 30, 5, "testdata/main_invert/30_4_ds.bin");
+        let gs = array3_from_file!(30, 30, 5, "testdata/main_invert/30_4_gs.bin");
 
-        let mut r = vec![0.0; 30 * 30 * 5];
-        let mut u = vec![0.0; 30 * 30 * 5];
-        let mut v = vec![0.0; 30 * 30 * 5];
-        let mut zeta = vec![0.0; 30 * 30 * 5];
+        let mut r = Array3::from_shape_vec(
+            (30, 30, 5).strides((1, 30, 30 * 30)),
+            vec![0.0; 30 * 30 * 5],
+        )
+        .unwrap();
+        let mut u = r.clone();
+        let mut v = r.clone();
+        let mut zeta = r.clone();
 
-        let r2 = _1d_from_file!("testdata/main_invert/30_4_r.bin");
-        let u2 = _1d_from_file!("testdata/main_invert/30_4_u.bin");
-        let v2 = _1d_from_file!("testdata/main_invert/30_4_v.bin");
-        let zeta2 = _1d_from_file!("testdata/main_invert/30_4_zeta.bin");
+        let r2 = array3_from_file!(30, 30, 5, "testdata/main_invert/30_4_r.bin");
+        let u2 = array3_from_file!(30, 30, 5, "testdata/main_invert/30_4_u.bin");
+        let v2 = array3_from_file!(30, 30, 5, "testdata/main_invert/30_4_v.bin");
+        let zeta2 = array3_from_file!(30, 30, 5, "testdata/main_invert/30_4_zeta.bin");
 
-        spectral.main_invert(&qs, &ds, &gs, &mut r, &mut u, &mut v, &mut zeta);
-
-        assert_approx_eq_slice(&r2, &r);
-        assert_approx_eq_slice(&u2, &u);
-        assert_approx_eq_slice(&v2, &v);
-        assert_approx_eq_slice(&zeta2, &zeta);
+        spectral.main_invert(
+            qs.view(),
+            ds.view(),
+            gs.view(),
+            r.view_mut(),
+            u.view_mut(),
+            v.view_mut(),
+            zeta.view_mut(),
+        );
+        assert_abs_diff_eq!(r2, r, epsilon = 1.0E-10);
+        assert_abs_diff_eq!(u2, u, epsilon = 1.0E-10);
+        assert_abs_diff_eq!(v2, v, epsilon = 1.0E-10);
+        assert_abs_diff_eq!(zeta2, zeta, epsilon = 1.0E-10);
     }
 
     #[test]
     fn _48_6() {
         let spectral = Spectral::new(48, 6);
 
-        let qs = _1d_from_file!("testdata/main_invert/48_6_qs.bin");
-        let ds = _1d_from_file!("testdata/main_invert/48_6_ds.bin");
-        let gs = _1d_from_file!("testdata/main_invert/48_6_gs.bin");
+        let qs = array3_from_file!(48, 48, 7, "testdata/main_invert/48_6_qs.bin");
+        let ds = array3_from_file!(48, 48, 7, "testdata/main_invert/48_6_ds.bin");
+        let gs = array3_from_file!(48, 48, 7, "testdata/main_invert/48_6_gs.bin");
 
-        let mut r = vec![0.0; 48 * 48 * 7];
-        let mut u = vec![0.0; 48 * 48 * 7];
-        let mut v = vec![0.0; 48 * 48 * 7];
-        let mut zeta = vec![0.0; 48 * 48 * 7];
+        let mut r = Array3::from_shape_vec(
+            (48, 48, 7).strides((1, 48, 48 * 48)),
+            vec![0.0; 48 * 48 * 7],
+        )
+        .unwrap();
+        let mut u = r.clone();
+        let mut v = r.clone();
+        let mut zeta = r.clone();
 
-        let r2 = _1d_from_file!("testdata/main_invert/48_6_r.bin");
-        let u2 = _1d_from_file!("testdata/main_invert/48_6_u.bin");
-        let v2 = _1d_from_file!("testdata/main_invert/48_6_v.bin");
-        let zeta2 = _1d_from_file!("testdata/main_invert/48_6_zeta.bin");
+        let r2 = array3_from_file!(48, 48, 7, "testdata/main_invert/48_6_r.bin");
+        let u2 = array3_from_file!(48, 48, 7, "testdata/main_invert/48_6_u.bin");
+        let v2 = array3_from_file!(48, 48, 7, "testdata/main_invert/48_6_v.bin");
+        let zeta2 = array3_from_file!(48, 48, 7, "testdata/main_invert/48_6_zeta.bin");
 
-        spectral.main_invert(&qs, &ds, &gs, &mut r, &mut u, &mut v, &mut zeta);
-
-        assert_approx_eq_slice(&r2, &r);
-        assert_approx_eq_slice(&u2, &u);
-        assert_approx_eq_slice(&v2, &v);
-        assert_approx_eq_slice(&zeta2, &zeta);
+        spectral.main_invert(
+            qs.view(),
+            ds.view(),
+            gs.view(),
+            r.view_mut(),
+            u.view_mut(),
+            v.view_mut(),
+            zeta.view_mut(),
+        );
+        assert_abs_diff_eq!(r2, r, epsilon = 1.0E-10);
+        assert_abs_diff_eq!(u2, u, epsilon = 1.0E-10);
+        assert_abs_diff_eq!(v2, v, epsilon = 1.0E-10);
+        assert_abs_diff_eq!(zeta2, zeta, epsilon = 1.0E-10);
     }
 }
 

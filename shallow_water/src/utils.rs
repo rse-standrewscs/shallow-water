@@ -24,3 +24,17 @@ pub fn assert_approx_eq_slice(a: &[f64], b: &[f64]) {
         assert_abs_diff_eq!(*e, b[i], epsilon = 1.0E-13);
     }
 }
+
+#[macro_export]
+macro_rules! array3_from_file {
+    ($x:expr, $y:expr, $z:expr, $name:expr) => {
+        Array3::from_shape_vec(
+            ($x, $y, $z).strides((1, $x, $x * $y)),
+            include_bytes!($name)
+                .chunks(8)
+                .map(NetworkEndian::read_f64)
+                .collect::<Vec<f64>>(),
+        )
+        .unwrap();
+    };
+}
