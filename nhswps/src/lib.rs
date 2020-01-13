@@ -4,8 +4,10 @@
 mod test;
 
 use {
-    ndarray::{Array3, ShapeBuilder},
-    shallow_water::{constants::*, spectral::Spectral, utils::*},
+    byteorder::{ByteOrder, LittleEndian},
+    ndarray::{Array1, Array2, Array3, ArrayView1, Axis, ShapeBuilder, Zip},
+    shallow_water::{constants::*, spectral::Spectral, sta2dfft::D2FFT, utils::*},
+    std::f64::consts::PI,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -18,19 +20,19 @@ pub struct Output {
     pub spectra: String, //51
 
     // 3D fields
-    pub d3ql: Vec<f64>, //31
-    pub d3d: Vec<f64>,  //32
-    pub d3g: Vec<f64>,  //33
-    pub d3r: Vec<f64>,  //34
-    pub d3w: Vec<f64>,  //35
-    pub d3pn: Vec<f64>, //36
+    pub d3ql: Vec<u8>, //31
+    pub d3d: Vec<u8>,  //32
+    pub d3g: Vec<u8>,  //33
+    pub d3r: Vec<u8>,  //34
+    pub d3w: Vec<u8>,  //35
+    pub d3pn: Vec<u8>, //36
 
     // Selected vertically-averaged fields
-    pub d2q: Vec<f64>,    //41
-    pub d2d: Vec<f64>,    //42
-    pub d2g: Vec<f64>,    //43
-    pub d2h: Vec<f64>,    //44
-    pub d2zeta: Vec<f64>, //45
+    pub d2q: Vec<u8>,    //41
+    pub d2d: Vec<u8>,    //42
+    pub d2g: Vec<u8>,    //43
+    pub d2h: Vec<u8>,    //44
+    pub d2zeta: Vec<u8>, //45
 }
 
 #[derive(Debug, Clone)]
@@ -192,12 +194,12 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
         state.zeta.as_slice_memory_order_mut().unwrap(),
     );
 
-    state.ngsave = (tgsave / dt) as usize;
+    state.ngsave = (tgsave / dt).round() as usize;
 
     //Start the time loop:
     while state.t <= tsim {
         // Save data periodically:
-        state.itime = (state.t / dt) as usize;
+        state.itime = (state.t / dt).round() as usize;
         state.jtime = state.itime / state.ngsave;
 
         if state.ngsave * state.jtime == state.itime {
@@ -213,11 +215,13 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
                 state.v.as_slice_memory_order_mut().unwrap(),
                 state.zeta.as_slice_memory_order_mut().unwrap(),
             );
+
             //Note: qs, ds & gs are in spectral space while
             //      r, u, v and zeta are in physical space.
             //Next find the non-hydrostatic pressure (pn), layer heights (z)
             // and vertical velocity (w):
             psolve(&mut state);
+
             // Save field data:
             savegrid(&mut state);
 
@@ -251,24 +255,341 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Outpu
     state.output
 }
 
-fn savegrid(_state: &mut State) {
-    /*
+fn savegrid(state: &mut State) {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
 
-    let mut v3d = Array3::<usize>::zeros((ng, ng, nz + 1));
-    let mut wkp = Array2::<f64>::zeros((ng, ng));
-    let mut wkq = Array2::<f64>::zeros((ng, ng));
-    let mut wks = Array2::<f64>::zeros((ng, ng));
-    let mut zspec = Array1::<f64>::zeros((ng + 1));
-    let mut dspec = Array1::<f64>::zeros((ng + 1));
-    let mut gspec = Array1::<f64>::zeros((ng + 1));
-    let mut tmpspec = Array1::<f64>::zeros((ng + 1));
+    let arr2zero =
+        Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
 
-    let mut ekin: f64;
-    let mut epot: f64;
-    let mut etot: f64;*/
-    //unimplemented!();
+    let mut v3d = Array3::<f32>::from_shape_vec(
+        (ng, ng, nz + 1).strides((1, ng, ng * ng)),
+        vec![0.0; ng * ng * (nz + 1)],
+    )
+    .unwrap();
+    let mut wkp = arr2zero.clone();
+    let mut wkq = arr2zero.clone();
+    let mut wks = arr2zero;
+    let mut zspec = Array1::<f64>::zeros(ng + 1);
+    let mut dspec = Array1::<f64>::zeros(ng + 1);
+    let mut gspec = Array1::<f64>::zeros(ng + 1);
+
+    let mut ekin: f64 = 0.0;
+    let mut epot: f64 = 0.0;
+    let mut etot: f64 = 0.0;
+
+    // Compute kinetic energy:
+    Zip::from(&mut wkp)
+        .and(&state.r.index_axis(Axis(2), 0))
+        .and(&state.u.index_axis(Axis(2), 0))
+        .and(&state.v.index_axis(Axis(2), 0))
+        .apply(|wkp, &r, &u, &v| {
+            *wkp = (1.0 + r) * (u.powf(2.0) + v.powf(2.0));
+        });
+
+    ekin = (1.0 / 2.0) * wkp.sum();
+
+    Zip::from(&mut wkp)
+        .and(&state.r.index_axis(Axis(2), nz))
+        .and(&state.u.index_axis(Axis(2), nz))
+        .and(&state.v.index_axis(Axis(2), nz))
+        .and(&state.w.index_axis(Axis(2), nz))
+        .apply(|wkp, &r, &u, &v, &w| {
+            *wkp = (1.0 + r) * (u.powf(2.0) + v.powf(2.0) + w.powf(2.0));
+        });
+
+    ekin += (1.0 / 2.0) * wkp.sum();
+
+    for iz in 1..=nz - 1 {
+        Zip::from(&mut wkp)
+            .and(&state.r.index_axis(Axis(2), iz))
+            .and(&state.u.index_axis(Axis(2), iz))
+            .and(&state.v.index_axis(Axis(2), iz))
+            .and(&state.w.index_axis(Axis(2), iz))
+            .apply(|wkp, &r, &u, &v, &w| {
+                *wkp = (1.0 + r) * (u.powf(2.0) + v.powf(2.0) + w.powf(2.0));
+            });
+        ekin += wkp.sum();
+    }
+
+    let gl = (2.0 * PI) / ng as f64;
+    let dz = HBAR / nz as f64;
+    let gvol = gl * gl * dz;
+    ekin *= (1.0 / 2.0) * gvol * (1.0 / HBAR);
+
+    // Compute potential energy (same as SW expression):
+    for i in 0..ng {
+        for j in 0..ng {
+            wkp[[i, j]] = ((1.0 / HBAR) * state.z[[i, j, nz]] - 1.0).powf(2.0);
+        }
+    }
+
+    epot = (1.0 / 2.0) * (gl * gl) * CSQ * wkp.sum();
+
+    // Compute total energy:
+    etot = ekin + epot;
+
+    // Write energies to ecomp.asc:
+    //write(16,'(f13.6,5(1x,f16.9))') t,zero,ekin,ekin,epot,etot
+    let s = format!(
+        "{:.6} {:.9} {:.9} {:.9} {:.9} {:.9}\n",
+        state.t, 0.0, ekin, ekin, epot, etot
+    );
+    state.output.ecomp += &s;
+
+    // Compute vertically-averaged 1d vorticity, divergence and
+    // acceleration divergence spectra:
+    zspec.fill(0.0);
+    dspec.fill(0.0);
+    gspec.fill(0.0);
+
+    let d2fft = D2FFT::new(
+        ng,
+        ng,
+        2.0 * PI,
+        2.0 * PI,
+        &mut vec![0.0; ng],
+        &mut vec![0.0; ng],
+    );
+    let mut tmpspec = Array1::<f64>::zeros(ng + 1);
+    for iz in 0..=nz {
+        for i in 0..ng {
+            for j in 0..ng {
+                wkp[[i, j]] = state.zeta[[i, j, iz]];
+            }
+        }
+        d2fft.ptospc(
+            wkp.as_slice_memory_order_mut().unwrap(),
+            wks.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.spec1d(
+            wks.as_slice_memory_order().unwrap(),
+            tmpspec.as_slice_memory_order_mut().unwrap(),
+        );
+        zspec = zspec + state.spectral.weight[iz] * &tmpspec;
+        state.spectral.spec1d(
+            state
+                .ds
+                .index_axis(Axis(2), iz)
+                .as_slice_memory_order()
+                .unwrap(),
+            tmpspec.as_slice_memory_order_mut().unwrap(),
+        );
+        dspec = dspec + state.spectral.weight[iz] * &tmpspec;
+        state.spectral.spec1d(
+            state
+                .gs
+                .index_axis(Axis(2), iz)
+                .as_slice_memory_order()
+                .unwrap(),
+            tmpspec.as_slice_memory_order_mut().unwrap(),
+        );
+        gspec = gspec + state.spectral.weight[iz] * &tmpspec;
+    }
+    // Normalise to take into account uneven sampling of wavenumbers
+    // in each shell [k-1/2,k+1/2]:
+    let spmf = ArrayView1::from_shape(ng + 1, &state.spectral.spmf).unwrap();
+    zspec = zspec * spmf;
+    dspec = dspec * spmf;
+    gspec = gspec * spmf;
+
+    let s = format!("{:.6} {}\n", state.t, state.spectral.kmaxred);
+    state.output.spectra += &s;
+    for k in 1..=state.spectral.kmaxred {
+        let s = format!(
+            "{:.8} {:.8} {:.8} {:.8}\n",
+            state.spectral.alk[k - 1],
+            zspec[k].log10(),
+            (dspec[k] + 1.0E-32).log10(),
+            (gspec[k] + 1.0E-32).log10()
+        );
+        state.output.spectra += &s;
+    }
+
+    // Write various 3D gridded fields to direct access files:
+    // PV field:
+    for iz in 0..=nz {
+        wks.assign(&state.qs.index_axis(Axis(2), iz));
+        d2fft.spctop(
+            wks.as_slice_memory_order_mut().unwrap(),
+            wkp.as_slice_memory_order_mut().unwrap(),
+        );
+        for i in 0..ng {
+            for j in 0..ng {
+                v3d[[i, j, iz]] = wkp[[i, j]] as f32;
+            }
+        }
+    }
+    append_output(
+        &mut state.output.d3ql,
+        state.t,
+        v3d.as_slice_memory_order().unwrap(),
+    );
+
+    // Divergence field:
+    for iz in 0..=nz {
+        wks.assign(&state.ds.index_axis(Axis(2), iz));
+        d2fft.spctop(
+            wks.as_slice_memory_order_mut().unwrap(),
+            wkp.as_slice_memory_order_mut().unwrap(),
+        );
+        for i in 0..ng {
+            for j in 0..ng {
+                v3d[[i, j, iz]] = wkp[[i, j]] as f32;
+            }
+        }
+    }
+    append_output(
+        &mut state.output.d3d,
+        state.t,
+        v3d.as_slice_memory_order().unwrap(),
+    );
+
+    // Acceleration divergence field:
+    for iz in 0..=nz {
+        wks.assign(&state.gs.index_axis(Axis(2), iz));
+        d2fft.spctop(
+            wks.as_slice_memory_order_mut().unwrap(),
+            wkp.as_slice_memory_order_mut().unwrap(),
+        );
+        for i in 0..ng {
+            for j in 0..ng {
+                v3d[[i, j, iz]] = wkp[[i, j]] as f32;
+            }
+        }
+    }
+    append_output(
+        &mut state.output.d3g,
+        state.t,
+        v3d.as_slice_memory_order().unwrap(),
+    );
+
+    // Dimensionless thickness anomaly:
+    let r_f32 = state
+        .r
+        .as_slice_memory_order()
+        .unwrap()
+        .iter()
+        .map(|x| *x as f32)
+        .collect::<Vec<f32>>();
+    append_output(&mut state.output.d3g, state.t, &r_f32);
+
+    // Vertical velocity:
+    let w_f32 = state
+        .w
+        .as_slice_memory_order()
+        .unwrap()
+        .iter()
+        .map(|x| *x as f32)
+        .collect::<Vec<f32>>();
+    append_output(&mut state.output.d3w, state.t, &w_f32);
+
+    // Non-hydrostatic pressure:
+    let pn_f32 = state
+        .pn
+        .as_slice_memory_order()
+        .unwrap()
+        .iter()
+        .map(|x| *x as f32)
+        .collect::<Vec<f32>>();
+    append_output(&mut state.output.d3pn, state.t, &pn_f32);
+
+    // Write various vertically-integrated 2D fields to direct access files:
+    // Divergence:
+    Zip::from(&mut wkp)
+        .and(&state.w.index_axis(Axis(2), nz))
+        .and(&state.z.index_axis(Axis(2), nz))
+        .apply(|wkp, &w, &z| {
+            *wkp = -w / z;
+        });
+    let wkp_f32 = wkp
+        .as_slice_memory_order()
+        .unwrap()
+        .iter()
+        .map(|x| *x as f32)
+        .collect::<Vec<f32>>();
+    append_output(&mut state.output.d2d, state.t, &wkp_f32);
+
+    // Relative vorticity:
+    wkp.fill(0.0);
+    for iz in 0..=nz {
+        Zip::from(&mut wkp)
+            .and(&state.zeta.index_axis(Axis(2), iz))
+            .and(&state.r.index_axis(Axis(2), iz))
+            .apply(|wkp, zeta, r| {
+                *wkp += state.spectral.weight[iz] * zeta * (1.0 + r);
+            });
+    }
+    Zip::from(&mut wkp)
+        .and(&state.z.index_axis(Axis(2), nz))
+        .apply(|wkp, z| {
+            *wkp *= HBAR / z;
+        });
+    let wkp_f32 = wkp
+        .as_slice_memory_order()
+        .unwrap()
+        .iter()
+        .map(|x| *x as f32)
+        .collect::<Vec<f32>>();
+    append_output(&mut state.output.d2zeta, state.t, &wkp_f32);
+
+    // PV anomaly:
+    Zip::from(&mut wkp)
+        .and(&state.z.index_axis(Axis(2), nz))
+        .apply(|wkp, z| *wkp = HBAR * (*wkp + COF) / z - COF);
+    let wkp_f32 = wkp
+        .as_slice_memory_order()
+        .unwrap()
+        .iter()
+        .map(|x| *x as f32)
+        .collect::<Vec<f32>>();
+    append_output(&mut state.output.d2q, state.t, &wkp_f32);
+
+    // Acceleration divergence:
+    wkp.fill(0.0);
+    for iz in 0..=nz {
+        wks.assign(&state.gs.index_axis(Axis(2), nz));
+        d2fft.spctop(
+            wks.as_slice_memory_order_mut().unwrap(),
+            wkq.as_slice_memory_order_mut().unwrap(),
+        );
+        Zip::from(&mut wkp)
+            .and(&wkq)
+            .and(&state.r.index_axis(Axis(2), iz))
+            .apply(|wkp, wkq, r| *wkp += state.spectral.weight[iz] * wkq * (1.0 + r));
+    }
+    Zip::from(&mut wkp)
+        .and(&state.z.index_axis(Axis(2), nz))
+        .apply(|wkp, z| *wkp *= HBAR / z);
+    let wkp_f32 = wkp
+        .as_slice_memory_order()
+        .unwrap()
+        .iter()
+        .map(|x| *x as f32)
+        .collect::<Vec<f32>>();
+    append_output(&mut state.output.d2g, state.t, &wkp_f32);
+
+    // Dimensionless height anomaly:
+    Zip::from(&mut wkp)
+        .and(&state.z.index_axis(Axis(2), nz))
+        .apply(|wkp, z| *wkp = (1.0 / HBAR) * z - 1.0);
+    let wkp_f32 = wkp
+        .as_slice_memory_order()
+        .unwrap()
+        .iter()
+        .map(|x| *x as f32)
+        .collect::<Vec<f32>>();
+    append_output(&mut state.output.d2h, state.t, &wkp_f32);
+}
+
+fn append_output(field: &mut Vec<u8>, t: f64, data: &[f32]) {
+    let mut buf = [0u8; 4];
+    LittleEndian::write_f32(&mut buf, t as f32);
+    field.extend_from_slice(&buf);
+    for e in data {
+        LittleEndian::write_f32(&mut buf, *e);
+        field.extend_from_slice(&buf);
+    }
 }
 
 /// Computes various quantities every time step to monitor the flow evolution.
@@ -572,7 +893,6 @@ pub fn advance(state: &mut State) {
                 }
             }
         }
-
         {
             let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
             let mut wkb_matrix = viewmut2d(&mut wkb, ng, ng);
@@ -591,17 +911,20 @@ pub fn advance(state: &mut State) {
             let wka = view2d(&wka, ng, ng);
             let wkb = view2d(&wkb, ng, ng);
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    // simp = (R^2 + f^2)^{-1}
-                    state.ds[[i, j, iz]] = state.spectral.simp[[i, j]]
-                        * (state.ds[[i, j, iz]] - wka[[i, j]])
-                        - dsi[[i, j, iz]];
-                    // 2*T_tilde_gamma
-                    state.gs[[i, j, iz]] = wkb[[i, j]] - FSQ * sds[[i, j, iz]]
-                        + state.spectral.rdis[[i, j]] * sgs[[i, j, iz]];
-                }
-            }
+            // simp = (R^2 + f^2)^{-1}
+            Zip::from(&mut state.ds.index_axis_mut(Axis(2), iz))
+                .and(&state.spectral.simp)
+                .and(&wka)
+                .and(&dsi.index_axis(Axis(2), iz))
+                .apply(|ds, simp, wka, dsi| *ds = simp * (*ds - wka) - dsi);
+
+            // 2*T_tilde_gamma
+            Zip::from(&mut state.gs.index_axis_mut(Axis(2), iz))
+                .and(&wkb)
+                .and(&sds.index_axis(Axis(2), iz))
+                .and(&state.spectral.rdis)
+                .and(&sgs.index_axis(Axis(2), iz))
+                .apply(|gs, wkb, sds, rdis, sgs| *gs = wkb - FSQ * sds + rdis * sgs);
         }
         wka = vec![0.0; ng * ng];
         for iz in 0..=nz {
