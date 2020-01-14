@@ -57,7 +57,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     zeta.view_mut(),
                 )
             })
-        })
+        }),
     );
     c.bench(
         "spectral",
@@ -68,7 +68,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let mut cs = vec![0.0; 48 * 48];
 
             b.iter(|| spectral.jacob(&aa, &bb, &mut cs))
-        })
+        }),
     );
     c.bench(
         "spectral",
@@ -79,7 +79,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let mut cs = vec![0.0; 48 * 48];
 
             b.iter(|| spectral.divs(&aa, &bb, &mut cs))
-        })
+        }),
     );
     c.bench(
         "spectral",
@@ -89,7 +89,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let mut fs = _1d_from_file!("../src/spectral/testdata/ptospc3d/30_4_fs.bin");
 
             b.iter(|| spectral.ptospc3d(&fp, &mut fs, 0, 3))
-        })
+        }),
     );
     c.bench(
         "spectral",
@@ -99,7 +99,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let mut fp = _1d_from_file!("../src/spectral/testdata/spctop3d/30_4_fp.bin");
 
             b.iter(|| spectral.spctop3d(&fs, &mut fp, 0, 3))
-        })
+        }),
     );
     c.bench(
         "spectral",
@@ -108,7 +108,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let mut fp = _1d_from_file!("../src/spectral/testdata/deal3d/30_4_fp.bin");
 
             b.iter(|| spectral.deal3d(&mut fp))
-        })
+        }),
     );
     c.bench(
         "spectral",
@@ -117,7 +117,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let mut fp = _1d_from_file!("../src/spectral/testdata/deal2d/32_4_fp.bin");
 
             b.iter(|| spectral.deal2d(&mut fp))
-        })
+        }),
     );
     c.bench(
         "spectral",
