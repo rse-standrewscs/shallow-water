@@ -305,23 +305,23 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 let ng = 24;
                 let nz = 4;
 
-                let ri = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_ri.bin");
-                let r = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_r.bin");
-                let u = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_u.bin");
-                let v = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_v.bin");
-                let w = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_w.bin");
-                let z = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_z.bin");
+                let ri = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/ri.bin");
+                let r = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/r.bin");
+                let u = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/u.bin");
+                let v = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/v.bin");
+                let w = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/w.bin");
+                let z = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/z.bin");
                 let zeta =
-                    array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_zeta.bin");
-                let zx = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_zx.bin");
-                let zy = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_zy.bin");
-                let ps = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_ps.bin");
-                let pn = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_pn.bin");
-                let dpn = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_dpn.bin");
-                let aa = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_aa.bin");
-                let qs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_qs.bin");
-                let ds = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_ds.bin");
-                let gs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4_gs.bin");
+                    array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/zeta.bin");
+                let zx = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/zx.bin");
+                let zy = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/zy.bin");
+                let ps = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/ps.bin");
+                let pn = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/pn.bin");
+                let dpn = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/dpn.bin");
+                let aa = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/aa.bin");
+                let qs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/qs.bin");
+                let ds = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/ds.bin");
+                let gs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/24_4/gs.bin");
 
                 State {
                     spectral: Spectral::new(ng, nz),
@@ -346,6 +346,63 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     itime: 15,
                     jtime: 2,
                     ggen: true,
+                    output: Output::default(),
+                }
+            };
+            b.iter(|| advance(&mut state))
+        })
+        .sample_size(10),
+    );
+
+    c.bench(
+        "nhswps",
+        Benchmark::new("advance_128", |b| {
+            let mut state = {
+                let ng = 128;
+                let nz = 16;
+
+                let ri = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/ri.bin");
+                let r = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/r.bin");
+                let u = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/u.bin");
+                let v = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/v.bin");
+                let w = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/w.bin");
+                let z = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/z.bin");
+                let zeta =
+                    array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/zeta.bin");
+                let zx = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/zx.bin");
+                let zy = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/zy.bin");
+                let ps = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/ps.bin");
+                let pn = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/pn.bin");
+                let dpn =
+                    array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/dpn.bin");
+                let aa = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/aa.bin");
+                let qs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/qs.bin");
+                let ds = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/ds.bin");
+                let gs = array3_from_file!(ng, ng, nz + 1, "../src/testdata/advance/128_16/gs.bin");
+
+                State {
+                    spectral: Spectral::new(ng, nz),
+                    u,
+                    v,
+                    w,
+                    z,
+                    zx,
+                    zy,
+                    r,
+                    ri,
+                    aa,
+                    zeta,
+                    pn,
+                    dpn,
+                    ps,
+                    qs,
+                    ds,
+                    gs,
+                    t: 0.0,
+                    ngsave: 32,
+                    itime: 0,
+                    jtime: 0,
+                    ggen: false,
                     output: Output::default(),
                 }
             };
