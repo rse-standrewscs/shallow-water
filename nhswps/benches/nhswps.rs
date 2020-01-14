@@ -80,7 +80,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
             b.iter(|| source(&state, &mut sqs, &mut sds, &mut sgs))
         })
-        .sample_size(10),
+        .sample_size(50),
     );
 
     c.bench(
@@ -127,8 +127,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             };
             b.iter(|| vertical(&mut state))
-        })
-        .sample_size(10),
+        }),
     );
 
     c.bench(
@@ -186,8 +185,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 .collect::<Vec<f64>>();
 
             b.iter(|| coeffs(&state, &mut sigx, &mut sigy, &mut cpt1, &mut cpt2))
-        })
-        .sample_size(10),
+        }),
     );
 
     c.bench(
@@ -240,7 +238,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
             b.iter(|| cpsource(&state, &mut sp0))
         })
-        .sample_size(10),
+        .sample_size(60),
     );
 
     c.bench(
@@ -297,7 +295,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
             b.iter(|| psolve(&mut state))
         })
-        .sample_size(10),
+        .sample_size(30),
     );
 
     c.bench(
