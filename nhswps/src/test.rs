@@ -1053,22 +1053,22 @@ mod advance {
                 let ng = 18;
                 let nz = 6;
 
-                let ri = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_ri.bin");
-                let r = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_r.bin");
-                let u = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_u.bin");
-                let v = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_v.bin");
-                let w = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_w.bin");
-                let z = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_z.bin");
-                let zeta = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_zeta.bin");
-                let zx = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_zx.bin");
-                let zy = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_zy.bin");
-                let ps = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_ps.bin");
-                let pn = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_pn.bin");
-                let dpn = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_dpn.bin");
-                let aa = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_aa.bin");
-                let qs = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_qs.bin");
-                let ds = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_ds.bin");
-                let gs = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6_gs.bin");
+                let ri = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/ri.bin");
+                let r = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/r.bin");
+                let u = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/u.bin");
+                let v = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/v.bin");
+                let w = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/w.bin");
+                let z = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/z.bin");
+                let zeta = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/zeta.bin");
+                let zx = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/zx.bin");
+                let zy = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/zy.bin");
+                let ps = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/ps.bin");
+                let pn = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/pn.bin");
+                let dpn = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/dpn.bin");
+                let aa = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/aa.bin");
+                let qs = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/qs.bin");
+                let ds = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/ds.bin");
+                let gs = array3_from_file!(ng, ng, nz + 1, "testdata/advance/18_6/gs.bin");
 
                 let mut state = State {
                     spectral: Spectral::new(ng, nz),
@@ -1101,96 +1101,96 @@ mod advance {
         }
         #[test]
         fn r() {
-            let r2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_r2.bin");
+            let r2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/r2.bin");
             assert_abs_diff_eq!(&r2, &STATE.r, epsilon = 1.0E-10);
         }
 
         #[test]
         fn ri() {
-            let ri2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_ri2.bin");
+            let ri2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/ri2.bin");
             assert_abs_diff_eq!(&ri2, &STATE.ri, epsilon = 1.0E-10);
         }
 
         #[test]
         fn u() {
-            let u2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_u2.bin");
+            let u2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/u2.bin");
             assert_abs_diff_eq!(&u2, &STATE.u, epsilon = 1.0E-10);
         }
 
         #[test]
         fn v() {
-            let v2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_v2.bin");
+            let v2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/v2.bin");
             assert_abs_diff_eq!(&v2, &STATE.v, epsilon = 1.0E-10);
         }
 
         #[test]
         fn w() {
-            let w2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_w2.bin");
+            let w2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/w2.bin");
             assert_abs_diff_eq!(&w2, &STATE.w, epsilon = 1.0E-10);
         }
         #[test]
         fn z() {
-            let z2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_z2.bin");
+            let z2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/z2.bin");
             assert_abs_diff_eq!(&z2, &STATE.z, epsilon = 1.0E-10);
         }
 
         #[test]
         fn zeta() {
-            let zeta2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_zeta2.bin");
+            let zeta2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/zeta2.bin");
             assert_abs_diff_eq!(&zeta2, &STATE.zeta, epsilon = 1.0E-10);
         }
 
         #[test]
         fn zx() {
-            let zx2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_zx2.bin");
+            let zx2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/zx2.bin");
             assert_abs_diff_eq!(&zx2, &STATE.zx, epsilon = 1.0E-10);
         }
 
         #[test]
         fn zy() {
-            let zy2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_zy2.bin");
+            let zy2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/zy2.bin");
             assert_abs_diff_eq!(&zy2, &STATE.zy, epsilon = 1.0E-10);
         }
 
         #[test]
         fn ps() {
-            let ps2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_ps2.bin");
+            let ps2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/ps2.bin");
             assert_abs_diff_eq!(&ps2, &STATE.ps, epsilon = 1.0E-10);
         }
 
         #[test]
         fn pn() {
-            let pn2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_pn2.bin");
+            let pn2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/pn2.bin");
             assert_abs_diff_eq!(&pn2, &STATE.pn, epsilon = 1.0E-10);
         }
 
         #[test]
         fn dpn() {
-            let dpn2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_dpn2.bin");
+            let dpn2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/dpn2.bin");
             assert_abs_diff_eq!(&dpn2, &STATE.dpn, epsilon = 1.0E-10);
         }
 
         #[test]
         fn aa() {
-            let aa2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_aa2.bin");
+            let aa2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/aa2.bin");
             assert_abs_diff_eq!(&aa2, &STATE.aa, epsilon = 1.0E-10);
         }
 
         #[test]
         fn qs() {
-            let qs2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_qs2.bin");
+            let qs2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/qs2.bin");
             assert_abs_diff_eq!(&qs2, &STATE.qs, epsilon = 1.0E-10);
         }
 
         #[test]
         fn ds() {
-            let ds2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_ds2.bin");
+            let ds2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/ds2.bin");
             assert_abs_diff_eq!(&ds2, &STATE.ds, epsilon = 1.0E-10);
         }
 
         #[test]
         fn gs() {
-            let gs2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6_gs2.bin");
+            let gs2 = array3_from_file!(18, 18, 7, "testdata/advance/18_6/gs2.bin");
             assert_abs_diff_eq!(&gs2, &STATE.gs, epsilon = 1.0E-10);
         }
 
@@ -1208,22 +1208,22 @@ mod advance {
                 let ng = 24;
                 let nz = 4;
 
-                let ri = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_ri.bin");
-                let r = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_r.bin");
-                let u = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_u.bin");
-                let v = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_v.bin");
-                let w = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_w.bin");
-                let z = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_z.bin");
-                let zeta = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_zeta.bin");
-                let zx = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_zx.bin");
-                let zy = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_zy.bin");
-                let ps = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_ps.bin");
-                let pn = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_pn.bin");
-                let dpn = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_dpn.bin");
-                let aa = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_aa.bin");
-                let qs = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_qs.bin");
-                let ds = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_ds.bin");
-                let gs = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4_gs.bin");
+                let ri = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/ri.bin");
+                let r = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/r.bin");
+                let u = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/u.bin");
+                let v = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/v.bin");
+                let w = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/w.bin");
+                let z = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/z.bin");
+                let zeta = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/zeta.bin");
+                let zx = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/zx.bin");
+                let zy = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/zy.bin");
+                let ps = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/ps.bin");
+                let pn = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/pn.bin");
+                let dpn = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/dpn.bin");
+                let aa = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/aa.bin");
+                let qs = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/qs.bin");
+                let ds = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/ds.bin");
+                let gs = array3_from_file!(ng, ng, nz + 1, "testdata/advance/24_4/gs.bin");
 
                 let mut state = State {
                     spectral: Spectral::new(ng, nz),
@@ -1257,96 +1257,96 @@ mod advance {
 
         #[test]
         fn r() {
-            let r2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_r2.bin");
+            let r2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/r2.bin");
             assert_abs_diff_eq!(&r2, &STATE.r, epsilon = 1.0E-10);
         }
 
         #[test]
         fn ri() {
-            let ri2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_ri2.bin");
+            let ri2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/ri2.bin");
             assert_abs_diff_eq!(&ri2, &STATE.ri, epsilon = 1.0E-10);
         }
 
         #[test]
         fn u() {
-            let u2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_u2.bin");
+            let u2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/u2.bin");
             assert_abs_diff_eq!(&u2, &STATE.u, epsilon = 1.0E-10);
         }
 
         #[test]
         fn v() {
-            let v2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_v2.bin");
+            let v2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/v2.bin");
             assert_abs_diff_eq!(&v2, &STATE.v, epsilon = 1.0E-10);
         }
 
         #[test]
         fn w() {
-            let w2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_w2.bin");
+            let w2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/w2.bin");
             assert_abs_diff_eq!(&w2, &STATE.w, epsilon = 1.0E-10);
         }
         #[test]
         fn z() {
-            let z2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_z2.bin");
+            let z2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/z2.bin");
             assert_abs_diff_eq!(&z2, &STATE.z, epsilon = 1.0E-10);
         }
 
         #[test]
         fn zeta() {
-            let zeta2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_zeta2.bin");
+            let zeta2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/zeta2.bin");
             assert_abs_diff_eq!(&zeta2, &STATE.zeta, epsilon = 1.0E-10);
         }
 
         #[test]
         fn zx() {
-            let zx2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_zx2.bin");
+            let zx2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/zx2.bin");
             assert_abs_diff_eq!(&zx2, &STATE.zx, epsilon = 1.0E-10);
         }
 
         #[test]
         fn zy() {
-            let zy2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_zy2.bin");
+            let zy2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/zy2.bin");
             assert_abs_diff_eq!(&zy2, &STATE.zy, epsilon = 1.0E-10);
         }
 
         #[test]
         fn ps() {
-            let ps2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_ps2.bin");
+            let ps2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/ps2.bin");
             assert_abs_diff_eq!(&ps2, &STATE.ps, epsilon = 1.0E-10);
         }
 
         #[test]
         fn pn() {
-            let pn2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_pn2.bin");
+            let pn2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/pn2.bin");
             assert_abs_diff_eq!(&pn2, &STATE.pn, epsilon = 1.0E-10);
         }
 
         #[test]
         fn dpn() {
-            let dpn2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_dpn2.bin");
+            let dpn2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/dpn2.bin");
             assert_abs_diff_eq!(&dpn2, &STATE.dpn, epsilon = 1.0E-10);
         }
 
         #[test]
         fn aa() {
-            let aa2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_aa2.bin");
+            let aa2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/aa2.bin");
             assert_abs_diff_eq!(&aa2, &STATE.aa, epsilon = 1.0E-10);
         }
 
         #[test]
         fn qs() {
-            let qs2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_qs2.bin");
+            let qs2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/qs2.bin");
             assert_abs_diff_eq!(&qs2, &STATE.qs, epsilon = 1.0E-10);
         }
 
         #[test]
         fn ds() {
-            let ds2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_ds2.bin");
+            let ds2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/ds2.bin");
             assert_abs_diff_eq!(&ds2, &STATE.ds, epsilon = 1.0E-10);
         }
 
         #[test]
         fn gs() {
-            let gs2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4_gs2.bin");
+            let gs2 = array3_from_file!(24, 24, 5, "testdata/advance/24_4/gs2.bin");
             assert_abs_diff_eq!(&gs2, &STATE.gs, epsilon = 1.0E-10);
         }
     }
