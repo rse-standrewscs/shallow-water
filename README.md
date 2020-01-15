@@ -12,10 +12,10 @@ http://www-vortex.mcs.st-and.ac.uk/software.html
 In the root directory of the project:
 
 ```
-$ cargo run --release --bin vstrip
-$ cargo run --release --bin balinit
-$ cargo run --release --bin swto3d
-$ cargo run --release --bin nhswps
+cargo run --release --bin vstrip
+cargo run --release --bin balinit
+cargo run --release --bin swto3d
+cargo run --release --bin nhswps
 ```
 
 This will execute all 4 binaries in the project, using parameters found in `parameters.toml`. Alternative files can be passed as an argument.
@@ -23,11 +23,13 @@ This will execute all 4 binaries in the project, using parameters found in `para
 Final output is placed the `2d` and `3d` folders, as well as three `.asc` files.
 
 ### Testing
+
 ```
-$ cargo test
+cargo test
 ```
 
 ### Benchmarking
+
 ```
-$ cargo bench
+cargo bench
 ```
