@@ -1015,7 +1015,7 @@ pub fn psolve(state: &mut State) {
             .and(&state.ps.index_axis(Axis(2), 1))
             .and(&state.ps.index_axis(Axis(2), 2))
             .and(&state.ps.index_axis(Axis(2), 3))
-            .par_apply(|wkd, ps0, ps1, ps2, ps3| {
+            .apply(|wkd, ps0, ps1, ps2, ps3| {
                 *wkd = (2.0 * ps0 - 5.0 * ps1 + 4.0 * ps2 - ps3) * dzisq
             });
 
@@ -1032,7 +1032,7 @@ pub fn psolve(state: &mut State) {
                 .and(sp0_matrix.index_axis(Axis(2), 0))
                 .and(cpt2_matrix.index_axis(Axis(2), 0))
                 .and(d2pdt2_matrix)
-                .par_apply(|wkp, sp0, cpt2, d2pdt2| *wkp = sp0 + cpt2 * d2pdt2);
+                .apply(|wkp, sp0, cpt2, d2pdt2| *wkp = sp0 + cpt2 * d2pdt2);
         }
         // Transform to spectral space for inversion below:
         state.spectral.d2fft.ptospc(&mut wkp, &mut wka);
@@ -1097,7 +1097,7 @@ pub fn psolve(state: &mut State) {
                     .and(&d2pdxt)
                     .and(&sigy.index_axis(Axis(2), iz))
                     .and(&d2pdyt)
-                    .par_apply(|wkp, sigx, d2pdxt, sigy, d2pdyt| {
+                    .apply(|wkp, sigx, d2pdxt, sigy, d2pdyt| {
                         *wkp += sigx * d2pdxt + sigy * d2pdyt
                     });
                 Zip::from(&mut wkp)
@@ -1105,7 +1105,7 @@ pub fn psolve(state: &mut State) {
                     .and(&dpdt)
                     .and(&cpt2.index_axis(Axis(2), iz))
                     .and(&d2pdt2)
-                    .par_apply(|wkp, cpt1, dpdt, cpt2, d2pdt2| *wkp += cpt1 * dpdt + cpt2 * d2pdt2);
+                    .apply(|wkp, cpt1, dpdt, cpt2, d2pdt2| *wkp += cpt1 * dpdt + cpt2 * d2pdt2);
             }
 
             // Transform to spectral space for inversion below:
@@ -1159,13 +1159,13 @@ pub fn psolve(state: &mut State) {
                 .and(&d2pdxt)
                 .and(&sigy.index_axis(Axis(2), nz))
                 .and(&d2pdyt)
-                .par_apply(|wkp, sigx, d2pdxt, sigy, d2pdyt| *wkp += sigx * d2pdxt + sigy * d2pdyt);
+                .apply(|wkp, sigx, d2pdxt, sigy, d2pdyt| *wkp += sigx * d2pdxt + sigy * d2pdyt);
             Zip::from(&mut wkp)
                 .and(&cpt1.index_axis(Axis(2), nz))
                 .and(&dpdt)
                 .and(&cpt2.index_axis(Axis(2), nz))
                 .and(&d2pdt2)
-                .par_apply(|wkp, cpt1, dpdt, cpt2, d2pdt2| *wkp += cpt1 * dpdt + cpt2 * d2pdt2);
+                .apply(|wkp, cpt1, dpdt, cpt2, d2pdt2| *wkp += cpt1 * dpdt + cpt2 * d2pdt2);
         };
 
         // Transform to spectral space for inversion below:
