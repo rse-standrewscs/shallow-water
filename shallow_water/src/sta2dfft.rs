@@ -16,6 +16,7 @@ use {
         utils::*,
     },
     core::f64::consts::PI,
+    log::error,
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -70,7 +71,8 @@ impl D2FFT {
                 kx[k - 1] = sc * k as f64;
             }
         } else {
-            panic!("Wavenumber array definition not possible, domain length in x equal to zero not allowed!");
+            error!("Wavenumber array definition not possible, domain length in x equal to zero not allowed!");
+            std::process::exit(1);
         }
 
         if ly != 0.0 {

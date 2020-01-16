@@ -4,11 +4,15 @@ extern crate clap;
 use {
     byteorder::{ByteOrder, LittleEndian},
     libbalinit::balinit,
+    simplelog::{Config as LogConfig, LevelFilter, TermLogger, TerminalMode},
     std::{fs::File, io::prelude::*},
     toml::Value,
 };
 
 fn main() {
+    TermLogger::init(LevelFilter::Info, LogConfig::default(), TerminalMode::Mixed)
+        .expect("No interactive terminal");
+
     let matches = clap_app!(vstrip =>
         (version: crate_version!())
         (about: "Re-initialises a flow with balanced fields obtained from the conditions delta_t=gamma_t=0 using data previously set up with a data generation routine.")

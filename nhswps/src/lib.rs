@@ -5,6 +5,7 @@ mod test;
 
 use {
     byteorder::{ByteOrder, LittleEndian},
+    log::{debug, error, info},
     ndarray::{Array1, Array2, Array3, ArrayView1, Axis, ShapeBuilder, Zip},
     shallow_water::{constants::*, spectral::Spectral, sta2dfft::D2FFT, utils::*},
     std::f64::consts::PI,
@@ -332,6 +333,7 @@ fn savegrid(state: &mut State) {
         state.t, 0.0, ekin, ekin, epot, etot
     );
     state.output.ecomp += &s;
+    info!("t = {}, E_tot = {}", state.t, etot);
 
     // Compute vertically-averaged 1d vorticity, divergence and
     // acceleration divergence spectra:
@@ -632,7 +634,7 @@ fn diagnose(state: &mut State) {
         umax
     );
 
-    //println!("{}", &s);
+    debug!("{}", &s.trim());
     state.output.monitor += &s;
 }
 
@@ -1232,16 +1234,22 @@ pub fn psolve(state: &mut State) {
 
         // Stop if not converging:
         if iter > 0 && errp > 1.0 {
-            panic!(format!(
-                "Pressure error too large! Final pressure error = {}",
-                errp
-            ));
+            error!("Pressure error too large! Final pressure error = {}", errp);
+            std::process::exit(1);
         }
 
         iter += 1;
 
         // Reset pna:
         pna = state.pn.clone();
+    }
+
+    if iter >= nitmax {
+        error!(
+            "Exceeded maximum number of iterations to find pressure! Final pressure error = {}",
+            errp
+        );
+        std::process::exit(1);
     }
 
     // Past this point, we have converged!

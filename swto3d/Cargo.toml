@@ -9,6 +9,7 @@ shallow_water = { path = "../shallow_water", version = "0.1.0" }
 clap = "2.33.0"
 byteorder = "1.3.2"
 toml = "0.5.5"
+simplelog = "0.7.4"
 
 [lib]
 name = "libswto3d"
