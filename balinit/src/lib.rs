@@ -6,7 +6,10 @@
 //! Adapted for swnh to produce the linearised PV (q_l), the
 //! divergence (delta) and the SW acceleration divergence (gamma).
 
-use shallow_water::{constants::*, spectral::Spectral, utils::*};
+use {
+    log::info,
+    shallow_water::{constants::*, spectral::Spectral, utils::*},
+};
 
 #[allow(clippy::cognitive_complexity)]
 pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
@@ -307,8 +310,8 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         //Compute overall error:
         toterr = (1.0 / 2.0) * (ddrmserr + ggrmserr);
 
-        //println!(" relative delta error = {}", ddrmserr);
-        //println!(" relative gamma error = {}", ggrmserr);
+        info!(" relative delta error = {}", ddrmserr);
+        info!(" relative gamma error = {}", ggrmserr);
 
         //If error is going up again, stop and save fields:
         if toterrpre <= toterr {
@@ -321,7 +324,7 @@ pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64
         toterrpre = toterr;
     }
 
-    //println!(" Minimum error = {}", toterrpre);
+    info!(" Minimum error = {}", toterrpre);
 
     for (i, e) in qq.iter_mut().enumerate() {
         *e = zz[i] - COF * hh[i];

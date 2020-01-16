@@ -4,12 +4,16 @@ extern crate clap;
 use {
     byteorder::{ByteOrder, LittleEndian},
     libnhswps::nhswps,
+    simplelog::{Config as LogConfig, LevelFilter, TermLogger, TerminalMode},
     std::fs::{self, File},
     std::io::prelude::*,
     toml::Value,
 };
 
 fn main() {
+    TermLogger::init(LevelFilter::Info, LogConfig::default(), TerminalMode::Mixed)
+        .expect("No interactive terminal");
+
     let matches = clap_app!(vstrip =>
         (version: crate_version!())
         (about: "The Horizontally Doubly-Periodic Three-Dimensional Non-Hydrostatic Shallow-Water Pseudo-Spectral Method")

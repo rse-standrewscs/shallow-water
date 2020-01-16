@@ -4,11 +4,15 @@ extern crate clap;
 use {
     byteorder::{ByteOrder, LittleEndian},
     libswto3d::swto3d,
+    simplelog::{Config as LogConfig, LevelFilter, TermLogger, TerminalMode},
     std::{fs::File, io::prelude::*},
     toml::Value,
 };
 
 fn main() {
+    TermLogger::init(LevelFilter::Info, LogConfig::default(), TerminalMode::Mixed)
+        .expect("No interactive terminal");
+
     let matches = clap_app!(vstrip =>
         (version: crate_version!())
         (about: "Converts 2D shallow-water fields to 3D fields needed by nhswps.")
