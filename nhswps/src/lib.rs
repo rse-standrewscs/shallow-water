@@ -1097,9 +1097,7 @@ pub fn psolve(state: &mut State) {
                     .and(&d2pdxt)
                     .and(&sigy.index_axis(Axis(2), iz))
                     .and(&d2pdyt)
-                    .apply(|wkp, sigx, d2pdxt, sigy, d2pdyt| {
-                        *wkp += sigx * d2pdxt + sigy * d2pdyt
-                    });
+                    .apply(|wkp, sigx, d2pdxt, sigy, d2pdyt| *wkp += sigx * d2pdxt + sigy * d2pdyt);
                 Zip::from(&mut wkp)
                     .and(&cpt1.index_axis(Axis(2), iz))
                     .and(&dpdt)
