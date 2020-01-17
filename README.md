@@ -1,7 +1,9 @@
 # shallow-water
 
-[![Build Status](https://travis-ci.com/chocol4te/shallow-water.svg?token=Yy278F6KPxruhJLf8xog&branch=rust_port)](https://travis-ci.com/chocol4te/shallow-water)
-[![codecov](https://codecov.io/gh/chocol4te/shallow-water/branch/master/graph/badge.svg?token=LLR3tmRGuE)](https://codecov.io/gh/chocol4te/shallow-water)
+[![Build Status](https://travis-ci.com/rse-standrewscs/shallow-water.svg)](https://travis-ci.com/rse-standrewscs/shallow-water)
+[![codecov](https://codecov.io/gh/rse-standrewscs/shallow-water/branch/master/graph/badge.svg)](https://codecov.io/gh/rse-standrewscs/shallow-water)
+[![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=rse-standrewscs/shallow-water)](https://dependabot.com)
+[![](https://tokei.rs/b1/github/rse-standrewscs/shallow-water)](https://github.com/XAMPPRocky/tokei)
 
 3D shallow water code by David Dritschel
 
