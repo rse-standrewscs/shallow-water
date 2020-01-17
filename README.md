@@ -7,6 +7,8 @@
 
 3D shallow water code by David Dritschel
 
+[API documentation (master)](https://rse-standrewscs.github.io/shallow-water/)
+
 http://www-vortex.mcs.st-and.ac.uk/software.html
 
 ## Usage
