@@ -468,7 +468,7 @@ fn savegrid(state: &mut State) {
         .iter()
         .map(|x| *x as f32)
         .collect::<Vec<f32>>();
-    append_output(&mut state.output.d3g, state.t, &r_f32);
+    append_output(&mut state.output.d3r, state.t, &r_f32);
 
     // Vertical velocity:
     let w_f32 = state
@@ -544,7 +544,7 @@ fn savegrid(state: &mut State) {
     // Acceleration divergence:
     wkp.fill(0.0);
     for iz in 0..=nz {
-        wks.assign(&state.gs.index_axis(Axis(2), nz));
+        wks.assign(&state.gs.index_axis(Axis(2), iz));
         d2fft.spctop(
             wks.as_slice_memory_order_mut().unwrap(),
             wkq.as_slice_memory_order_mut().unwrap(),
