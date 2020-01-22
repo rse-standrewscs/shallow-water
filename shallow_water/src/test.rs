@@ -29,7 +29,7 @@ lazy_static! {
     };
 }
 
-mod _18_4 {
+mod complete_18_4 {
     use super::*;
 
     #[test]
@@ -64,10 +64,28 @@ mod _18_4 {
         );
     }
 
+    #[cfg(all(target_arch = "x86_64", target_os = "macos",))]
     #[test]
     fn spectra() {
         assert_eq!(
-            include_str!("testdata/complete/18_4/spectra.asc")
+            include_str!("testdata/complete/18_4/spectra_x86_64-apple-darwin.asc")
+                .to_string()
+                .split_whitespace()
+                .collect::<Vec<&str>>(),
+            OUTPUT_18_4
+                .spectra
+                .replace("\n", " ")
+                .split(' ')
+                .filter(|&s| !s.is_empty())
+                .collect::<Vec<&str>>()
+        );
+    }
+
+    #[cfg(all(target_arch = "x86_64", target_os = "linux",))]
+    #[test]
+    fn spectra() {
+        assert_eq!(
+            include_str!("testdata/complete/18_4/spectra_x86_64-unknown-linux-gnu.asc")
                 .to_string()
                 .split_whitespace()
                 .collect::<Vec<&str>>(),
@@ -277,7 +295,7 @@ mod _18_4 {
     }
 }
 
-mod _32_4 {
+mod complete_32_4 {
     use super::*;
 
     #[test]
@@ -312,10 +330,28 @@ mod _32_4 {
         );
     }
 
+    #[cfg(all(target_arch = "x86_64", target_os = "macos",))]
     #[test]
     fn spectra() {
         assert_eq!(
-            include_str!("testdata/complete/32_4/spectra.asc")
+            include_str!("testdata/complete/32_4/spectra_x86_64-apple-darwin.asc")
+                .to_string()
+                .split_whitespace()
+                .collect::<Vec<&str>>(),
+            OUTPUT_32_4
+                .spectra
+                .replace("\n", " ")
+                .split(' ')
+                .filter(|&s| !s.is_empty())
+                .collect::<Vec<&str>>()
+        );
+    }
+
+    #[cfg(all(target_arch = "x86_64", target_os = "linux",))]
+    #[test]
+    fn spectra() {
+        assert_eq!(
+            include_str!("testdata/complete/32_4/spectra_x86_64-unknown-linux-gnu.asc")
                 .to_string()
                 .split_whitespace()
                 .collect::<Vec<&str>>(),
