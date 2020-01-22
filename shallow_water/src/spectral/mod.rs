@@ -431,8 +431,14 @@ impl Spectral {
             v.index_axis_mut(Axis(2), iz).assign(&wkb);
 
             //Accumulate mean flow (uio,vio):
-            let sum_ca = wkc.iter().zip(&wka).map(|(a, b)| a * b).sum::<f64>();
-            let sum_cb = wkc.iter().zip(&wkb).map(|(a, b)| a * b).sum::<f64>();
+            let mut sum_ca = 0.0;
+            let mut sum_cb = 0.0;
+            for j in 0..ng {
+                for i in 0..ng {
+                    sum_ca += wkc[[i, j]] * wka[[i, j]];
+                    sum_cb += wkc[[i, j]] * wkb[[i, j]];
+                }
+            }
 
             uio -= self.weight[iz] * sum_ca * dsumi;
             vio -= self.weight[iz] * sum_cb * dsumi;
@@ -557,26 +563,30 @@ impl Spectral {
 
     /// Filters (horizontally) a physical 3d field fp (overwrites fp)
     pub fn deal3d(&self, fp: &mut [f64]) {
-        let mut fp_matrix = viewmut3d(fp, self.ng, self.ng, self.nz + 1);
+        let ng = self.ng;
+        let nz = self.nz;
+        let mut fp_matrix = viewmut3d(fp, ng, ng, nz + 1);
 
-        let mut wkp_matrix = Array2::<f64>::zeros((self.ng, self.ng));
-        let mut wks_matrix = Array2::<f64>::zeros((self.ng, self.ng));
+        let mut wkp_matrix =
+            Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
+        let mut wks_matrix =
+            Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
 
         for iz in 0..=self.nz {
             wkp_matrix.assign(&fp_matrix.index_axis(Axis(2), iz));
 
             self.d2fft.ptospc(
-                wkp_matrix.as_slice_mut().unwrap(),
-                wks_matrix.as_slice_mut().unwrap(),
+                wkp_matrix.as_slice_memory_order_mut().unwrap(),
+                wks_matrix.as_slice_memory_order_mut().unwrap(),
             );
 
             Zip::from(&mut wks_matrix)
                 .and(&self.filt)
-                .apply(|wks, filt| *wks *= filt);
+                .apply(|wks, filt| *wks = filt * *wks);
 
             self.d2fft.spctop(
-                wks_matrix.as_slice_mut().unwrap(),
-                wkp_matrix.as_slice_mut().unwrap(),
+                wks_matrix.as_slice_memory_order_mut().unwrap(),
+                wkp_matrix.as_slice_memory_order_mut().unwrap(),
             );
 
             fp_matrix.index_axis_mut(Axis(2), iz).assign(&wkp_matrix);
