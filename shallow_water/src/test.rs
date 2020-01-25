@@ -33,6 +33,7 @@ mod complete_18_4 {
     use super::*;
 
     #[test]
+    #[ignore]
     fn monitor() {
         assert_eq!(
             include_str!("testdata/complete/18_4/monitor.asc")
@@ -49,6 +50,7 @@ mod complete_18_4 {
     }
 
     #[test]
+    #[ignore]
     fn ecomp() {
         assert_eq!(
             include_str!("testdata/complete/18_4/ecomp.asc")
@@ -66,6 +68,7 @@ mod complete_18_4 {
 
     #[cfg(all(target_arch = "x86_64", target_os = "macos",))]
     #[test]
+    #[ignore]
     fn spectra() {
         assert_eq!(
             include_str!("testdata/complete/18_4/spectra_x86_64-apple-darwin.asc")
@@ -83,6 +86,7 @@ mod complete_18_4 {
 
     #[cfg(all(target_arch = "x86_64", target_os = "linux",))]
     #[test]
+    #[ignore]
     fn spectra() {
         assert_eq!(
             include_str!("testdata/complete/18_4/spectra_x86_64-unknown-linux-gnu.asc")
@@ -102,6 +106,7 @@ mod complete_18_4 {
         use super::*;
 
         #[test]
+        #[ignore]
         fn d() {
             let d2 = include_bytes!("testdata/complete/18_4/2d/d.r4")
                 .chunks(4)
@@ -120,6 +125,7 @@ mod complete_18_4 {
         }
 
         #[test]
+        #[ignore]
         fn g() {
             let g2 = include_bytes!("testdata/complete/18_4/2d/g.r4")
                 .chunks(4)
@@ -138,6 +144,7 @@ mod complete_18_4 {
         }
 
         #[test]
+        #[ignore]
         fn h() {
             let h2 = include_bytes!("testdata/complete/18_4/2d/h.r4")
                 .chunks(4)
@@ -156,6 +163,7 @@ mod complete_18_4 {
         }
 
         #[test]
+        #[ignore]
         fn q() {
             let q2 = include_bytes!("testdata/complete/18_4/2d/q.r4")
                 .chunks(4)
@@ -174,6 +182,7 @@ mod complete_18_4 {
         }
 
         #[test]
+        #[ignore]
         fn zeta() {
             let zeta2 = include_bytes!("testdata/complete/18_4/2d/zeta.r4")
                 .chunks(4)
@@ -196,6 +205,7 @@ mod complete_18_4 {
         use super::*;
 
         #[test]
+        #[ignore]
         fn d() {
             let d2 = include_bytes!("testdata/complete/18_4/3d/d.r4")
                 .chunks(4)
@@ -214,6 +224,7 @@ mod complete_18_4 {
         }
 
         #[test]
+        #[ignore]
         fn g() {
             let g2 = include_bytes!("testdata/complete/18_4/3d/g.r4")
                 .chunks(4)
@@ -232,6 +243,7 @@ mod complete_18_4 {
         }
 
         #[test]
+        #[ignore]
         fn pn() {
             let pn2 = include_bytes!("testdata/complete/18_4/3d/pn.r4")
                 .chunks(4)
@@ -250,6 +262,7 @@ mod complete_18_4 {
         }
 
         #[test]
+        #[ignore]
         fn ql() {
             assert_eq!(
                 include_bytes!("testdata/complete/18_4/3d/ql.r4")[..],
@@ -258,6 +271,7 @@ mod complete_18_4 {
         }
 
         #[test]
+        #[ignore]
         fn r() {
             let r2 = include_bytes!("testdata/complete/18_4/3d/r.r4")
                 .chunks(4)
@@ -276,6 +290,7 @@ mod complete_18_4 {
         }
 
         #[test]
+        #[ignore]
         fn w() {
             let w2 = include_bytes!("testdata/complete/18_4/3d/w.r4")
                 .chunks(4)
@@ -299,6 +314,7 @@ mod complete_32_4 {
     use super::*;
 
     #[test]
+    #[ignore]
     fn monitor() {
         assert_eq!(
             include_str!("testdata/complete/32_4/monitor.asc")
@@ -315,6 +331,7 @@ mod complete_32_4 {
     }
 
     #[test]
+    #[ignore]
     fn ecomp() {
         assert_eq!(
             include_str!("testdata/complete/32_4/ecomp.asc")
@@ -332,6 +349,7 @@ mod complete_32_4 {
 
     #[cfg(all(target_arch = "x86_64", target_os = "macos",))]
     #[test]
+    #[ignore]
     fn spectra() {
         assert_eq!(
             include_str!("testdata/complete/32_4/spectra_x86_64-apple-darwin.asc")
@@ -349,6 +367,7 @@ mod complete_32_4 {
 
     #[cfg(all(target_arch = "x86_64", target_os = "linux",))]
     #[test]
+    #[ignore]
     fn spectra() {
         assert_eq!(
             include_str!("testdata/complete/32_4/spectra_x86_64-unknown-linux-gnu.asc")
@@ -368,6 +387,7 @@ mod complete_32_4 {
         use super::*;
 
         #[test]
+        #[ignore]
         fn d() {
             let d2 = include_bytes!("testdata/complete/32_4/2d/d.r4")
                 .chunks(4)
@@ -386,6 +406,7 @@ mod complete_32_4 {
         }
 
         #[test]
+        #[ignore]
         fn g() {
             let g2 = include_bytes!("testdata/complete/32_4/2d/g.r4")
                 .chunks(4)
@@ -404,6 +425,7 @@ mod complete_32_4 {
         }
 
         #[test]
+        #[ignore]
         fn h() {
             let h2 = include_bytes!("testdata/complete/32_4/2d/h.r4")
                 .chunks(4)
@@ -422,6 +444,7 @@ mod complete_32_4 {
         }
 
         #[test]
+        #[ignore]
         fn q() {
             let q2 = include_bytes!("testdata/complete/32_4/2d/q.r4")
                 .chunks(4)
@@ -440,6 +463,7 @@ mod complete_32_4 {
         }
 
         #[test]
+        #[ignore]
         fn zeta() {
             let zeta2 = include_bytes!("testdata/complete/32_4/2d/zeta.r4")
                 .chunks(4)
@@ -462,6 +486,7 @@ mod complete_32_4 {
         use super::*;
 
         #[test]
+        #[ignore]
         fn d() {
             let d2 = include_bytes!("testdata/complete/32_4/3d/d.r4")
                 .chunks(4)
@@ -480,6 +505,7 @@ mod complete_32_4 {
         }
 
         #[test]
+        #[ignore]
         fn g() {
             let g2 = include_bytes!("testdata/complete/32_4/3d/g.r4")
                 .chunks(4)
@@ -498,6 +524,7 @@ mod complete_32_4 {
         }
 
         #[test]
+        #[ignore]
         fn pn() {
             let pn2 = include_bytes!("testdata/complete/32_4/3d/pn.r4")
                 .chunks(4)
@@ -516,6 +543,7 @@ mod complete_32_4 {
         }
 
         #[test]
+        #[ignore]
         fn ql() {
             assert_eq!(
                 include_bytes!("testdata/complete/32_4/3d/ql.r4")[..],
@@ -524,6 +552,7 @@ mod complete_32_4 {
         }
 
         #[test]
+        #[ignore]
         fn r() {
             let r2 = include_bytes!("testdata/complete/32_4/3d/r.r4")
                 .chunks(4)
@@ -542,6 +571,7 @@ mod complete_32_4 {
         }
 
         #[test]
+        #[ignore]
         fn w() {
             let w2 = include_bytes!("testdata/complete/32_4/3d/w.r4")
                 .chunks(4)
