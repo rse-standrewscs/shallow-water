@@ -5,9 +5,9 @@ env:
     - RUSTFLAGS="--deny warnings -C link-dead-code"
 
 addons:
-    apt:
-        packages:
-            - libssl-dev
+  apt:
+    packages:
+      - libssl-dev
 
 cache:
   directories:
@@ -30,6 +30,7 @@ jobs:
     - stage: test
       script:
         - cargo test --release --all-features --no-fail-fast --all
+        - cargo test --release --all-features --no-fail-fast --all -- --ignored
     - stage: coverage
       script: |
         cargo install cargo-tarpaulin || true
