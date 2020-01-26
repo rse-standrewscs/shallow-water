@@ -348,11 +348,11 @@ mod test {
 
     #[test]
     fn balinit_18_2_qq() {
-        let zz = include_bytes!("testdata/18_2_zz.bin")
+        let zz = include_bytes!("testdata/balinit/18_2_zz.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let qq2 = include_bytes!("testdata/18_2_qq.bin")
+        let qq2 = include_bytes!("testdata/balinit/18_2_qq.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -364,11 +364,11 @@ mod test {
 
     #[test]
     fn balinit_18_2_dd() {
-        let zz = include_bytes!("testdata/18_2_zz.bin")
+        let zz = include_bytes!("testdata/balinit/18_2_zz.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let dd2 = include_bytes!("testdata/18_2_dd.bin")
+        let dd2 = include_bytes!("testdata/balinit/18_2_dd.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -380,11 +380,11 @@ mod test {
 
     #[test]
     fn balinit_18_2_gg() {
-        let zz = include_bytes!("testdata/18_2_zz.bin")
+        let zz = include_bytes!("testdata/balinit/18_2_zz.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-        let gg2 = include_bytes!("testdata/18_2_gg.bin")
+        let gg2 = include_bytes!("testdata/balinit/18_2_gg.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -396,13 +396,13 @@ mod test {
 
     #[test]
     fn end2end_18_2() {
-        let qq_init = include_bytes!("testdata/18_2_qq_init.r8")
+        let qq_init = include_bytes!("testdata/balinit/18_2_qq_init.r8")
             .chunks(8)
             .skip(1)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let sw_init = include_bytes!("testdata/18_2_sw_init.r8")
+        let sw_init = include_bytes!("testdata/balinit/18_2_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -417,12 +417,12 @@ mod test {
 
     #[test]
     fn end2end_32_4() {
-        let qq_init = include_bytes!("testdata/32_4_qq_init.r8")
+        let qq_init = include_bytes!("testdata/balinit/32_4_qq_init.r8")
             .chunks(8)
             .skip(1)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
-        let sw_init = include_bytes!("testdata/32_4_sw_init.r8")
+        let sw_init = include_bytes!("testdata/balinit/32_4_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();

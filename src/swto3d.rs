@@ -43,7 +43,7 @@ mod test {
 
     #[test]
     fn _18_2_qq() {
-        let sw_init = include_bytes!("testdata/18_2_sw_init.r8")
+        let sw_init = include_bytes!("testdata/swto3d/18_2_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -53,7 +53,7 @@ mod test {
             .map(|xs| xs[1..].to_vec())
             .collect::<Vec<Vec<f64>>>();
 
-        let qq2 = include_bytes!("testdata/18_2_qq_init.r8")
+        let qq2 = include_bytes!("testdata/swto3d/18_2_qq_init.r8")
             .chunks(8)
             .skip(1)
             .map(LittleEndian::read_f64)
@@ -66,7 +66,7 @@ mod test {
 
     #[test]
     fn _18_2_dd() {
-        let sw_init = include_bytes!("testdata/18_2_sw_init.r8")
+        let sw_init = include_bytes!("testdata/swto3d/18_2_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -76,7 +76,7 @@ mod test {
             .map(|xs| xs[1..].to_vec())
             .collect::<Vec<Vec<f64>>>();
 
-        let dd2 = include_bytes!("testdata/18_2_dd_init.r8")
+        let dd2 = include_bytes!("testdata/swto3d/18_2_dd_init.r8")
             .chunks(8)
             .skip(1)
             .map(LittleEndian::read_f64)
@@ -89,7 +89,7 @@ mod test {
 
     #[test]
     fn _18_2_gg() {
-        let sw_init = include_bytes!("testdata/18_2_sw_init.r8")
+        let sw_init = include_bytes!("testdata/swto3d/18_2_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -99,7 +99,7 @@ mod test {
             .map(|xs| xs[1..].to_vec())
             .collect::<Vec<Vec<f64>>>();
 
-        let gg2 = include_bytes!("testdata/18_2_gg_init.r8")
+        let gg2 = include_bytes!("testdata/swto3d/18_2_gg_init.r8")
             .chunks(8)
             .skip(1)
             .map(LittleEndian::read_f64)
@@ -112,7 +112,7 @@ mod test {
 
     #[test]
     fn _128_32() {
-        let sw_init = include_bytes!("testdata/128_32_sw_init.r8")
+        let sw_init = include_bytes!("testdata/swto3d/128_32_sw_init.r8")
             .chunks(8)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
@@ -122,17 +122,17 @@ mod test {
             .map(|xs| xs[1..].to_vec())
             .collect::<Vec<Vec<f64>>>();
 
-        let qq2 = include_bytes!("testdata/128_32_qq_init.r8")
+        let qq2 = include_bytes!("testdata/swto3d/128_32_qq_init.r8")
             .chunks(8)
             .skip(1)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
-        let dd2 = include_bytes!("testdata/128_32_dd_init.r8")
+        let dd2 = include_bytes!("testdata/swto3d/128_32_dd_init.r8")
             .chunks(8)
             .skip(1)
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
-        let gg2 = include_bytes!("testdata/128_32_gg_init.r8")
+        let gg2 = include_bytes!("testdata/swto3d/128_32_gg_init.r8")
             .chunks(8)
             .skip(1)
             .map(LittleEndian::read_f64)

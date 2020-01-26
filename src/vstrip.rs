@@ -115,7 +115,7 @@ mod test {
     fn ng18_snapshot() {
         let qq2 = Array2::from_shape_vec(
             (18, 18).strides((1, 18)),
-            include_bytes!("testdata/qq_init_18.r8")
+            include_bytes!("testdata/vstrip/qq_init_18.r8")
                 .chunks(8)
                 .skip(1)
                 .map(LittleEndian::read_f64)
@@ -132,7 +132,7 @@ mod test {
     fn ng32_snapshot() {
         let qq2 = Array2::from_shape_vec(
             (32, 32).strides((1, 32)),
-            include_bytes!("testdata/qq_init_32.r8")
+            include_bytes!("testdata/vstrip/qq_init_32.r8")
                 .chunks(8)
                 .skip(1)
                 .map(LittleEndian::read_f64)
@@ -149,7 +149,7 @@ mod test {
     fn ng64_snapshot() {
         let qq2 = Array2::from_shape_vec(
             (64, 64).strides((1, 64)),
-            include_bytes!("testdata/qq_init_64.r8")
+            include_bytes!("testdata/vstrip/qq_init_64.r8")
                 .chunks(8)
                 .skip(1)
                 .map(LittleEndian::read_f64)
