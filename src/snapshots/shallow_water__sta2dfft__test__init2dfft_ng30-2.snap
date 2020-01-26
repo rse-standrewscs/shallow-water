@@ -1,0 +1,11 @@
+---
+source: src/sta2dfft.rs
+expression: d2fft.yfactors
+---
+[
+    1,
+    0,
+    0,
+    0,
+    1,
+]
