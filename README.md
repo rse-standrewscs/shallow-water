@@ -16,21 +16,32 @@ http://www-vortex.mcs.st-and.ac.uk/software.html
 In the root directory of the project:
 
 ```
-cargo run --release -- vstrip
-cargo run --release -- balinit
-cargo run --release -- swto3d
-cargo run --release -- nhswps
+cargo install --path .
+shallow-water vstrip
+shallow-water balinit
+shallow-water swto3d
+shallow-water nhswps
 ```
 
-This will execute all 4 binaries in the project, using parameters found in `parameters.toml`. Alternative files can be passed as an argument.
+This will build and place a `shallow-water` binary in `~/.cargo/bin/` which, if in PATH, can then be used to run all 4 subcommands. It will use parameters found in `./parameters.toml` by default, an alternative parameter file path can be passed as an argument.
 
 Final output is placed in the `2d` and `3d` folders, as well as in three `.asc` files.
 
 ### Testing
 
+To run all standard tests:
+
 ```
-cargo test
+cargo test --release
 ```
+
+To run the expensive (ignored by default) tests:
+
+```
+cargo test --release -- --ignored
+```
+
+If the `--release` flag is not set, the tests may take a long time to finish.
 
 ### Benchmarking
 
