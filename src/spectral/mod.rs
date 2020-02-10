@@ -582,7 +582,7 @@ impl Spectral {
 
             Zip::from(&mut wks_matrix)
                 .and(&self.filt)
-                .apply(|wks, filt| *wks = filt * *wks);
+                .apply(|wks, filt| *wks *= filt);
 
             self.d2fft.spctop(
                 wks_matrix.as_slice_memory_order_mut().unwrap(),
@@ -614,8 +614,8 @@ impl Spectral {
 
         let ss = view2d(ss, self.ng, self.ng);
 
-        for k in 0..=self.kmax {
-            spec[k] = 0.0;
+        for e in spec.iter_mut().take(self.kmax + 1) {
+            *e = 0.0;
         }
 
         // x and y-independent mode:
