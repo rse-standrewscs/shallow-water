@@ -1,0 +1,27 @@
+# Numerical parameters
+numerical:
+  # Inversion grid resolution in both x and y
+  grid_resolution: 32
+  # Number of vertical layers
+  vertical_layers: 4
+  # 1.0 / grid_resolution
+  time_step: 0.03125
+  # Total duration of the simulation
+  duration: 25.0
+  # Interval of saving grid data
+  save_interval: 0.25
+  # Maximum pressure difference on convergence
+  max_pressure_difference: 0.000000001
+
+# Physical parameters
+physical:
+  # Constant Coriolis frequency = 4 * Pi
+  coriolis_frequency: 12.566370614359173
+  # Short-scale gravity wave speed = 2 * Pi
+  gravity_wave_speed: 6.283185307179586
+  # Mean fluid depth (conserved by mass conservation)
+  mean_fluid_depth: 0.4
+  # This times f is the damping rate on wavenumber grid_resolution/2
+  damping: 10.0
+  # Viscosity constant
+  nnu: 3.0

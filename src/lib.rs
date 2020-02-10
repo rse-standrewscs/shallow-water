@@ -11,4 +11,5 @@ pub mod sta2dfft;
 pub mod stafft;
 
 pub mod constants;
+pub mod parameters;
 pub mod utils;
