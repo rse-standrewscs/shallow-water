@@ -11,7 +11,7 @@
 
 http://www-vortex.mcs.st-and.ac.uk/software.html
 
-## Usage
+## Installing
 
 In the root directory of the project:
 
@@ -26,6 +26,14 @@ shallow-water nhswps
 This will build and place a `shallow-water` binary in `~/.cargo/bin/` which, if in PATH, can then be used to run all 4 subcommands. It will use parameters found in `./parameters.toml` by default, an alternative parameter file path can be passed as an argument.
 
 Final output is placed in the `2d` and `3d` folders, as well as in three `.asc` files.
+
+### Using locally
+
+`cargo run` can be used to run the program without installing.
+
+```
+cargo run --release -- -p parameters.yaml balinit
+```
 
 ### Testing
 
