@@ -297,7 +297,7 @@ fn savegrid(state: &mut State) {
 
     ekin += (1.0 / 2.0) * wkp.sum();
 
-    for iz in 1..=nz - 1 {
+    for iz in 1..nz {
         Zip::from(&mut wkp)
             .and(&state.r.index_axis(Axis(2), iz))
             .and(&state.u.index_axis(Axis(2), iz))
@@ -618,7 +618,7 @@ fn diagnose(state: &mut State) {
         for j in 0..ng {
             sum += (1.0 / 2.0) * state.zeta[[i, j, 0]].powf(2.0);
             sum += (1.0 / 2.0) * state.zeta[[i, j, nz]].powf(2.0);
-            for k in 1..=nz - 1 {
+            for k in 1..nz {
                 sum += state.zeta[[i, j, k]].powf(2.0);
             }
         }
@@ -1045,7 +1045,7 @@ pub fn psolve(state: &mut State) {
         }
 
         // Interior grid points:
-        for iz in 1..=nz - 1 {
+        for iz in 1..nz {
             wkq = d2pdt2.clone();
             {
                 let mut wka = viewmut2d(&mut wka, ng, ng);
@@ -1177,7 +1177,7 @@ pub fn psolve(state: &mut State) {
             .and(sp_matrix.index_axis(Axis(2), 1))
             .apply(|gg, sp0, sp1| *gg = (1.0 / 3.0) * sp0 + (1.0 / 6.0) * sp1);
 
-        for iz in 1..=nz - 1 {
+        for iz in 1..nz {
             for i in 0..ng {
                 for j in 0..ng {
                     gg_matrix[[i, j, iz]] = (1.0 / 12.0)
@@ -1192,7 +1192,7 @@ pub fn psolve(state: &mut State) {
             .and(state.spectral.htdv.index_axis(Axis(2), 0))
             .apply(|ps, gg, htdv| *ps = gg * htdv);
 
-        for iz in 1..=nz - 1 {
+        for iz in 1..nz {
             for i in 0..ng {
                 for j in 0..ng {
                     state.ps[[i, j, iz]] = (gg_matrix[[i, j, iz]]
@@ -1259,7 +1259,7 @@ pub fn psolve(state: &mut State) {
         let mut gg = viewmut3d(&mut gg, ng, ng, nz + 1);
         let sp = view3d(&sp, ng, ng, nz + 1);
 
-        for iz in 1..=nz - 1 {
+        for iz in 1..nz {
             for i in 0..ng {
                 for j in 0..ng {
                     gg[[i, j, iz]] = (state.ps[[i, j, iz + 1]] - state.ps[[i, j, iz - 1]]) * hdzi;
@@ -1277,7 +1277,7 @@ pub fn psolve(state: &mut State) {
                 gg[[i, j, 1]] *= state.spectral.htd1[0];
             }
         }
-        for iz in 2..=nz - 1 {
+        for iz in 2..nz {
             for i in 0..ng {
                 for j in 0..ng {
                     gg[[i, j, iz]] = (gg[[i, j, iz]] - (1.0 / 6.0) * gg[[i, j, iz - 1]])
@@ -1292,7 +1292,7 @@ pub fn psolve(state: &mut State) {
                     * state.spectral.htd1[nz - 1];
             }
         }
-        for iz in (1..=nz - 1).rev() {
+        for iz in (1..nz).rev() {
             for i in 0..ng {
                 for j in 0..ng {
                     gg[[i, j, iz]] += state.spectral.etd1[iz - 1] * gg[[i, j, iz + 1]];
@@ -2028,8 +2028,7 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
         for iz in 0..=nz {
             for i in 0..ng {
                 for j in 0..ng {
-                    wkd_matrix[[i, j]] =
-                        wkd_matrix[[i, j]] + state.spectral.weight[iz] * state.aa[[i, j, iz]];
+                    wkd_matrix[[i, j]] += state.spectral.weight[iz] * state.aa[[i, j, iz]]
                 }
             }
         }
@@ -2037,7 +2036,7 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
         //Note: aa contains div(u*rho_theta) in spectral space
         for i in 0..ng {
             for j in 0..ng {
-                wkd_matrix[[i, j]] = state.spectral.c2g2[[i, j]] * wkd_matrix[[i, j]];
+                wkd_matrix[[i, j]] *= state.spectral.c2g2[[i, j]]
             }
         }
     };
@@ -2063,7 +2062,7 @@ pub fn source(state: &State, sqs: &mut [f64], sds: &mut [f64], sgs: &mut [f64]) 
         for i in 0..ng {
             for j in 0..ng {
                 wkp_matrix[[i, j]] = wkq_matrix[[i, j]] * state.u[[i, j, iz]];
-                wkq_matrix[[i, j]] = wkq_matrix[[i, j]] * state.v[[i, j, iz]];
+                wkq_matrix[[i, j]] *= state.v[[i, j, iz]];
             }
         }
         // Compute spectral divergence from physical fields:
