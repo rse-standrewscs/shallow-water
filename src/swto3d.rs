@@ -1,5 +1,3 @@
-use crate::utils::*;
-
 pub fn swto3d(
     ql2d: &[f64],
     d2d: &[f64],
@@ -7,28 +5,14 @@ pub fn swto3d(
     ng: usize,
     nz: usize,
 ) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
-    let ql2d = view2d(ql2d, ng, ng);
-    let d2d = view2d(d2d, ng, ng);
-    let g2d = view2d(g2d, ng, ng);
+    let mut gl = Vec::with_capacity(ng * ng * (nz + 1));
+    let mut d = Vec::with_capacity(ng * ng * (nz + 1));
+    let mut g = Vec::with_capacity(ng * ng * (nz + 1));
 
-    let mut gl = vec![0.0; ng * ng * (nz + 1)];
-    let mut d = vec![0.0; ng * ng * (nz + 1)];
-    let mut g = vec![0.0; ng * ng * (nz + 1)];
-
-    {
-        let mut ql = viewmut3d(&mut gl, ng, ng, nz + 1);
-        let mut d = viewmut3d(&mut d, ng, ng, nz + 1);
-        let mut g = viewmut3d(&mut g, ng, ng, nz + 1);
-
-        for iz in 0..=nz {
-            for i in 0..ng {
-                for j in 0..ng {
-                    ql[[i, j, iz]] = ql2d[[i, j]];
-                    d[[i, j, iz]] = d2d[[i, j]];
-                    g[[i, j, iz]] = g2d[[i, j]];
-                }
-            }
-        }
+    for _ in 0..=nz {
+        gl.extend_from_slice(ql2d);
+        d.extend_from_slice(d2d);
+        g.extend_from_slice(g2d);
     }
 
     (gl, d, g)
