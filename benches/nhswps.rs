@@ -4,7 +4,10 @@ use {
     ndarray::{Array3, ShapeBuilder},
     shallow_water::{
         array3_from_file,
-        nhswps::{advance, coeffs, cpsource, psolve, source, vertical, Output, State},
+        nhswps::{
+            advance::advance, coeffs::coeffs, cpsource::cpsource, psolve::psolve, source::source,
+            vertical::vertical, Output, State,
+        },
         spectral::Spectral,
     },
 };

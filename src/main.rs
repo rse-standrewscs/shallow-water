@@ -24,19 +24,15 @@ fn main() {
         (version: crate_version!())
         (@arg PARAMETERS_FILE: -p --params +takes_value "Path to file containing simulation parameters.")
         (@subcommand vstrip =>
-            (version: crate_version!())
             (about: "Initialises a PV strip with zero fields of divergence and acceleration divergence.")
         )
         (@subcommand balinit =>
-            (version: crate_version!())
             (about: "Re-initialises a flow with balanced fields obtained from the conditions delta_t=gamma_t=0 using data previously set up with a data generation routine.")
         )
         (@subcommand swto3d =>
-            (version: crate_version!())
             (about: "Converts 2D shallow-water fields to 3D fields needed by nhswps.")
         )
         (@subcommand nhswps =>
-            (version: crate_version!())
             (about: "The Horizontally Doubly-Periodic Three-Dimensional Non-Hydrostatic Shallow-Water Pseudo-Spectral Method")
         )
     )
