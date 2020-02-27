@@ -7,3 +7,6 @@ Cargo.lock
 *.r8
 *.asc
 log
+
+# Misc.
+parameters.yaml
