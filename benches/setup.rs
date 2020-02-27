@@ -1,6 +1,8 @@
 use {
     criterion::{black_box, criterion_group, criterion_main, Benchmark, Criterion},
-    shallow_water::{balinit::balinit, swto3d::swto3d, vstrip::init_pv_strip},
+    shallow_water::{
+        balinit::balinit, parameters::Parameters, swto3d::swto3d, vstrip::init_pv_strip,
+    },
 };
 
 fn _2d_to_vec<T: Clone + Copy>(v: &[Vec<T>]) -> Vec<T> {
@@ -19,12 +21,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench(
         "full_init",
         Benchmark::new("ng16_nz4", |b| {
+            let mut params = Parameters::default();
+            params.numerical.grid_resolution = 16;
+            params.numerical.vertical_layers = 4;
+
             b.iter(|| {
-                let ng = black_box(16);
-                let nz = black_box(4);
-                let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-                let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), ng, nz);
-                let (_, _, _) = swto3d(&qq, &dd, &gg, ng, nz);
+                let params = black_box(&params);
+                let qq = init_pv_strip(&params);
+                let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), &params);
+                let (_, _, _) = swto3d(&qq, &dd, &gg, &params);
             })
         })
         .sample_size(20),
@@ -33,12 +38,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench(
         "full_init",
         Benchmark::new("ng32_nz4", |b| {
+            let mut params = Parameters::default();
+            params.numerical.grid_resolution = 32;
+            params.numerical.vertical_layers = 4;
+
             b.iter(|| {
-                let ng = black_box(32);
-                let nz = black_box(4);
-                let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-                let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), ng, nz);
-                let (_, _, _) = swto3d(&qq, &dd, &gg, ng, nz);
+                let params = black_box(&params);
+                let qq = init_pv_strip(&params);
+                let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), &params);
+                let (_, _, _) = swto3d(&qq, &dd, &gg, &params);
             })
         })
         .sample_size(10),
@@ -47,12 +55,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench(
         "full_init",
         Benchmark::new("ng64_nz16", |b| {
+            let mut params = Parameters::default();
+            params.numerical.grid_resolution = 64;
+            params.numerical.vertical_layers = 16;
+
             b.iter(|| {
-                let ng = black_box(64);
-                let nz = black_box(16);
-                let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-                let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), ng, nz);
-                let (_, _, _) = swto3d(&qq, &dd, &gg, ng, nz);
+                let params = black_box(&params);
+                let qq = init_pv_strip(&params);
+                let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), &params);
+                let (_, _, _) = swto3d(&qq, &dd, &gg, &params);
             })
         })
         .sample_size(10),

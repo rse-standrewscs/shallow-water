@@ -1,9 +1,12 @@
 use {
+    crate::parameters::Parameters,
     ndarray::{Array2, ShapeBuilder},
     std::f64::consts::PI,
 };
 
-pub fn init_pv_strip(ng: usize, width: f64, a2: f64, a3: f64) -> Array2<f64> {
+pub fn init_pv_strip(parameters: &Parameters) -> Array2<f64> {
+    let ng = parameters.numerical.grid_resolution;
+
     let ngu: usize = 16 * ng;
     let qmax: f64 = 4.0 * PI;
 
@@ -18,14 +21,16 @@ pub fn init_pv_strip(ng: usize, width: f64, a2: f64, a3: f64) -> Array2<f64> {
     let mut qa = Array2::from_shape_vec((ngu, ngu), vec![0.0; ngu * ngu]).unwrap();
     let mut qq = Array2::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
 
-    let hwid = width / 2.0;
+    let hwid = parameters.numerical.strip_width / 2.0;
 
     let glu = 2.0 * PI / ngu as f64;
 
     for i in 0..ngu {
         let x = glu * i as f64 - PI;
         let y1 = -hwid;
-        let y2 = hwid + a2 * (2.0 * x).sin() + a3 * (3.0 * x).sin();
+        let y2 = hwid
+            + parameters.numerical.a2 * (2.0 * x).sin()
+            + parameters.numerical.a3 * (3.0 * x).sin();
 
         for j in 0..ngu {
             let y = glu * j as f64 - PI;
@@ -104,7 +109,7 @@ pub fn init_pv_strip(ng: usize, width: f64, a2: f64, a3: f64) -> Array2<f64> {
 #[cfg(test)]
 mod test {
     use {
-        super::init_pv_strip,
+        super::*,
         approx::assert_abs_diff_eq,
         byteorder::{ByteOrder, LittleEndian},
         ndarray::{Array2, ShapeBuilder},
@@ -122,7 +127,11 @@ mod test {
                 .collect::<Vec<f64>>(),
         )
         .unwrap();
-        let qq = init_pv_strip(18, 0.4, 0.02, -0.01);
+
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 18;
+
+        let qq = init_pv_strip(&params);
 
         assert_abs_diff_eq!(qq2, qq, epsilon = 1.0E-13);
     }
@@ -139,7 +148,11 @@ mod test {
                 .collect::<Vec<f64>>(),
         )
         .unwrap();
-        let qq = init_pv_strip(32, 0.4, 0.02, -0.01);
+
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 32;
+
+        let qq = init_pv_strip(&params);
 
         assert_abs_diff_eq!(qq2, qq, epsilon = 1.0E-13);
     }
@@ -156,7 +169,11 @@ mod test {
                 .collect::<Vec<f64>>(),
         )
         .unwrap();
-        let qq = init_pv_strip(64, 0.4, 0.02, -0.01);
+
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 64;
+
+        let qq = init_pv_strip(&params);
 
         assert_abs_diff_eq!(qq2, qq, epsilon = 1.0E-13);
     }

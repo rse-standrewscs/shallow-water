@@ -2,6 +2,7 @@ use {
     crate::{
         balinit::balinit,
         nhswps::{nhswps, Output},
+        parameters::Parameters,
         swto3d::swto3d,
         vstrip::init_pv_strip,
     },
@@ -12,22 +13,25 @@ use {
 
 lazy_static! {
     static ref OUTPUT_18_4: Output = {
-        let ng = 18;
-        let nz = 4;
-        let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-        let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), ng, nz);
-        let (qq, dd, gg) = swto3d(&qq, &dd, &gg, ng, nz);
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 18;
+        params.numerical.vertical_layers = 4;
+        params.numerical.time_step = 1.0 / (18 as f64);
 
-        nhswps(&qq, &dd, &gg, ng, nz)
+        let qq = init_pv_strip(&params);
+        let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), &params);
+        let (qq, dd, gg) = swto3d(&qq, &dd, &gg, &params);
+
+        nhswps(&qq, &dd, &gg, &params)
     };
     static ref OUTPUT_32_4: Output = {
-        let ng = 32;
-        let nz = 4;
-        let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
-        let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), ng, nz);
-        let (qq, dd, gg) = swto3d(&qq, &dd, &gg, ng, nz);
+        let params = Parameters::default();
 
-        nhswps(&qq, &dd, &gg, ng, nz)
+        let qq = init_pv_strip(&params);
+        let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), &params);
+        let (qq, dd, gg) = swto3d(&qq, &dd, &gg, &params);
+
+        nhswps(&qq, &dd, &gg, &params)
     };
 }
 

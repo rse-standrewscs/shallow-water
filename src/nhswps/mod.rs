@@ -4,7 +4,7 @@
 mod test;
 
 use {
-    crate::{constants::*, spectral::Spectral, sta2dfft::D2FFT, utils::*},
+    crate::{constants::*, parameters::Parameters, spectral::Spectral, sta2dfft::D2FFT, utils::*},
     byteorder::{ByteOrder, LittleEndian},
     log::{debug, error, info},
     ndarray::{Array1, Array2, Array3, ArrayView1, Axis, ShapeBuilder, Zip},
@@ -86,13 +86,15 @@ pub struct State {
     pub output: Output,
 }
 
-pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], ng: usize, nz: usize) -> Output {
+pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], parameters: &Parameters) -> Output {
     // Read linearised PV anomaly and convert to spectral space as qs
 
     // Parameters
-    let dt = 1.0 / (ng as f64);
-    let tgsave = 0.25;
-    let tsim = 25.0;
+    let ng = parameters.numerical.grid_resolution;
+    let nz = parameters.numerical.vertical_layers;
+    let dt = parameters.numerical.time_step;
+    let tgsave = parameters.numerical.save_interval;
+    let tsim = parameters.numerical.duration;
 
     let arr3zero = Array3::<f64>::from_shape_vec(
         (ng, ng, nz + 1).strides((1, ng, ng * ng)),

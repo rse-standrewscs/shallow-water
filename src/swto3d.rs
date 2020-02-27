@@ -1,10 +1,14 @@
+use crate::parameters::Parameters;
+
 pub fn swto3d(
     ql2d: &[f64],
     d2d: &[f64],
     g2d: &[f64],
-    ng: usize,
-    nz: usize,
+    parameters: &Parameters,
 ) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+    let ng = parameters.numerical.grid_resolution;
+    let nz = parameters.numerical.vertical_layers;
+
     let mut gl = Vec::with_capacity(ng * ng * (nz + 1));
     let mut d = Vec::with_capacity(ng * ng * (nz + 1));
     let mut g = Vec::with_capacity(ng * ng * (nz + 1));
@@ -43,7 +47,11 @@ mod test {
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let (qq, _, _) = swto3d(&split[0], &split[1], &split[2], 18, 2);
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 18;
+        params.numerical.vertical_layers = 2;
+
+        let (qq, _, _) = swto3d(&split[0], &split[1], &split[2], &params);
 
         assert_eq!(qq2, qq);
     }
@@ -66,7 +74,11 @@ mod test {
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let (_, dd, _) = swto3d(&split[0], &split[1], &split[2], 18, 2);
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 18;
+        params.numerical.vertical_layers = 2;
+
+        let (_, dd, _) = swto3d(&split[0], &split[1], &split[2], &params);
 
         assert_eq!(dd2, dd);
     }
@@ -89,7 +101,11 @@ mod test {
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let (_, _, gg) = swto3d(&split[0], &split[1], &split[2], 18, 2);
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 18;
+        params.numerical.vertical_layers = 2;
+
+        let (_, _, gg) = swto3d(&split[0], &split[1], &split[2], &params);
 
         assert_eq!(gg2, gg);
     }
@@ -122,7 +138,11 @@ mod test {
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let (qq, dd, gg) = swto3d(&split[0], &split[1], &split[2], 128, 32);
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 128;
+        params.numerical.vertical_layers = 32;
+
+        let (qq, dd, gg) = swto3d(&split[0], &split[1], &split[2], &params);
 
         assert_eq!(qq2, qq);
         assert_eq!(dd2, dd);

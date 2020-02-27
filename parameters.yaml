@@ -12,6 +12,12 @@ numerical:
   save_interval: 0.25
   # Maximum pressure difference on convergence
   max_pressure_difference: 0.000000001
+  # Strip width
+  strip_width: 0.4
+  # Value of A2 in displacement equation
+  a2: 0.02
+  # Value of A3 in displacement equation
+  a3: -0.01
 
 # Physical parameters
 physical:

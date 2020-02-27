@@ -7,11 +7,14 @@
 //! divergence (delta) and the SW acceleration divergence (gamma).
 
 use {
-    crate::{constants::*, spectral::Spectral, utils::*},
+    crate::{constants::*, parameters::Parameters, spectral::Spectral, utils::*},
     log::info,
 };
 
-pub fn balinit(zz: &[f64], ng: usize, nz: usize) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+    let ng = parameters.numerical.grid_resolution;
+    let nz = parameters.numerical.vertical_layers;
+
     let toler = 1.0E-9;
 
     let mut zz = zz.to_vec();
@@ -357,7 +360,11 @@ mod test {
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let (qq, _, _) = balinit(&zz, 18, 2);
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 18;
+        params.numerical.vertical_layers = 2;
+
+        let (qq, _, _) = balinit(&zz, &params);
 
         assert_approx_eq_slice(&qq2, &qq);
     }
@@ -373,7 +380,11 @@ mod test {
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let (_, dd, __) = balinit(&zz, 18, 2);
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 18;
+        params.numerical.vertical_layers = 2;
+
+        let (_, dd, __) = balinit(&zz, &params);
 
         assert_approx_eq_slice(&dd2, &dd);
     }
@@ -389,7 +400,11 @@ mod test {
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let (_, __, gg) = balinit(&zz, 18, 2);
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 18;
+        params.numerical.vertical_layers = 2;
+
+        let (_, __, gg) = balinit(&zz, &params);
 
         assert_approx_eq_slice(&gg2, &gg);
     }
@@ -407,7 +422,11 @@ mod test {
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let (qq, dd, gg) = balinit(&qq_init, 18, 2);
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 18;
+        params.numerical.vertical_layers = 2;
+
+        let (qq, dd, gg) = balinit(&qq_init, &params);
 
         assert_approx_eq_slice(
             &sw_init,
@@ -427,7 +446,11 @@ mod test {
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        let (qq, dd, gg) = balinit(&qq_init, 32, 4);
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 32;
+        params.numerical.vertical_layers = 4;
+
+        let (qq, dd, gg) = balinit(&qq_init, &params);
 
         assert_approx_eq_slice(
             &sw_init,

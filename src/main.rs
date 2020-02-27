@@ -80,11 +80,10 @@ fn write_file(path: &str, data: &[u8]) -> io::Result<()> {
 
 fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
     let ng = params.numerical.grid_resolution;
-    let nz = params.numerical.vertical_layers;
 
     match subcmd {
         Some("vstrip") => {
-            let qq = init_pv_strip(ng, 0.4, 0.02, -0.01);
+            let qq = init_pv_strip(&params);
 
             let mut f = File::create("qq_init.r8")?;
             let mut buf = [0u8; 8];
@@ -114,7 +113,7 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
                     .collect::<Vec<f64>>()
             };
 
-            let (qq, dd, gg) = balinit(&zz, ng, nz);
+            let (qq, dd, gg) = balinit(&zz, &params);
 
             let mut f = File::create("sw_init.r8")?;
             let mut buf = [0u8; 8];
@@ -144,7 +143,7 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
                     .collect::<Vec<Vec<f64>>>()
             };
 
-            let (qq, dd, gg) = swto3d(&split[0], &split[1], &split[2], ng, nz);
+            let (qq, dd, gg) = swto3d(&split[0], &split[1], &split[2], &params);
 
             let mut buf = [0u8; 8];
 
@@ -206,7 +205,7 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
                     .collect::<Vec<f64>>()
             };
 
-            let output = nhswps(&qq, &dd, &gg, ng, nz);
+            let output = nhswps(&qq, &dd, &gg, &params);
 
             write_file("monitor.asc", &output.monitor.as_bytes())?;
             write_file("ecomp.asc", &output.ecomp.as_bytes())?;

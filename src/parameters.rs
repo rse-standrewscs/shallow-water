@@ -21,6 +21,12 @@ pub struct Numerical {
     pub save_interval: f64,
     /// Maximum pressure difference on convergence
     pub max_pressure_difference: f64,
+    /// Strip width
+    pub strip_width: f64,
+    /// Value of A2 in displacement equation
+    pub a2: f64,
+    /// Value of A3 in displacement equation
+    pub a3: f64,
 }
 impl Default for Numerical {
     fn default() -> Self {
@@ -31,6 +37,9 @@ impl Default for Numerical {
             duration: 25.0,
             save_interval: 0.25,
             max_pressure_difference: 1.0e-9,
+            strip_width: 0.4,
+            a2: 0.02,
+            a3: -0.01,
         }
     }
 }
