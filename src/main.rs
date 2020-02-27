@@ -112,11 +112,11 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
             let (qq, dd, gg) = balinit(&zz, &params);
 
             let mut f = File::create("sw_init.r8")?;
-            let mut buf = [0u8; 8];
             [vec![0.0], qq, vec![0.0], dd, vec![0.0], gg]
                 .concat()
                 .iter()
                 .map(|x| {
+                    let mut buf = [0u8; 8];
                     LittleEndian::write_f64(&mut buf, *x);
                     f.write_all(&buf)
                 })
@@ -128,47 +128,59 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
                 let mut sw = Vec::new();
                 f.read_to_end(&mut sw)?;
 
-                let sw_init = sw
+                let sw = sw
                     .chunks(8)
                     .map(LittleEndian::read_f64)
                     .collect::<Vec<f64>>();
 
-                sw_init
-                    .chunks(ng * ng + 1)
+                sw.chunks(ng * ng + 1)
                     .map(|xs| xs[1..].to_vec())
                     .collect::<Vec<Vec<f64>>>()
             };
 
             let (qq, dd, gg) = swto3d(&split[0], &split[1], &split[2], &params);
 
-            let mut buf = [0u8; 8];
-
-            let mut f = File::create("qq_init.r8")?;
-            f.write_all(&[0u8; 8])?;
-            qq.iter()
-                .map(|x| {
+            let qq = {
+                let mut bytes = vec![];
+                qq.iter().for_each(|x| {
+                    let mut buf = [0u8; 8];
                     LittleEndian::write_f64(&mut buf, *x);
-                    f.write_all(&buf)
-                })
-                .collect::<io::Result<()>>()?;
+                    bytes.extend_from_slice(&buf);
+                });
+                bytes
+            };
 
-            let mut f = File::create("dd_init.r8")?;
-            f.write_all(&[0u8; 8])?;
-            dd.iter()
-                .map(|x| {
+            let dd = {
+                let mut bytes = vec![];
+                dd.iter().for_each(|x| {
+                    let mut buf = [0u8; 8];
                     LittleEndian::write_f64(&mut buf, *x);
-                    f.write_all(&buf)
-                })
-                .collect::<io::Result<()>>()?;
+                    bytes.extend_from_slice(&buf);
+                });
+                bytes
+            };
 
-            let mut f = File::create("gg_init.r8")?;
-            f.write_all(&[0u8; 8])?;
-            gg.iter()
-                .map(|x| {
+            let gg = {
+                let mut bytes = vec![];
+                gg.iter().for_each(|x| {
+                    let mut buf = [0u8; 8];
                     LittleEndian::write_f64(&mut buf, *x);
-                    f.write_all(&buf)
-                })
-                .collect::<io::Result<()>>()?;
+                    bytes.extend_from_slice(&buf);
+                });
+                bytes
+            };
+
+            let mut qq_file = File::create("qq_init.r8")?;
+            let mut dd_file = File::create("dd_init.r8")?;
+            let mut gg_file = File::create("gg_init.r8")?;
+
+            qq_file.write_all(&[0u8; 8])?;
+            dd_file.write_all(&[0u8; 8])?;
+            gg_file.write_all(&[0u8; 8])?;
+
+            qq_file.write_all(&qq)?;
+            dd_file.write_all(&dd)?;
+            gg_file.write_all(&gg)?;
         }
         Some("nhswps") => {
             let qq = {
