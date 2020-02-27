@@ -3,23 +3,11 @@ use {
     criterion::{criterion_group, criterion_main, Benchmark, Criterion},
     ndarray::{Array3, ShapeBuilder},
     shallow_water::{
+        array3_from_file,
         nhswps::{advance, coeffs, cpsource, psolve, source, vertical, Output, State},
         spectral::Spectral,
     },
 };
-
-macro_rules! array3_from_file {
-    ($x:expr, $y:expr, $z:expr, $name:expr) => {
-        Array3::from_shape_vec(
-            ($x, $y, $z).strides((1, $x, $x * $y)),
-            include_bytes!($name)
-                .chunks(8)
-                .map(NetworkEndian::read_f64)
-                .collect::<Vec<f64>>(),
-        )
-        .unwrap();
-    };
-}
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench(
