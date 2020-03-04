@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Ferdia McKeogh <ferdia@mckeogh.tech>"]
 edition = "2018"
 
+[profile.release]
+lto = "fat"
+panic = "abort"
+debug = true
+
 [dependencies]
 ndarray = { version = "0.13.0", features = ["approx", "rayon"] }
 log = "0.4.8"
