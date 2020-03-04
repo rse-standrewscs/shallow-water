@@ -9,6 +9,7 @@
 use {
     crate::{constants::*, parameters::Parameters, spectral::Spectral, utils::*},
     log::info,
+    ndarray::Zip,
 };
 
 pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
@@ -163,13 +164,14 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
 
         let wka_matrix = view2d(&wka, ng, ng);
         let wkb_matrix = view2d(&wkb, ng, ng);
-        let mut gs_matrix = viewmut2d(&mut gs, ng, ng);
-        for i in 0..ng {
-            for j in 0..ng {
-                gs_matrix[[i, j]] =
-                    spectral.filt[[i, j]] * (wka_matrix[[i, j]] - 2.0 * wkb_matrix[[i, j]]);
-            }
-        }
+        let gs_matrix = viewmut2d(&mut gs, ng, ng);
+
+        Zip::from(gs_matrix)
+            .and(&spectral.filt)
+            .and(&wka_matrix)
+            .and(&wkb_matrix)
+            .apply(|gs, filt, wka, wkb| *gs = filt * (wka - 2.0 * wkb));
+
         wka = gs.clone();
         spectral.d2fft.spctop(&mut wka, &mut gg);
 
@@ -202,13 +204,14 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
 
         let wka_matrix = view2d(&wka, ng, ng);
         let wkb_matrix = view2d(&wkb, ng, ng);
-        let mut ds_matrix = viewmut2d(&mut ds, ng, ng);
-        for i in 0..ng {
-            for j in 0..ng {
-                ds_matrix[[i, j]] = spectral.helm[[i, j]]
-                    * (COF * wkb_matrix[[i, j]] - spectral.c2g2[[i, j]] * wka_matrix[[i, j]]);
-            }
-        }
+        let ds_matrix = viewmut2d(&mut ds, ng, ng);
+
+        Zip::from(ds_matrix)
+            .and(&spectral.helm)
+            .and(&wkb_matrix)
+            .and(&spectral.c2g2)
+            .and(&wka_matrix)
+            .apply(|ds, helm, wkb, c2g2, wka| *ds = helm * (COF * wkb - c2g2 * wka));
 
         wka = ds.clone();
         spectral.d2fft.spctop(&mut wka, &mut dd);
@@ -234,14 +237,14 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
         spectral.d2fft.ptospc(&mut wkp, &mut wkb);
         fqbar = COF * qbar;
 
-        let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
+        let wka_matrix = viewmut2d(&mut wka, ng, ng);
         let wkb_matrix = view2d(&wkb, ng, ng);
-        for i in 0..ng {
-            for j in 0..ng {
-                wka_matrix[[i, j]] =
-                    spectral.filt[[i, j]] * wkb_matrix[[i, j]] / (spectral.opak[[i, j]] - fqbar);
-            }
-        }
+
+        Zip::from(wka_matrix)
+            .and(&spectral.filt)
+            .and(&wkb_matrix)
+            .and(&spectral.opak)
+            .apply(|wka, filt, wkb, opak| *wka = filt * wkb / (opak - fqbar));
 
         spectral.d2fft.spctop(&mut wka, &mut hh);
         //wkp: corrected de-aliased height field (to be hh below)
@@ -278,13 +281,12 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
         spectral.d2fft.xderiv(&spectral.hrkx, &wka, &mut wkd);
         spectral.d2fft.yderiv(&spectral.hrky, &wka, &mut wkb);
 
-        let mut wke_matrix = viewmut2d(&mut wke, ng, ng);
+        let wke_matrix = viewmut2d(&mut wke, ng, ng);
         let ds_matrix = view2d(&ds, ng, ng);
-        for i in 0..ng {
-            for j in 0..ng {
-                wke_matrix[[i, j]] = spectral.rlap[[i, j]] * ds_matrix[[i, j]];
-            }
-        }
+        Zip::from(wke_matrix)
+            .and(&spectral.rlap)
+            .and(&ds_matrix)
+            .apply(|wke, rlap, ds| *wke = rlap * ds);
 
         spectral.d2fft.xderiv(&spectral.hrkx, &wke, &mut wka);
         spectral.d2fft.yderiv(&spectral.hrky, &wke, &mut wkc);
