@@ -8,6 +8,7 @@ edition = "2018"
 lto = "fat"
 panic = "abort"
 debug = true
+overflow-checks = false
 
 [dependencies]
 ndarray = { version = "0.13.0", features = ["approx", "rayon"] }
