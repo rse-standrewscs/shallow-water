@@ -72,6 +72,11 @@ mod complete_18_4 {
         );
     }
 
+    /*
+    // The following tests (and the similar tests for 32_4) have been commented out due to the "spectra.asc" output essentially
+    // representing the total accumulated error throughout execution and so cannot be expected to maintain bit-level similarity
+    // with the FORTRAN implementation especially when parallelisation is implemented.
+
     #[cfg(all(target_arch = "x86_64", target_os = "macos",))]
     #[test]
     #[ignore]
@@ -107,6 +112,7 @@ mod complete_18_4 {
                 .collect::<Vec<&str>>()
         );
     }
+    */
 
     mod _2d {
         use super::*;
@@ -353,6 +359,7 @@ mod complete_32_4 {
         );
     }
 
+    /*
     #[cfg(all(target_arch = "x86_64", target_os = "macos",))]
     #[test]
     #[ignore]
@@ -388,6 +395,7 @@ mod complete_32_4 {
                 .collect::<Vec<&str>>()
         );
     }
+    */
 
     mod _2d {
         use super::*;
