@@ -1,376 +1,376 @@
-use crate::{constants::*, nhswps::State, utils::*};
+use {
+    crate::{constants::*, nhswps::State},
+    ndarray::{azip, Array2, Array3, ArrayViewMut3, Axis, ShapeBuilder},
+};
 
 /// Finds the part of the pressure source which does not vary
 /// in the iteration to find the pressure.
-pub fn cpsource(state: &State, sp0: &mut [f64]) {
+pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
     let hdzi = (1.0 / 2.0) * (1.0 / (HBAR / nz as f64));
 
+    let zero2 =
+        Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
+    let zero3 = Array3::<f64>::from_shape_vec(
+        (ng, ng, nz + 1).strides((1, ng, ng * ng)),
+        vec![0.0; ng * ng * (nz + 1)],
+    )
+    .unwrap();
+
     // Physical space arrays
-    let mut ut = vec![0.0; ng * ng * (nz + 1)];
-    let mut vt = vec![0.0; ng * ng * (nz + 1)];
-    let mut wt = vec![0.0; ng * ng * (nz + 1)];
-    let mut ux = vec![0.0; ng * ng];
-    let mut uy = vec![0.0; ng * ng];
-    let mut vx = vec![0.0; ng * ng];
-    let mut vy = vec![0.0; ng * ng];
-    let mut wx = vec![0.0; ng * ng];
-    let mut wy = vec![0.0; ng * ng];
-    let mut hsrc = vec![0.0; ng * ng];
-    let mut wkp = vec![0.0; ng * ng];
-    let mut wkq = vec![0.0; ng * ng];
-    let mut wkr = vec![0.0; ng * ng];
+    let mut ut = zero3.clone();
+    let mut vt = zero3.clone();
+    let mut wt = zero3.clone();
+    let mut ux = zero2.clone();
+    let mut uy = zero2.clone();
+    let mut vx = zero2.clone();
+    let mut vy = zero2.clone();
+    let mut wx = zero2.clone();
+    let mut wy = zero2.clone();
+    let mut hsrc = zero2.clone();
+    let mut wkp = zero2.clone();
+    let mut wkq = zero2.clone();
+    let mut wkr = zero2.clone();
 
     // Spectral space arrays (all work arrays)
-    let mut wka = vec![0.0; ng * ng];
-    let mut wkb = vec![0.0; ng * ng];
+    let mut wka = zero2.clone();
+    let mut wkb = zero2.clone();
 
     // Calculate part which is independent of z, -g*Lap_h{h}:
     // wkp = h;
-    {
-        let mut wkp_matrix = viewmut2d(&mut wkp, ng, ng);
-
-        for i in 0..ng {
-            for j in 0..ng {
-                wkp_matrix[[i, j]] = state.z[[i, j, nz]];
-            }
-        }
-    }
+    wkp.assign(&state.z.index_axis(Axis(2), nz));
 
     // Fourier transform to spectral space:
-    state.spectral.d2fft.ptospc(&mut wkp, &mut wka);
+    state.spectral.d2fft.ptospc(
+        wkp.as_slice_memory_order_mut().unwrap(),
+        wka.as_slice_memory_order_mut().unwrap(),
+    );
+
     // Apply -g*Lap_h operator:
-    {
-        let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
-        for i in 0..ng {
-            for j in 0..ng {
-                wka_matrix[[i, j]] *= state.spectral.glap[[i, j]];
-            }
-        }
-    }
+    wka *= &state.spectral.glap;
+
     // Return to physical space:
-    state.spectral.d2fft.spctop(&mut wka, &mut hsrc);
+    state.spectral.d2fft.spctop(
+        wka.as_slice_memory_order_mut().unwrap(),
+        hsrc.as_slice_memory_order_mut().unwrap(),
+    );
     // hsrc contains -g*Lap{h} in physical space.
 
     // Calculate u_theta, v_theta & w_theta:
-    let mut ut_matrix = viewmut3d(&mut ut, ng, ng, nz + 1);
-    let mut vt_matrix = viewmut3d(&mut vt, ng, ng, nz + 1);
-    let mut wt_matrix = viewmut3d(&mut wt, ng, ng, nz + 1);
 
     // Lower boundary (use higher order formula):
-    for i in 0..ng {
-        for j in 0..ng {
-            ut_matrix[[i, j, 0]] =
-                hdzi * (4.0 * state.u[[i, j, 1]] - 3.0 * state.u[[i, j, 0]] - state.u[[i, j, 2]]);
-            vt_matrix[[i, j, 0]] =
-                hdzi * (4.0 * state.v[[i, j, 1]] - 3.0 * state.v[[i, j, 0]] - state.v[[i, j, 2]]);
-            wt_matrix[[i, j, 0]] =
-                hdzi * (4.0 * state.w[[i, j, 1]] - 3.0 * state.w[[i, j, 0]] - state.w[[i, j, 2]]);
-        }
-    }
+    azip!((
+        ut in ut.index_axis_mut(Axis(2), 0),
+        u0 in state.u.index_axis(Axis(2), 0),
+        u1 in state.u.index_axis(Axis(2), 1),
+        u2 in state.u.index_axis(Axis(2), 2))
+    {
+        *ut = hdzi * (4.0 * u1 - 3.0 * u0 - u2)
+    });
+
+    azip!((
+        vt in vt.index_axis_mut(Axis(2), 0),
+        v0 in state.v.index_axis(Axis(2), 0),
+        v1 in state.v.index_axis(Axis(2), 1),
+        v2 in state.v.index_axis(Axis(2), 2))
+    {
+        *vt = hdzi * (4.0 * v1 - 3.0 * v0 - v2)
+    });
+
+    azip!((
+        wt in wt.index_axis_mut(Axis(2), 0),
+        w0 in state.w.index_axis(Axis(2), 0),
+        w1 in state.w.index_axis(Axis(2), 1),
+        w2 in state.w.index_axis(Axis(2), 2))
+    {
+        *wt = hdzi * (4.0 * w1 - 3.0 * w0 - w2)
+    });
 
     // Interior (centred differencing):
     for iz in 1..nz {
-        for i in 0..ng {
-            for j in 0..ng {
-                ut_matrix[[i, j, iz]] = hdzi * (state.u[[i, j, iz + 1]] - state.u[[i, j, iz - 1]]);
-                vt_matrix[[i, j, iz]] = hdzi * (state.v[[i, j, iz + 1]] - state.v[[i, j, iz - 1]]);
-                wt_matrix[[i, j, iz]] = hdzi * (state.w[[i, j, iz + 1]] - state.w[[i, j, iz - 1]]);
-            }
-        }
+        azip!((
+            ut in ut.index_axis_mut(Axis(2), iz),
+            up in state.u.index_axis(Axis(2), iz+1),
+            um in state.u.index_axis(Axis(2), iz-1)) *ut = hdzi * (up - um));
+
+        azip!((
+            vt in vt.index_axis_mut(Axis(2), iz),
+            vp in state.v.index_axis(Axis(2), iz+1),
+            vm in state.v.index_axis(Axis(2), iz-1)) *vt = hdzi * (vp - vm));
+
+        azip!((
+            wt in wt.index_axis_mut(Axis(2), iz),
+            wp in state.w.index_axis(Axis(2), iz+1),
+            wm in state.w.index_axis(Axis(2), iz-1)) *wt = hdzi * (wp - wm));
     }
 
     // Upper boundary (use higher order formula):
-    for i in 0..ng {
-        for j in 0..ng {
-            ut_matrix[[i, j, nz]] = hdzi
-                * (3.0 * state.u[[i, j, nz]] + state.u[[i, j, nz - 2]]
-                    - 4.0 * state.u[[i, j, nz - 1]]);
-            vt_matrix[[i, j, nz]] = hdzi
-                * (3.0 * state.v[[i, j, nz]] + state.v[[i, j, nz - 2]]
-                    - 4.0 * state.v[[i, j, nz - 1]]);
-            wt_matrix[[i, j, nz]] = hdzi
-                * (3.0 * state.w[[i, j, nz]] + state.w[[i, j, nz - 2]]
-                    - 4.0 * state.w[[i, j, nz - 1]]);
-        }
-    }
+    azip!((
+        ut in ut.index_axis_mut(Axis(2), nz),
+        u in state.u.index_axis(Axis(2), nz),
+        u1 in state.u.index_axis(Axis(2), nz-1),
+        u2 in state.u.index_axis(Axis(2), nz-2)) *ut = hdzi * (3.0 * u + u2 - 4.0 * u1));
+    azip!((
+        vt in vt.index_axis_mut(Axis(2), nz),
+        v in state.v.index_axis(Axis(2), nz),
+        v1 in state.v.index_axis(Axis(2), nz-1),
+        v2 in state.v.index_axis(Axis(2), nz-2)) *vt = hdzi * (3.0 * v + v2 - 4.0 * v1));
+    azip!((
+        wt in wt.index_axis_mut(Axis(2), nz),
+        w in state.w.index_axis(Axis(2), nz),
+        w1 in state.w.index_axis(Axis(2), nz-1),
+        w2 in state.w.index_axis(Axis(2), nz-2)) *wt = hdzi * (3.0 * w + w2 - 4.0 * w1));
 
     // Loop over layers and build up source, sp0:
 
     // iz = 0 is much simpler as z = w = 0 there:
     // Calculate u_x, u_y, v_x & v_y:
-    {
-        let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
+    wkq.assign(&state.u.index_axis(Axis(2), 0));
 
-        for i in 0..ng {
-            for j in 0..ng {
-                wkq_matrix[[i, j]] = state.u[[i, j, 0]];
-            }
-        }
-    };
-    state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
+    state.spectral.d2fft.ptospc(
+        wkq.as_slice_memory_order_mut().unwrap(),
+        wka.as_slice_memory_order_mut().unwrap(),
+    );
+    state.spectral.d2fft.xderiv(
+        &state.spectral.hrkx,
+        wka.as_slice_memory_order().unwrap(),
+        wkb.as_slice_memory_order_mut().unwrap(),
+    );
+    state.spectral.d2fft.spctop(
+        wkb.as_slice_memory_order_mut().unwrap(),
+        ux.as_slice_memory_order_mut().unwrap(),
+    );
+    state.spectral.d2fft.yderiv(
+        &state.spectral.hrky,
+        wka.as_slice_memory_order().unwrap(),
+        wkb.as_slice_memory_order_mut().unwrap(),
+    );
+    state.spectral.d2fft.spctop(
+        wkb.as_slice_memory_order_mut().unwrap(),
+        uy.as_slice_memory_order_mut().unwrap(),
+    );
+
+    wkq.assign(&state.v.index_axis(Axis(2), 0));
+
+    state.spectral.d2fft.ptospc(
+        wkq.as_slice_memory_order_mut().unwrap(),
+        wka.as_slice_memory_order_mut().unwrap(),
+    );
+    state.spectral.d2fft.xderiv(
+        &state.spectral.hrkx,
+        wka.as_slice_memory_order().unwrap(),
+        wkb.as_slice_memory_order_mut().unwrap(),
+    );
+    state.spectral.d2fft.spctop(
+        wkb.as_slice_memory_order_mut().unwrap(),
+        vx.as_slice_memory_order_mut().unwrap(),
+    );
+    state.spectral.d2fft.yderiv(
+        &state.spectral.hrky,
+        wka.as_slice_memory_order().unwrap(),
+        wkb.as_slice_memory_order_mut().unwrap(),
+    );
+    state.spectral.d2fft.spctop(
+        wkb.as_slice_memory_order_mut().unwrap(),
+        vy.as_slice_memory_order_mut().unwrap(),
+    );
+
+    azip!((
+        wkq in &mut wkq,
+        ri in state.ri.index_axis(Axis(2), 0),
+        wt in wt.index_axis(Axis(2), 0)) *wkq = ri * wt);
+
     state
         .spectral
-        .d2fft
-        .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
-    state.spectral.d2fft.spctop(&mut wkb, &mut ux);
-    state
-        .spectral
-        .d2fft
-        .yderiv(&state.spectral.hrky, &wka, &mut wkb);
-    state.spectral.d2fft.spctop(&mut wkb, &mut uy);
-    {
-        let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
+        .deal2d(wkq.as_slice_memory_order_mut().unwrap());
 
-        for i in 0..ng {
-            for j in 0..ng {
-                wkq_matrix[[i, j]] = state.v[[i, j, 0]];
-            }
-        }
-    };
-    state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
-    state
-        .spectral
-        .d2fft
-        .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
-    state.spectral.d2fft.spctop(&mut wkb, &mut vx);
-    state
-        .spectral
-        .d2fft
-        .yderiv(&state.spectral.hrky, &wka, &mut wkb);
-    state.spectral.d2fft.spctop(&mut wkb, &mut vy);
+    azip!((
+        sp0 in sp0.index_axis_mut(Axis(2), 0),
+        hsrc in &hsrc,
+        zeta in state.zeta.index_axis(Axis(2), 0))
     {
-        let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-        let wt_matrix = view3d(&wt, ng, ng, nz + 1);
+        *sp0 = hsrc + COF * zeta
+    });
 
-        for i in 0..ng {
-            for j in 0..ng {
-                wkq_matrix[[i, j]] = state.ri[[i, j, 0]] * wt_matrix[[i, j, 0]];
-            }
-        }
-    };
-    state.spectral.deal2d(&mut wkq);
+    azip!((
+        sp0 in sp0.index_axis_mut(Axis(2), 0),
+        wkq in &wkq,
+        ux in &ux,
+        uy in &uy,
+        vx in &vx,
+        vy in &vy)
     {
-        let mut zeta2d = vec![0.0; ng * ng];
-        {
-            let mut zeta2d = viewmut2d(&mut zeta2d, ng, ng);
-            for i in 0..ng {
-                for j in 0..ng {
-                    zeta2d[[i, j]] = state.zeta[[i, j, 0]];
-                }
-            }
-        }
-        let mut d2sp0 = vec![0.0; ng * ng];
-        {
-            let sp0 = view3d(&sp0, ng, ng, nz + 1);
-            let mut d2sp0 = viewmut2d(&mut d2sp0, ng, ng);
-
-            for i in 0..ng {
-                for j in 0..ng {
-                    d2sp0[[i, j]] = sp0[[i, j, 0]];
-                }
-            }
-        };
-        for (i, e) in d2sp0.iter_mut().enumerate() {
-            *e = hsrc[i]
-                + COF * zeta2d[i]
-                + 2.0 * (ux[i] * vy[i] - uy[i] * vx[i] + wkq[i] * (ux[i] + vy[i]));
-        }
-        let mut d3sp0 = viewmut3d(sp0, ng, ng, nz + 1);
-        let d2sp0 = view2d(&d2sp0, ng, ng);
-        for i in 0..ng {
-            for j in 0..ng {
-                d3sp0[[i, j, 0]] = d2sp0[[i, j]];
-            }
-        }
-    }
+        *sp0 += 2.0 * (ux * vy - uy * vx + wkq * (ux + vy))
+    });
 
     for iz in 1..=nz {
         // Calculate u_x, u_y, v_x, v_y, w_x, w_y:
-        {
-            let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
+        wkq.assign(&state.u.index_axis(Axis(2), iz));
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    wkq_matrix[[i, j]] = state.u[[i, j, iz]];
-                }
-            }
-        }
-        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
-        state
-            .spectral
-            .d2fft
-            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
-        state.spectral.d2fft.spctop(&mut wkb, &mut ux);
-        state
-            .spectral
-            .d2fft
-            .yderiv(&state.spectral.hrky, &wka, &mut wkb);
-        state.spectral.d2fft.spctop(&mut wkb, &mut uy);
-        {
-            let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
+        state.spectral.d2fft.ptospc(
+            wkq.as_slice_memory_order_mut().unwrap(),
+            wka.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.xderiv(
+            &state.spectral.hrkx,
+            wka.as_slice_memory_order().unwrap(),
+            wkb.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.spctop(
+            wkb.as_slice_memory_order_mut().unwrap(),
+            ux.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.yderiv(
+            &state.spectral.hrky,
+            wka.as_slice_memory_order().unwrap(),
+            wkb.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.spctop(
+            wkb.as_slice_memory_order_mut().unwrap(),
+            uy.as_slice_memory_order_mut().unwrap(),
+        );
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    wkq_matrix[[i, j]] = state.v[[i, j, iz]];
-                }
-            }
-        }
-        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
-        state
-            .spectral
-            .d2fft
-            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
-        state.spectral.d2fft.spctop(&mut wkb, &mut vx);
-        state
-            .spectral
-            .d2fft
-            .yderiv(&state.spectral.hrky, &wka, &mut wkb);
-        state.spectral.d2fft.spctop(&mut wkb, &mut vy);
-        {
-            let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
+        wkq.assign(&state.v.index_axis(Axis(2), iz));
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    wkq_matrix[[i, j]] = state.w[[i, j, iz]];
-                }
-            }
-        }
-        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
-        state
-            .spectral
-            .d2fft
-            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
-        state.spectral.d2fft.spctop(&mut wkb, &mut wx);
-        state
-            .spectral
-            .d2fft
-            .yderiv(&state.spectral.hrky, &wka, &mut wkb);
-        state.spectral.d2fft.spctop(&mut wkb, &mut wy);
+        state.spectral.d2fft.ptospc(
+            wkq.as_slice_memory_order_mut().unwrap(),
+            wka.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.xderiv(
+            &state.spectral.hrkx,
+            wka.as_slice_memory_order().unwrap(),
+            wkb.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.spctop(
+            wkb.as_slice_memory_order_mut().unwrap(),
+            vx.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.yderiv(
+            &state.spectral.hrky,
+            wka.as_slice_memory_order().unwrap(),
+            wkb.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.spctop(
+            wkb.as_slice_memory_order_mut().unwrap(),
+            vy.as_slice_memory_order_mut().unwrap(),
+        );
+
+        wkq.assign(&state.w.index_axis(Axis(2), iz));
+
+        state.spectral.d2fft.ptospc(
+            wkq.as_slice_memory_order_mut().unwrap(),
+            wka.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.xderiv(
+            &state.spectral.hrkx,
+            wka.as_slice_memory_order().unwrap(),
+            wkb.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.spctop(
+            wkb.as_slice_memory_order_mut().unwrap(),
+            wx.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.yderiv(
+            &state.spectral.hrky,
+            wka.as_slice_memory_order().unwrap(),
+            wkb.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.spctop(
+            wkb.as_slice_memory_order_mut().unwrap(),
+            wy.as_slice_memory_order_mut().unwrap(),
+        );
+
         // Calculate pressure source:
-        let mut vt2d = vec![0.0; ng * ng];
+        azip!((
+            wkp in &mut wkp,
+            vt in vt.index_axis(Axis(2), iz),
+            ut in ut.index_axis(Axis(2), iz),
+            zx in state.zx.index_axis(Axis(2), iz),
+            zy in state.zy.index_axis(Axis(2), iz),
+        ){
+            *wkp = vt * zx - ut * zy
+        });
+
+        state
+            .spectral
+            .deal2d(wkp.as_slice_memory_order_mut().unwrap());
+
+        azip!((
+            wkq in &mut wkq,
+            uy in &uy,
+            vt in vt.index_axis(Axis(2), iz),
+            ut in ut.index_axis(Axis(2), iz),
+            vy in &vy)
         {
-            let mut vt2d = viewmut2d(&mut vt2d, ng, ng);
-            let vt_matrix = view3d(&vt, ng, ng, nz + 1);
+            *wkq = uy * vt - ut * vy
+        });
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    vt2d[[i, j]] = vt_matrix[[i, j, iz]];
-                }
-            }
-        };
-        let mut ut2d = vec![0.0; ng * ng];
+        state
+            .spectral
+            .deal2d(wkq.as_slice_memory_order_mut().unwrap());
+
+        azip!((
+            wkr in &mut wkr,
+            ut in ut.index_axis(Axis(2), iz),
+            vt in vt.index_axis(Axis(2), iz),
+            vx in &vx,
+            ux in &ux)
         {
-            let mut ut2d = viewmut2d(&mut ut2d, ng, ng);
-            let ut_matrix = view3d(&ut, ng, ng, nz + 1);
+            *wkr = ut * vx - ux * vt
+        });
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    ut2d[[i, j]] = ut_matrix[[i, j, iz]];
-                }
-            }
-        };
-        let mut wt2d = vec![0.0; ng * ng];
+        state
+            .spectral
+            .deal2d(wkr.as_slice_memory_order_mut().unwrap());
+
+        azip!((
+            wkq in &mut wkq,
+            wkr in &wkr,
+            zx in state.zx.index_axis(Axis(2), iz),
+            zy in state.zy.index_axis(Axis(2), iz),
+            wy in &wy,
+            vt in vt.index_axis(Axis(2), iz)
+        )
         {
-            let mut wt2d = viewmut2d(&mut wt2d, ng, ng);
-            let wt_matrix = view3d(&wt, ng, ng, nz + 1);
+            *wkq = *wkq * zx + wkr * zy - wy * vt
+        });
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    wt2d[[i, j]] = wt_matrix[[i, j, iz]];
-                }
-            }
-        }
-        let mut zx2d = vec![0.0; ng * ng];
-        {
-            let mut zx2d = viewmut2d(&mut zx2d, ng, ng);
+        azip!((
+            wkq in &mut wkq,
+            ux in &ux,
+            vy in &vy,
+            ut in ut.index_axis(Axis(2), iz),
+            wt in wt.index_axis(Axis(2), iz),
+            wx in &wx,
+        ) {
+            *wkq += (ux + vy) * wt - wx * ut
+        });
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    zx2d[[i, j]] = state.zx[[i, j, iz]];
-                }
-            }
-        }
-        let mut zy2d = vec![0.0; ng * ng];
-        {
-            let mut zy2d = viewmut2d(&mut zy2d, ng, ng);
-
-            for i in 0..ng {
-                for j in 0..ng {
-                    zy2d[[i, j]] = state.zy[[i, j, iz]];
-                }
-            }
-        }
-        for (i, e) in wkp.iter_mut().enumerate() {
-            *e = vt2d[i] * zx2d[i] - ut2d[i] * zy2d[i];
-        }
-        state.spectral.deal2d(&mut wkp);
-
-        for (i, e) in wkq.iter_mut().enumerate() {
-            *e = uy[i] * vt2d[i] - ut2d[i] * vy[i];
-        }
-        state.spectral.deal2d(&mut wkq);
-
-        for (i, e) in wkr.iter_mut().enumerate() {
-            *e = ut2d[i] * vx[i] - ux[i] * vt2d[i];
-        }
-        state.spectral.deal2d(&mut wkr);
-
-        for (i, e) in wkq.iter_mut().enumerate() {
-            *e = *e * zx2d[i] + wkr[i] * zy2d[i] + (ux[i] + vy[i]) * wt2d[i]
-                - wx[i] * ut2d[i]
-                - wy[i] * vt2d[i];
-        }
-        state.spectral.deal2d(&mut wkq);
+        state
+            .spectral
+            .deal2d(wkq.as_slice_memory_order_mut().unwrap());
         //sp0(:,:,iz)=hsrc+cof*(zeta(:,:,iz)-ri(:,:,iz)*wkp)+ two*(ux*vy-uy*vx+ri(:,:,iz)*wkq);
+        azip!((
+            sp0 in sp0.index_axis_mut(Axis(2), iz),
+            hsrc in &hsrc,
+            zeta in state.zeta.index_axis(Axis(2), iz),
+            ri in state.ri.index_axis(Axis(2), iz),
+            wkp in &wkp,
+            wkq in &wkq)
         {
-            let mut zeta2d = vec![0.0; ng * ng];
-            {
-                let mut zeta2d = viewmut2d(&mut zeta2d, ng, ng);
-                for i in 0..ng {
-                    for j in 0..ng {
-                        zeta2d[[i, j]] = state.zeta[[i, j, iz]];
-                    }
-                }
-            };
+            *sp0 = hsrc + COF * (zeta - ri * wkp) + 2.0 * (ri * wkq)
+        });
 
-            let mut ri2d = vec![0.0; ng * ng];
-            {
-                let mut ri2d = viewmut2d(&mut ri2d, ng, ng);
-
-                for i in 0..ng {
-                    for j in 0..ng {
-                        ri2d[[i, j]] = state.ri[[i, j, iz]];
-                    }
-                }
-            }
-
-            let mut d2sp0 = vec![0.0; ng * ng];
-            {
-                let sp0 = view3d(&sp0, ng, ng, nz + 1);
-                let mut d2sp0 = viewmut2d(&mut d2sp0, ng, ng);
-
-                for i in 0..ng {
-                    for j in 0..ng {
-                        d2sp0[[i, j]] = sp0[[i, j, 0]];
-                    }
-                }
-            }
-
-            for (i, e) in d2sp0.iter_mut().enumerate() {
-                *e = hsrc[i]
-                    + COF * (zeta2d[i] - ri2d[i] * wkp[i])
-                    + 2.0 * (ux[i] * vy[i] - uy[i] * vx[i] + ri2d[i] * wkq[i]);
-            }
-            let mut d3sp0 = viewmut3d(sp0, ng, ng, nz + 1);
-            let d2sp0 = view2d(&d2sp0, ng, ng);
-            for i in 0..ng {
-                for j in 0..ng {
-                    d3sp0[[i, j, iz]] = d2sp0[[i, j]];
-                }
-            }
-        }
+        azip!((
+            sp0 in sp0.index_axis_mut(Axis(2), iz),
+            ux in &ux,
+            vy in &vy,
+            uy in &uy,
+            vx in &vx)
+        {
+            *sp0 += 2.0 * (ux * vy - uy * vx)
+        });
     }
 }
 
@@ -381,6 +381,7 @@ mod test {
         crate::{
             array3_from_file,
             nhswps::{Output, Spectral},
+            utils::*,
         },
         byteorder::{ByteOrder, NetworkEndian},
         lazy_static::lazy_static,
@@ -477,7 +478,7 @@ mod test {
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        cpsource(&STATE_18_2, &mut sp0);
+        cpsource(&STATE_18_2, viewmut3d(&mut sp0, 18, 18, 3));
 
         assert_approx_eq_slice(&sp02, &sp0);
     }
@@ -493,7 +494,7 @@ mod test {
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
 
-        cpsource(&STATE_32_4, &mut sp0);
+        cpsource(&STATE_32_4, viewmut3d(&mut sp0, 32, 32, 5));
 
         assert_approx_eq_slice(&sp02, &sp0);
     }

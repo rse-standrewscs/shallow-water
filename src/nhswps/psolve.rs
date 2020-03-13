@@ -79,7 +79,7 @@ pub fn psolve(state: &mut State) {
     );
 
     // Define constant part of the pressure source (sp0):
-    cpsource(state, sp0.as_slice_memory_order_mut().unwrap());
+    cpsource(state, sp0.view_mut());
 
     // Solve for the pressure using previous solution as first guess:
     let mut pna = state.pn.clone();
