@@ -1,6 +1,8 @@
 use {
     crate::{constants::*, nhswps::State},
     ndarray::{azip, Array2, Array3, ArrayViewMut3, Axis, ShapeBuilder},
+    rayon::prelude::*,
+    std::sync::{Arc, Mutex},
 };
 
 /// Finds the part of the pressure source which does not vary
@@ -26,12 +28,9 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
     let mut uy = zero2.clone();
     let mut vx = zero2.clone();
     let mut vy = zero2.clone();
-    let mut wx = zero2.clone();
-    let mut wy = zero2.clone();
     let mut hsrc = zero2.clone();
     let mut wkp = zero2.clone();
     let mut wkq = zero2.clone();
-    let mut wkr = zero2.clone();
 
     // Spectral space arrays (all work arrays)
     let mut wka = zero2.clone();
@@ -204,7 +203,21 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
         *sp0 += 2.0 * (ux * vy - uy * vx + wkq * (ux + vy))
     });
 
-    for iz in 1..=nz {
+    let sp0 = Arc::new(Mutex::new(sp0));
+
+    (1..=nz).into_par_iter().for_each(|iz| {
+        let mut wka = wka.clone();
+        let mut wkb = wkb.clone();
+        let mut wkp = wkp.clone();
+        let mut wkq = wkq.clone();
+        let mut wkr = zero2.clone();
+        let mut ux = ux.clone();
+        let mut uy = uy.clone();
+        let mut vx = vx.clone();
+        let mut vy = vy.clone();
+        let mut wx = zero2.clone();
+        let mut wy = zero2.clone();
+
         // Calculate u_x, u_y, v_x, v_y, w_x, w_y:
         wkq.assign(&state.u.index_axis(Axis(2), iz));
 
@@ -351,27 +364,35 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
             .spectral
             .deal2d(wkq.as_slice_memory_order_mut().unwrap());
         //sp0(:,:,iz)=hsrc+cof*(zeta(:,:,iz)-ri(:,:,iz)*wkp)+ two*(ux*vy-uy*vx+ri(:,:,iz)*wkq);
+        let mut temp =
+            Array2::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
+
         azip!((
-            sp0 in sp0.index_axis_mut(Axis(2), iz),
+            t in &mut temp,
             hsrc in &hsrc,
             zeta in state.zeta.index_axis(Axis(2), iz),
             ri in state.ri.index_axis(Axis(2), iz),
             wkp in &wkp,
             wkq in &wkq)
         {
-            *sp0 = hsrc + COF * (zeta - ri * wkp) + 2.0 * (ri * wkq)
+            *t = hsrc + COF * (zeta - ri * wkp) + 2.0 * (ri * wkq)
         });
 
         azip!((
-            sp0 in sp0.index_axis_mut(Axis(2), iz),
+            t in &mut temp,
             ux in &ux,
             vy in &vy,
             uy in &uy,
             vx in &vx)
         {
-            *sp0 += 2.0 * (ux * vy - uy * vx)
+            *t += 2.0 * (ux * vy - uy * vx)
         });
-    }
+
+        sp0.lock()
+            .unwrap()
+            .index_axis_mut(Axis(2), iz)
+            .assign(&temp);
+    });
 }
 
 #[cfg(test)]
