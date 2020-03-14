@@ -8,7 +8,6 @@ use {
         balinit::balinit, nhswps::nhswps, parameters::Parameters, swto3d::swto3d,
         vstrip::init_pv_strip,
     },
-    simplelog::{Config as LogConfig, LevelFilter, TermLogger, TerminalMode},
     std::{
         fs::{create_dir, File},
         io::{self, prelude::*},
@@ -17,8 +16,7 @@ use {
 
 #[quit::main]
 fn main() {
-    TermLogger::init(LevelFilter::Info, LogConfig::default(), TerminalMode::Mixed)
-        .expect("No interactive terminal");
+    pretty_env_logger::init();
 
     let matches = clap_app!(shallow_water =>
         (version: crate_version!())
