@@ -293,8 +293,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 .collect::<Vec<f64>>();
 
             b.iter(|| cpsource(&state, viewmut3d(&mut sp0, 32, 32, 5)))
-        })
-        .sample_size(60),
+        }),
     );
 
     c.bench(

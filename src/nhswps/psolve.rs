@@ -5,6 +5,8 @@ use {
     },
     log::error,
     ndarray::{azip, Array2, Array3, Axis, ShapeBuilder},
+    rayon::prelude::*,
+    std::sync::{Arc, Mutex},
 };
 
 /// Solves for the nonhydrostatic part of the pressure (pn) given
@@ -47,12 +49,12 @@ pub fn psolve(state: &mut State) {
     let mut dpdt = zero2.clone();
     let mut d2pdxt = zero2.clone();
     let mut d2pdyt = zero2.clone();
-    let mut d2pdt2 = zero2.clone();
+    let d2pdt2 = zero2.clone();
     let mut wkp = zero2.clone();
-    let mut wkq = zero2.clone();
+    let mut wkq;
 
     // Spectral space arrays (all work arrays):
-    let mut sp = zero3.clone();
+    let sp = zero3.clone();
     let mut gg = zero3.clone();
     let mut wka = zero2.clone();
     let mut wkb = zero2.clone();
@@ -83,6 +85,11 @@ pub fn psolve(state: &mut State) {
 
     // Solve for the pressure using previous solution as first guess:
     let mut pna = state.pn.clone();
+
+    // Place `sp` inside a Mutex inside an Arc for sharing across threads
+    //let mut sp = Arc::new(Mutex::new(sp));
+    let sp = Arc::new(Mutex::new(sp));
+    let d2pdt2 = Arc::new(Mutex::new(d2pdt2));
 
     // Begin iteration to find (non-hydrostatic part of the) pressure
     let mut errp = 1.0;
@@ -115,14 +122,14 @@ pub fn psolve(state: &mut State) {
         // Return to physical space:
         state.spectral.d2fft.spctop(
             wkd.as_slice_memory_order_mut().unwrap(),
-            d2pdt2.as_slice_memory_order_mut().unwrap(),
+            d2pdt2.lock().unwrap().as_slice_memory_order_mut().unwrap(),
         );
         // Total source:
         azip!((
             wkp in &mut wkp,
             sp0 in sp0.index_axis(Axis(2), 0),
             cpt2 in cpt2.index_axis(Axis(2), 0),
-            d2pdt2 in &d2pdt2)
+            d2pdt2 in &(*d2pdt2.lock().unwrap()))
         {
                 *wkp = sp0 + cpt2 * d2pdt2
         });
@@ -132,14 +139,24 @@ pub fn psolve(state: &mut State) {
             wkp.as_slice_memory_order_mut().unwrap(),
             wka.as_slice_memory_order_mut().unwrap(),
         );
-        sp.index_axis_mut(Axis(2), 0).assign(&wka);
+        sp.lock().unwrap().index_axis_mut(Axis(2), 0).assign(&wka);
 
         // Interior grid points:
-        for iz in 1..nz {
-            wkq = d2pdt2.clone();
+        (1..nz-1).into_par_iter().for_each(|iz| {
+            let mut wka = zero2.clone();
+            let mut wkb = zero2.clone();
+            let mut wkc = zero2.clone();
+            let mut wkd = zero2.clone();
+            let mut wkp = zero2.clone();
+
+            let mut dpdt = zero2.clone();
+            let mut d2pdxt = zero2.clone();
+            let mut d2pdyt = zero2.clone();
+            let mut d2pdt2_local = zero2.clone();
 
             azip!((
-                wka in &mut wka, psp in &state.ps.index_axis(Axis(2), iz + 1),
+                wka in &mut wka,
+                psp in &state.ps.index_axis(Axis(2), iz + 1),
                 psm in &state.ps.index_axis(Axis(2), iz - 1)) *wka = (psp - psm) * hdzi);
 
             azip!((
@@ -159,6 +176,7 @@ pub fn psolve(state: &mut State) {
                 wka.as_slice_memory_order().unwrap(),
                 wkc.as_slice_memory_order_mut().unwrap(),
             );
+
             // Return to physical space:
             state.spectral.d2fft.spctop(
                 wka.as_slice_memory_order_mut().unwrap(),
@@ -174,7 +192,7 @@ pub fn psolve(state: &mut State) {
             );
             state.spectral.d2fft.spctop(
                 wkd.as_slice_memory_order_mut().unwrap(),
-                d2pdt2.as_slice_memory_order_mut().unwrap(),
+                d2pdt2_local.as_slice_memory_order_mut().unwrap(),
             );
 
             // Total source:
@@ -191,7 +209,7 @@ pub fn psolve(state: &mut State) {
             azip!((
                 wkp in &mut wkp,
                 cpt2 in cpt2.index_axis(Axis(2), iz),
-                d2pdt2 in &d2pdt2,
+                d2pdt2 in &d2pdt2_local,
                 cpt1 in cpt1.index_axis(Axis(2), iz),
                 dpdt in &dpdt)
             {
@@ -203,34 +221,108 @@ pub fn psolve(state: &mut State) {
                 wkp.as_slice_memory_order_mut().unwrap(),
                 wka.as_slice_memory_order_mut().unwrap(),
             );
-            sp.index_axis_mut(Axis(2), iz).assign(&wka);
+
+            if iz == nz - 2 {
+                d2pdt2.lock().unwrap().assign(&d2pdt2_local);
+            }
+
+            sp.lock().unwrap().index_axis_mut(Axis(2), iz).assign(&wka);
+        });
+
+        {
+            let iz = nz - 1;
+
+            let mut wka = zero2.clone();
+            let mut wkb = zero2.clone();
+            let mut wkc = zero2.clone();
+            let mut wkd = zero2.clone();
+            let mut wkp = zero2.clone();
+
+            wkq = d2pdt2.lock().unwrap().clone();
+
+            azip!((
+                wka in &mut wka,
+                psp in &state.ps.index_axis(Axis(2), iz + 1),
+                psm in &state.ps.index_axis(Axis(2), iz - 1)) *wka = (psp - psm) * hdzi);
+
+            azip!((
+                wkd in &mut wkd,
+                psp in &state.ps.index_axis(Axis(2), iz + 1),
+                ps in &state.ps.index_axis(Axis(2), iz),
+                psm in &state.ps.index_axis(Axis(2), iz - 1)) *wkd = (psp - 2.0 * ps + psm) * dzisq);
+
+            // Calculate x & y derivatives of dp/dtheta:
+            state.spectral.d2fft.xderiv(
+                &state.spectral.hrkx,
+                wka.as_slice_memory_order().unwrap(),
+                wkb.as_slice_memory_order_mut().unwrap(),
+            );
+            state.spectral.d2fft.yderiv(
+                &state.spectral.hrky,
+                wka.as_slice_memory_order().unwrap(),
+                wkc.as_slice_memory_order_mut().unwrap(),
+            );
+
+            // Return to physical space:
+            state.spectral.d2fft.spctop(
+                wka.as_slice_memory_order_mut().unwrap(),
+                dpdt.as_slice_memory_order_mut().unwrap(),
+            );
+            state.spectral.d2fft.spctop(
+                wkb.as_slice_memory_order_mut().unwrap(),
+                d2pdxt.as_slice_memory_order_mut().unwrap(),
+            );
+            state.spectral.d2fft.spctop(
+                wkc.as_slice_memory_order_mut().unwrap(),
+                d2pdyt.as_slice_memory_order_mut().unwrap(),
+            );
+            state.spectral.d2fft.spctop(
+                wkd.as_slice_memory_order_mut().unwrap(),
+                d2pdt2.lock().unwrap().as_slice_memory_order_mut().unwrap(),
+            );
+
+            // Total source:
+            azip!((
+                wkp in &mut wkp,
+                sp0 in sp0.index_axis(Axis(2), iz),
+                sigx in sigx.index_axis(Axis(2), iz),
+                d2pdxt in &d2pdxt,
+                sigy in sigy.index_axis(Axis(2), iz),
+                d2pdyt in &d2pdyt)
+            {
+                *wkp = sp0 + sigx * d2pdxt + sigy * d2pdyt
+            });
+            azip!((
+                wkp in &mut wkp,
+                cpt2 in cpt2.index_axis(Axis(2), iz),
+                d2pdt2 in &(*d2pdt2.lock().unwrap()),
+                cpt1 in cpt1.index_axis(Axis(2), iz),
+                dpdt in &dpdt)
+            {
+                *wkp += cpt2 * d2pdt2 + cpt1 * dpdt
+            });
+
+            // Transform to spectral space for inversion below:
+            state.spectral.d2fft.ptospc(
+                wkp.as_slice_memory_order_mut().unwrap(),
+                wka.as_slice_memory_order_mut().unwrap(),
+            );
+
+            sp.lock().unwrap().index_axis_mut(Axis(2), iz).assign(&wka);
         }
 
         // Upper boundary at iz = nz (use p = 0):
         // Extrapolate to find first and second derivatives there:
-        for (i, e) in dpdt
-            .as_slice_memory_order_mut()
-            .unwrap()
-            .iter_mut()
-            .enumerate()
-        {
-            *e += dz2
-                * (3.0 * d2pdt2.as_slice_memory_order().unwrap()[i]
-                    - wkq.as_slice_memory_order().unwrap()[i]);
-        }
-        for (i, e) in d2pdt2
-            .as_slice_memory_order_mut()
-            .unwrap()
-            .iter_mut()
-            .enumerate()
-        {
-            *e = 2.0 * *e - wkq.as_slice_memory_order().unwrap()[i];
-        }
+        azip!((dpdt in &mut dpdt, d2pdt2 in &(*d2pdt2.lock().unwrap()), wkq in &wkq) *dpdt += dz2 * (3.0 * d2pdt2 - wkq));
+        azip!((d2pdt2 in &mut (*d2pdt2.lock().unwrap()), wkq in &wkq) *d2pdt2 = 2.0 * *d2pdt2 - wkq);
+
         wkp = dpdt.clone();
+
         state.spectral.d2fft.ptospc(
             wkp.as_slice_memory_order_mut().unwrap(),
             wka.as_slice_memory_order_mut().unwrap(),
         );
+
         // Calculate x & y derivatives of dp/dtheta:
         state.spectral.d2fft.xderiv(
             &state.spectral.hrkx,
@@ -242,6 +334,7 @@ pub fn psolve(state: &mut State) {
             wka.as_slice_memory_order().unwrap(),
             wkc.as_slice_memory_order_mut().unwrap(),
         );
+
         // Return to physical space:
         state.spectral.d2fft.spctop(
             wkb.as_slice_memory_order_mut().unwrap(),
@@ -251,60 +344,74 @@ pub fn psolve(state: &mut State) {
             wkc.as_slice_memory_order_mut().unwrap(),
             d2pdyt.as_slice_memory_order_mut().unwrap(),
         );
+
         // Total source:
-        for j in 0..ng {
-            for i in 0..ng {
-                wkp[[i, j]] = sp0[[i, j, nz]]
-                    + sigx[[i, j, nz]] * d2pdxt[[i, j]]
-                    + sigy[[i, j, nz]] * d2pdyt[[i, j]]
-                    + cpt2[[i, j, nz]] * d2pdt2[[i, j]]
-                    + cpt1[[i, j, nz]] * dpdt[[i, j]];
-            }
-        }
+        azip!((
+            wkp in &mut wkp,
+            sp0 in sp0.index_axis(Axis(2), nz),
+            sigx in sigx.index_axis(Axis(2), nz),
+            d2pdxt in &d2pdxt,
+            sigy in sigy.index_axis(Axis(2), nz),
+            d2pdyt in &d2pdyt) *wkp = sp0 + sigx * d2pdxt + sigy * d2pdyt);
+
+        azip!((
+            wkp in &mut wkp,
+            cpt2 in cpt2.index_axis(Axis(2), nz),
+            d2pdt2 in &(*d2pdt2.lock().unwrap()),
+            cpt1 in cpt1.index_axis(Axis(2), nz),
+            dpdt in &dpdt) *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
 
         // Transform to spectral space for inversion below:
         state.spectral.d2fft.ptospc(
             wkp.as_slice_memory_order_mut().unwrap(),
             wka.as_slice_memory_order_mut().unwrap(),
         );
-        sp.index_axis_mut(Axis(2), nz).assign(&wka);
+        sp.lock().unwrap().index_axis_mut(Axis(2), nz).assign(&wka);
 
         // Solve tridiagonal problem for pressure in spectral space:
-        azip!((
-            gg in &mut gg.index_axis_mut(Axis(2), 0),
+        {
+            let sp = sp.lock().unwrap();
+
+            azip!((
+            gg in gg.index_axis_mut(Axis(2), 0),
             sp0 in sp.index_axis(Axis(2), 0),
             sp1 in sp.index_axis(Axis(2), 1)) *gg = (1.0 / 3.0) * sp0 + (1.0 / 6.0) * sp1);
 
-        for iz in 1..nz {
-            for i in 0..ng {
-                for j in 0..ng {
-                    gg[[i, j, iz]] = (1.0 / 12.0) * (sp[[i, j, iz - 1]] + sp[[i, j, iz + 1]])
-                        + (5.0 / 6.0) * sp[[i, j, iz]];
-                }
+            for iz in 1..nz {
+                azip!((
+                gg in gg.index_axis_mut(Axis(2), iz),
+                spm in sp.index_axis(Axis(2), iz - 1),
+                spp in sp.index_axis(Axis(2), iz + 1),
+                sp in sp.index_axis(Axis(2), iz)) *gg = (1.0 / 12.0) * (spm + spp) + (5.0/6.0) * sp);
             }
         }
 
         azip!((
-            ps in &mut state.ps.index_axis_mut(Axis(2), 0),
+            ps in state.ps.index_axis_mut(Axis(2), 0),
             gg in gg.index_axis(Axis(2), 0),
             htdv in state.spectral.htdv.index_axis(Axis(2), 0)) *ps = gg * htdv);
 
         for iz in 1..nz {
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.ps[[i, j, iz]] = (gg[[i, j, iz]]
-                        - state.spectral.ap[[i, j]] * state.ps[[i, j, iz - 1]])
-                        * state.spectral.htdv[[i, j, iz]];
-                }
-            }
+            let ps1 = state.ps.index_axis(Axis(2), iz - 1).into_owned();
+
+            azip!((
+                ps in state.ps.index_axis_mut(Axis(2), iz),
+                gg in gg.index_axis(Axis(2), iz),
+                ap in &state.spectral.ap,
+                ps1 in &ps1,
+                htdv in state.spectral.htdv.index_axis(Axis(2), iz))
+            {
+                *ps = (gg - ap * ps1) * htdv
+            });
         }
+
         for iz in (0..=nz - 2).rev() {
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.ps[[i, j, iz]] +=
-                        state.spectral.etdv[[i, j, iz]] * state.ps[[i, j, iz + 1]];
-                }
-            }
+            let ps1 = state.ps.index_axis(Axis(2), iz + 1).into_owned();
+            azip!((
+                ps in state.ps.index_axis_mut(Axis(2), iz),
+                etdv in state.spectral.etdv.index_axis(Axis(2), iz),
+                ps1 in &ps1,
+            ) *ps += etdv * ps1);
         }
 
         state.ps.index_axis_mut(Axis(2), nz).fill(0.0);
@@ -354,44 +461,38 @@ pub fn psolve(state: &mut State) {
     // Calculate 1st derivative of pressure using 4th-order compact differences:
     {
         for iz in 1..nz {
-            for i in 0..ng {
-                for j in 0..ng {
-                    gg[[i, j, iz]] = (state.ps[[i, j, iz + 1]] - state.ps[[i, j, iz - 1]]) * hdzi;
-                }
-            }
-        }
-        for i in 0..ng {
-            for j in 0..ng {
-                gg[[i, j, nz]] = dz6 * sp[[i, j, nz]] - state.ps[[i, j, nz - 1]] * dzi;
-            }
+            azip!((
+                gg in gg.index_axis_mut(Axis(2), iz),
+                psp in state.ps.index_axis(Axis(2), iz + 1),
+                psm in state.ps.index_axis(Axis(2), iz - 1)) *gg = (psp - psm) * hdzi);
         }
 
-        for i in 0..ng {
-            for j in 0..ng {
-                gg[[i, j, 1]] *= state.spectral.htd1[0];
-            }
-        }
+        azip!((
+            gg in gg.index_axis_mut(Axis(2), nz),
+            sp in sp.lock().unwrap().index_axis(Axis(2), nz),
+            ps in state.ps.index_axis(Axis(2), nz -1)) *gg = dz6 * sp - ps * dzi);
+
+        azip!((gg in gg.index_axis_mut(Axis(2), 1)) *gg *= state.spectral.htd1[0]);
+
         for iz in 2..nz {
-            for i in 0..ng {
-                for j in 0..ng {
-                    gg[[i, j, iz]] = (gg[[i, j, iz]] - (1.0 / 6.0) * gg[[i, j, iz - 1]])
-                        * state.spectral.htd1[iz - 1];
-                }
-            }
+            let gg1 = gg.index_axis(Axis(2), iz - 1).into_owned();
+            azip!((
+                gg in gg.index_axis_mut(Axis(2), iz),
+                gg1 in &gg1) *gg = (*gg - (1.0/6.0) * gg1) * state.spectral.htd1[iz - 1]);
         }
 
-        for i in 0..ng {
-            for j in 0..ng {
-                gg[[i, j, nz]] = (gg[[i, j, nz]] - (1.0 / 3.0) * gg[[i, j, nz - 1]])
-                    * state.spectral.htd1[nz - 1];
-            }
+        {
+            let gg1 = gg.index_axis(Axis(2), nz - 1).into_owned();
+            azip!((
+                gg in gg.index_axis_mut(Axis(2), nz),
+                gg1 in &gg1) *gg = (*gg - (1.0/3.0) * gg1) * state.spectral.htd1[nz - 1]);
         }
+
         for iz in (1..nz).rev() {
-            for i in 0..ng {
-                for j in 0..ng {
-                    gg[[i, j, iz]] += state.spectral.etd1[iz - 1] * gg[[i, j, iz + 1]];
-                }
-            }
+            let gg1 = gg.index_axis(Axis(2), iz + 1).into_owned();
+            azip!((
+                gg in gg.index_axis_mut(Axis(2), iz),
+                gg1 in &gg1) *gg += state.spectral.etd1[iz - 1] * gg1);
         }
     }
 
