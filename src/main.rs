@@ -12,7 +12,6 @@ use {
     std::{
         fs::{create_dir, File},
         io::{self, prelude::*},
-        process::exit,
     },
 };
 
@@ -48,12 +47,12 @@ fn main() {
                 let params = serde_yaml::from_reader::<_, Parameters>(
                     File::open(path).unwrap_or_else(|e| {
                         error!("Failed to open {}: \"{}\"", path, e);
-                        exit(1);
+                        quit::with_code(1);
                     }),
                 )
                 .unwrap_or_else(|e| {
                     error!("Failed to parse parameters from {}: \"{}\"", path, e);
-                    exit(1);
+                    quit::with_code(1);
                 });
 
                 info!("Loaded simulation parameters from \"{}\"", path);
@@ -68,7 +67,7 @@ fn main() {
 
     run_subcommand(matches.subcommand_name(), params).unwrap_or_else(|e| {
         error!("IO error: \"{}\"", e);
-        exit(1);
+        quit::with_code(1);
     });
 }
 
@@ -228,7 +227,7 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
         }
         _ => {
             error!("Please select a subcommand!");
-            std::process::exit(1);
+            quit::with_code(1);
         }
     }
 

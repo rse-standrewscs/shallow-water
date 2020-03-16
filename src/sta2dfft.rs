@@ -72,7 +72,7 @@ impl D2FFT {
             }
         } else {
             error!("Wavenumber array definition not possible, domain length in x equal to zero not allowed!");
-            std::process::exit(1);
+            quit::with_code(1);
         }
 
         if ly != 0.0 {
