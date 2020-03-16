@@ -5,8 +5,9 @@ use {
     },
     log::error,
     ndarray::{azip, Array2, Array3, Axis, ShapeBuilder},
+    parking_lot::Mutex,
     rayon::prelude::*,
-    std::sync::{Arc, Mutex},
+    std::sync::Arc,
 };
 
 /// Solves for the nonhydrostatic part of the pressure (pn) given
@@ -122,14 +123,14 @@ pub fn psolve(state: &mut State) {
         // Return to physical space:
         state.spectral.d2fft.spctop(
             wkd.as_slice_memory_order_mut().unwrap(),
-            d2pdt2.lock().unwrap().as_slice_memory_order_mut().unwrap(),
+            d2pdt2.lock().as_slice_memory_order_mut().unwrap(),
         );
         // Total source:
         azip!((
             wkp in &mut wkp,
             sp0 in sp0.index_axis(Axis(2), 0),
             cpt2 in cpt2.index_axis(Axis(2), 0),
-            d2pdt2 in &(*d2pdt2.lock().unwrap()))
+            d2pdt2 in &(*d2pdt2.lock()))
         {
                 *wkp = sp0 + cpt2 * d2pdt2
         });
@@ -139,7 +140,7 @@ pub fn psolve(state: &mut State) {
             wkp.as_slice_memory_order_mut().unwrap(),
             wka.as_slice_memory_order_mut().unwrap(),
         );
-        sp.lock().unwrap().index_axis_mut(Axis(2), 0).assign(&wka);
+        sp.lock().index_axis_mut(Axis(2), 0).assign(&wka);
 
         // Interior grid points:
         (1..nz-1).into_par_iter().for_each(|iz| {
@@ -223,10 +224,10 @@ pub fn psolve(state: &mut State) {
             );
 
             if iz == nz - 2 {
-                d2pdt2.lock().unwrap().assign(&d2pdt2_local);
+                d2pdt2.lock().assign(&d2pdt2_local);
             }
 
-            sp.lock().unwrap().index_axis_mut(Axis(2), iz).assign(&wka);
+            sp.lock().index_axis_mut(Axis(2), iz).assign(&wka);
         });
 
         {
@@ -238,7 +239,7 @@ pub fn psolve(state: &mut State) {
             let mut wkd = zero2.clone();
             let mut wkp = zero2.clone();
 
-            wkq = d2pdt2.lock().unwrap().clone();
+            wkq = d2pdt2.lock().clone();
 
             azip!((
                 wka in &mut wka,
@@ -278,7 +279,7 @@ pub fn psolve(state: &mut State) {
             );
             state.spectral.d2fft.spctop(
                 wkd.as_slice_memory_order_mut().unwrap(),
-                d2pdt2.lock().unwrap().as_slice_memory_order_mut().unwrap(),
+                d2pdt2.lock().as_slice_memory_order_mut().unwrap(),
             );
 
             // Total source:
@@ -295,7 +296,7 @@ pub fn psolve(state: &mut State) {
             azip!((
                 wkp in &mut wkp,
                 cpt2 in cpt2.index_axis(Axis(2), iz),
-                d2pdt2 in &(*d2pdt2.lock().unwrap()),
+                d2pdt2 in &(*d2pdt2.lock()),
                 cpt1 in cpt1.index_axis(Axis(2), iz),
                 dpdt in &dpdt)
             {
@@ -308,13 +309,13 @@ pub fn psolve(state: &mut State) {
                 wka.as_slice_memory_order_mut().unwrap(),
             );
 
-            sp.lock().unwrap().index_axis_mut(Axis(2), iz).assign(&wka);
+            sp.lock().index_axis_mut(Axis(2), iz).assign(&wka);
         }
 
         // Upper boundary at iz = nz (use p = 0):
         // Extrapolate to find first and second derivatives there:
-        azip!((dpdt in &mut dpdt, d2pdt2 in &(*d2pdt2.lock().unwrap()), wkq in &wkq) *dpdt += dz2 * (3.0 * d2pdt2 - wkq));
-        azip!((d2pdt2 in &mut (*d2pdt2.lock().unwrap()), wkq in &wkq) *d2pdt2 = 2.0 * *d2pdt2 - wkq);
+        azip!((dpdt in &mut dpdt, d2pdt2 in &(*d2pdt2.lock()), wkq in &wkq) *dpdt += dz2 * (3.0 * d2pdt2 - wkq));
+        azip!((d2pdt2 in &mut (*d2pdt2.lock()), wkq in &wkq) *d2pdt2 = 2.0 * *d2pdt2 - wkq);
 
         wkp = dpdt.clone();
 
@@ -357,7 +358,7 @@ pub fn psolve(state: &mut State) {
         azip!((
             wkp in &mut wkp,
             cpt2 in cpt2.index_axis(Axis(2), nz),
-            d2pdt2 in &(*d2pdt2.lock().unwrap()),
+            d2pdt2 in &(*d2pdt2.lock()),
             cpt1 in cpt1.index_axis(Axis(2), nz),
             dpdt in &dpdt) *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
 
@@ -366,11 +367,11 @@ pub fn psolve(state: &mut State) {
             wkp.as_slice_memory_order_mut().unwrap(),
             wka.as_slice_memory_order_mut().unwrap(),
         );
-        sp.lock().unwrap().index_axis_mut(Axis(2), nz).assign(&wka);
+        sp.lock().index_axis_mut(Axis(2), nz).assign(&wka);
 
         // Solve tridiagonal problem for pressure in spectral space:
         {
-            let sp = sp.lock().unwrap();
+            let sp = sp.lock();
 
             azip!((
             gg in gg.index_axis_mut(Axis(2), 0),
@@ -469,7 +470,7 @@ pub fn psolve(state: &mut State) {
 
         azip!((
             gg in gg.index_axis_mut(Axis(2), nz),
-            sp in sp.lock().unwrap().index_axis(Axis(2), nz),
+            sp in sp.lock().index_axis(Axis(2), nz),
             ps in state.ps.index_axis(Axis(2), nz -1)) *gg = dz6 * sp - ps * dzi);
 
         azip!((gg in gg.index_axis_mut(Axis(2), 1)) *gg *= state.spectral.htd1[0]);
