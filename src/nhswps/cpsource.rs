@@ -1,8 +1,9 @@
 use {
     crate::{constants::*, nhswps::State},
     ndarray::{azip, Array2, Array3, ArrayViewMut3, Axis, ShapeBuilder},
+    parking_lot::Mutex,
     rayon::prelude::*,
-    std::sync::{Arc, Mutex},
+    std::sync::Arc,
 };
 
 /// Finds the part of the pressure source which does not vary
@@ -388,10 +389,7 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
             *t += 2.0 * (ux * vy - uy * vx)
         });
 
-        sp0.lock()
-            .unwrap()
-            .index_axis_mut(Axis(2), iz)
-            .assign(&temp);
+        sp0.lock().index_axis_mut(Axis(2), iz).assign(&temp);
     });
 }
 
