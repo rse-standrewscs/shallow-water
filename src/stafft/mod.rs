@@ -146,7 +146,7 @@ pub fn factorisen(n: usize, factors: &mut [usize; 5]) {
     }
 
     error!("Factorization failed");
-    std::process::exit(1);
+    quit::with_code(1);
 }
 
 /// Main physical to spectral (forward) FFT routine.

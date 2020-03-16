@@ -1237,7 +1237,7 @@ pub fn psolve(state: &mut State) {
         // Stop if not converging:
         if iter > 0 && errp > 1.0 {
             error!("Pressure error too large! Final pressure error = {}", errp);
-            std::process::exit(1);
+            quit::with_code(1);
         }
 
         iter += 1;
@@ -1251,7 +1251,7 @@ pub fn psolve(state: &mut State) {
             "Exceeded maximum number of iterations to find pressure! Final pressure error = {}",
             errp
         );
-        std::process::exit(1);
+        quit::with_code(1);
     }
 
     // Past this point, we have converged!
