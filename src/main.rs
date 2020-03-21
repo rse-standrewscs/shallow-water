@@ -15,6 +15,7 @@ use {
     },
 };
 
+#[quit::main]
 fn main() {
     TermLogger::init(LevelFilter::Info, LogConfig::default(), TerminalMode::Mixed)
         .expect("No interactive terminal");
