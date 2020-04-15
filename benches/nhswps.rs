@@ -83,7 +83,14 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 .map(NetworkEndian::read_f64)
                 .collect::<Vec<f64>>();
 
-            b.iter(|| source(&state, &mut sqs, &mut sds, &mut sgs))
+            b.iter(|| {
+                source(
+                    &state,
+                    viewmut3d(&mut sqs, 32, 32, 5),
+                    viewmut3d(&mut sds, 32, 32, 5),
+                    viewmut3d(&mut sgs, 32, 32, 5),
+                )
+            })
         })
         .sample_size(50),
     );

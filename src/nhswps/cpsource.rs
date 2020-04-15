@@ -1,6 +1,10 @@
 use {
-    crate::{constants::*, nhswps::State},
-    ndarray::{azip, Array2, Array3, ArrayViewMut3, Axis, ShapeBuilder},
+    crate::{
+        constants::*,
+        nhswps::State,
+        utils::{arr2zero, arr3zero},
+    },
+    ndarray::{azip, Array2, ArrayViewMut3, Axis, ShapeBuilder},
     parking_lot::Mutex,
     rayon::prelude::*,
     std::sync::Arc,
@@ -13,29 +17,21 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
     let nz = state.spectral.nz;
     let hdzi = (1.0 / 2.0) * (1.0 / (HBAR / nz as f64));
 
-    let zero2 =
-        Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
-    let zero3 = Array3::<f64>::from_shape_vec(
-        (ng, ng, nz + 1).strides((1, ng, ng * ng)),
-        vec![0.0; ng * ng * (nz + 1)],
-    )
-    .unwrap();
-
     // Physical space arrays
-    let mut ut = zero3.clone();
-    let mut vt = zero3.clone();
-    let mut wt = zero3.clone();
-    let mut ux = zero2.clone();
-    let mut uy = zero2.clone();
-    let mut vx = zero2.clone();
-    let mut vy = zero2.clone();
-    let mut hsrc = zero2.clone();
-    let mut wkp = zero2.clone();
-    let mut wkq = zero2.clone();
+    let mut ut = arr3zero(ng, nz);
+    let mut vt = arr3zero(ng, nz);
+    let mut wt = arr3zero(ng, nz);
+    let mut ux = arr2zero(ng);
+    let mut uy = arr2zero(ng);
+    let mut vx = arr2zero(ng);
+    let mut vy = arr2zero(ng);
+    let mut hsrc = arr2zero(ng);
+    let mut wkp = arr2zero(ng);
+    let mut wkq = arr2zero(ng);
 
     // Spectral space arrays (all work arrays)
-    let mut wka = zero2.clone();
-    let mut wkb = zero2.clone();
+    let mut wka = arr2zero(ng);
+    let mut wkb = arr2zero(ng);
 
     // Calculate part which is independent of z, -g*Lap_h{h}:
     // wkp = h;
@@ -211,13 +207,13 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
         let mut wkb = wkb.clone();
         let mut wkp = wkp.clone();
         let mut wkq = wkq.clone();
-        let mut wkr = zero2.clone();
+        let mut wkr = arr2zero(ng);
         let mut ux = ux.clone();
         let mut uy = uy.clone();
         let mut vx = vx.clone();
         let mut vy = vy.clone();
-        let mut wx = zero2.clone();
-        let mut wy = zero2.clone();
+        let mut wx = arr2zero(ng);
+        let mut wy = arr2zero(ng);
 
         // Calculate u_x, u_y, v_x, v_y, w_x, w_y:
         wkq.assign(&state.u.index_axis(Axis(2), iz));

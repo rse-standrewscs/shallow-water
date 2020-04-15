@@ -1,4 +1,4 @@
-use ndarray::{ArrayView2, ArrayView3, ArrayViewMut2, ArrayViewMut3, ShapeBuilder};
+use ndarray::{Array2, Array3, ArrayView2, ArrayView3, ArrayViewMut2, ArrayViewMut3, ShapeBuilder};
 
 pub fn view2d<T>(xs: &[T], x: usize, y: usize) -> ArrayView2<T> {
     ArrayView2::from_shape((x, y).strides((1, x)), xs).unwrap()
@@ -14,6 +14,18 @@ pub fn viewmut2d<T>(xs: &mut [T], x: usize, y: usize) -> ArrayViewMut2<T> {
 
 pub fn viewmut3d<T>(xs: &mut [T], x: usize, y: usize, z: usize) -> ArrayViewMut3<T> {
     ArrayViewMut3::from_shape((x, y, z).strides((1, x, x * y)), xs).unwrap()
+}
+
+pub fn arr2zero(ng: usize) -> Array2<f64> {
+    Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap()
+}
+
+pub fn arr3zero(ng: usize, nz: usize) -> Array3<f64> {
+    Array3::<f64>::from_shape_vec(
+        (ng, ng, nz + 1).strides((1, ng, ng * ng)),
+        vec![0.0; ng * ng * (nz + 1)],
+    )
+    .unwrap()
 }
 
 #[cfg(test)]
