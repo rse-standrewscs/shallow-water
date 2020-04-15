@@ -6,7 +6,9 @@ pub mod source;
 pub mod vertical;
 
 use {
-    crate::{constants::*, parameters::Parameters, spectral::Spectral, sta2dfft::D2FFT},
+    crate::{
+        constants::*, parameters::Parameters, spectral::Spectral, sta2dfft::D2FFT, utils::arr3zero,
+    },
     advance::advance,
     byteorder::{ByteOrder, LittleEndian},
     log::{debug, info},
@@ -101,45 +103,39 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], parameters: &Parameters) -> Ou
     let tgsave = parameters.numerical.save_interval;
     let tsim = parameters.numerical.duration;
 
-    let arr3zero = Array3::<f64>::from_shape_vec(
-        (ng, ng, nz + 1).strides((1, ng, ng * ng)),
-        vec![0.0; ng * ng * (nz + 1)],
-    )
-    .unwrap();
-
     let mut state = State {
         spectral: Spectral::new(ng, nz),
 
-        u: arr3zero.clone(),
-        v: arr3zero.clone(),
-        w: arr3zero.clone(),
+        u: arr3zero(ng, nz),
+        v: arr3zero(ng, nz),
+        w: arr3zero(ng, nz),
 
         // Layer heights and their x & y derivatives (physical)
-        z: arr3zero.clone(),
-        zx: arr3zero.clone(),
-        zy: arr3zero.clone(),
+        z: arr3zero(ng, nz),
+        zx: arr3zero(ng, nz),
+        zy: arr3zero(ng, nz),
 
         // Dimensionless layer thickness anomaly and inverse thickness (physical)
-        r: arr3zero.clone(),
-        ri: arr3zero.clone(),
+        r: arr3zero(ng, nz),
+        ri: arr3zero(ng, nz),
 
         // A: grad{u*rho'_theta} (spectral):
-        aa: arr3zero.clone(),
+        aa: arr3zero(ng, nz),
 
         // Relative vertical vorticity component (physical):
-        zeta: arr3zero.clone(),
+        zeta: arr3zero(ng, nz),
 
         // Non-hydrostatic pressure (p_n) and its first derivative wrt theta:
-        pn: arr3zero.clone(),
-        dpn: arr3zero.clone(),
+        pn: arr3zero(ng, nz),
+        dpn: arr3zero(ng, nz),
 
         // Non-hydrostatic pressure (p_n) in spectral space (called ps):
-        ps: arr3zero.clone(),
+        ps: arr3zero(ng, nz),
 
         // Prognostic fields q_l, delta and gamma (spectral):
-        qs: arr3zero.clone(),
-        ds: arr3zero.clone(),
-        gs: arr3zero,
+        qs: arr3zero(ng, nz),
+        ds: arr3zero(ng, nz),
+        gs: arr3zero(ng, nz),
 
         // Time:
         t: 0.0,

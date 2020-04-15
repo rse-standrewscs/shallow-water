@@ -2,8 +2,9 @@ use {
     crate::{
         constants::*,
         nhswps::{diagnose, psolve, source, State},
+        utils::{arr2zero, arr3zero},
     },
-    ndarray::{azip, Array2, Array3, Axis, ShapeBuilder},
+    ndarray::{azip, Axis},
 };
 
 /// Advances fields from time t to t+dt using an iterative implicit
@@ -25,26 +26,17 @@ pub fn advance(state: &mut State) {
     // Local variables
     let niter = 2;
 
-    let zero2 =
-        Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
-
-    let zero3 = Array3::<f64>::from_shape_vec(
-        (ng, ng, nz + 1).strides((1, ng, ng * ng)),
-        vec![0.0; ng * ng * (nz + 1)],
-    )
-    .unwrap();
-
     // Spectral fields needed in time stepping
-    let mut qsi = zero3.clone();
-    let mut qsm = zero3.clone();
-    let mut sqs = zero3.clone();
-    let mut sds = zero3.clone();
-    let mut nds = zero3.clone();
-    let mut sgs = zero3.clone();
-    let mut ngs = zero3.clone();
+    let mut qsi = arr3zero(ng, nz);
+    let mut qsm = arr3zero(ng, nz);
+    let mut sqs = arr3zero(ng, nz);
+    let mut sds = arr3zero(ng, nz);
+    let mut nds = arr3zero(ng, nz);
+    let mut sgs = arr3zero(ng, nz);
+    let mut ngs = arr3zero(ng, nz);
 
-    let mut wka = zero2.clone();
-    let mut wkb = zero2.clone();
+    let mut wka = arr2zero(ng);
+    let mut wkb = arr2zero(ng);
 
     // Invert PV and compute velocity at current time level, say t=t^n:
     if state.ggen {
@@ -70,12 +62,7 @@ pub fn advance(state: &mut State) {
 
     //Calculate the source terms (sqs,sds,sgs) for linearised PV (qs),
     //divergence (ds) and acceleration divergence (gs):
-    source(
-        state,
-        sqs.as_slice_memory_order_mut().unwrap(),
-        sds.as_slice_memory_order_mut().unwrap(),
-        sgs.as_slice_memory_order_mut().unwrap(),
-    );
+    source(state, sqs.view_mut(), sds.view_mut(), sgs.view_mut());
 
     //Update PV field:
     qsi.assign(&state.qs);
@@ -91,7 +78,10 @@ pub fn advance(state: &mut State) {
             qs in &mut state.qs,
             diss in diss_broadcast,
             qsm in &qsm, sqs in &sqs,
-            qsi in &qsi) *qs = diss * (qsm + dt4 * sqs) - qsi);
+            qsi in &qsi)
+        {
+            *qs = diss * (qsm + dt4 * sqs) - qsi
+        });
     }
 
     // Update divergence and acceleration divergence:
@@ -121,53 +111,77 @@ pub fn advance(state: &mut State) {
         ) *ds = sgs + rdis * sds);
 
         for iz in 0..=nz {
-            azip!((wka in &mut wka, ds in state.ds.index_axis(Axis(2), iz)) *wka += state.spectral.weight[iz] * ds);
-            azip!((wkb in &mut wkb, sds in sds.index_axis(Axis(2), iz)) *wkb += state.spectral.weight[iz] * sds);
+            azip!((
+                wka in &mut wka,
+                ds in state.ds.index_axis(Axis(2), iz))
+            {
+                *wka += state.spectral.weight[iz] * ds
+            });
+
+            azip!((
+                wkb in &mut wkb,
+                sds in sds.index_axis(Axis(2), iz))
+            {
+                *wkb += state.spectral.weight[iz] * sds
+            });
         }
     }
+
     // fope = F operator
     wka *= &state.spectral.fope;
     // c2g2 = c^2*Lap operator
     wkb *= &state.spectral.c2g2;
 
     for iz in 0..=nz {
-        for i in 0..ng {
-            for j in 0..ng {
-                // simp = (R^2 + f^2)^{-1}
-                state.ds[[i, j, iz]] = state.spectral.simp[[i, j]]
-                    * (state.ds[[i, j, iz]] - wka[[i, j]])
-                    - dsi[[i, j, iz]];
-                // 2*T_tilde_gamma
-                state.gs[[i, j, iz]] = wkb[[i, j]] - FSQ * sds[[i, j, iz]]
-                    + state.spectral.rdis[[i, j]] * sgs[[i, j, iz]];
-            }
-        }
+        // simp = (R^2 + f^2)^{-1}
+        azip!((
+            ds in state.ds.index_axis_mut(Axis(2), iz),
+            simp in &state.spectral.simp,
+            wka in &wka,
+            dsi in dsi.index_axis(Axis(2), iz))
+        {
+            *ds = simp * (*ds - wka) - dsi
+        });
+
+        // 2*T_tilde_gamma
+        azip!((
+            gs in state.gs.index_axis_mut(Axis(2), iz),
+            wkb in &wkb,
+            sds in sds.index_axis(Axis(2), iz),
+            rdis in &state.spectral.rdis,
+            sgs in sgs.index_axis(Axis(2), iz))
+        {
+            *gs = wkb - FSQ * sds + rdis * sgs
+        });
     }
 
     wka.fill(0.0);
     for iz in 0..=nz {
-        for i in 0..ng {
-            for j in 0..ng {
-                wka[[i, j]] += state.spectral.weight[iz] * state.gs[[i, j, iz]];
-            }
-        }
+        azip!((
+            wka in &mut wka,
+            gs in state.gs.index_axis(Axis(2), iz))
+        {
+            *wka += state.spectral.weight[iz] * gs
+        });
     }
+
     // fope = F operator in paper
     wka *= &state.spectral.fope;
 
     for iz in 0..=nz {
-        for i in 0..ng {
-            for j in 0..ng {
-                // simp = (R^2 + f^2)^{-1}
-                state.gs[[i, j, iz]] = state.spectral.simp[[i, j]]
-                    * (state.gs[[i, j, iz]] - wka[[i, j]])
-                    - gsi[[i, j, iz]];
-            }
-        }
+        // simp = (R^2 + f^2)^{-1}
+        azip!((
+            gs in state.gs.index_axis_mut(Axis(2), iz),
+            simp in &state.spectral.simp,
+            wka in &wka,
+            gsi in gsi.index_axis(Axis(2), iz))
+        {
+            *gs = simp * (*gs - wka) - gsi
+        });
     }
 
     // Iterate to improve estimates of F^{n+1}:
-    for _ in 1..=niter {
+    for _ in 0..niter {
         // Perform inversion at t^{n+1} from estimated quantities:
         state.spectral.main_invert(
             state.qs.view(),
@@ -184,12 +198,7 @@ pub fn advance(state: &mut State) {
 
         // Calculate the source terms (sqs,sds,sgs) for linearised PV (qs),
         // divergence (ds) and acceleration divergence (gs):
-        source(
-            state,
-            sqs.as_slice_memory_order_mut().unwrap(),
-            sds.as_slice_memory_order_mut().unwrap(),
-            sgs.as_slice_memory_order_mut().unwrap(),
-        );
+        source(state, sqs.view_mut(), sds.view_mut(), sgs.view_mut());
 
         // Update PV field:
         let mut diss_broadcast = state.spectral.diss.broadcast((nz + 1, ng, ng)).unwrap();
@@ -266,7 +275,10 @@ pub fn advance(state: &mut State) {
         }
         wka.fill(0.0);
         for iz in 0..=nz {
-            azip!((wka in &mut wka, gs in &state.gs.index_axis(Axis(2), iz)) {
+            azip!((
+                wka in &mut wka,
+                gs in &state.gs.index_axis(Axis(2), iz))
+            {
                 *wka += state.spectral.weight[iz] * gs
             });
         }
@@ -284,7 +296,10 @@ pub fn advance(state: &mut State) {
             gs in &mut state.gs,
             simp in simp_broadcast,
             wka in wka_broadcast,
-            gsi in &gsi) *gs = simp * (*gs - wka) - gsi);
+            gsi in &gsi)
+        {
+            *gs = simp * (*gs - wka) - gsi
+        });
     }
 
     // Advance time:
