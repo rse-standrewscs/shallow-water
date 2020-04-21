@@ -4,7 +4,7 @@ use {
         nhswps::State,
         utils::{arr2zero, arr3zero},
     },
-    ndarray::{azip, Array2, ArrayViewMut3, Axis, ShapeBuilder},
+    ndarray::{azip, ArrayViewMut3, Axis},
     parking_lot::Mutex,
     rayon::prelude::*,
     std::sync::Arc,
@@ -361,8 +361,7 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
             .spectral
             .deal2d(wkq.as_slice_memory_order_mut().unwrap());
         //sp0(:,:,iz)=hsrc+cof*(zeta(:,:,iz)-ri(:,:,iz)*wkp)+ two*(ux*vy-uy*vx+ri(:,:,iz)*wkq);
-        let mut temp =
-            Array2::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
+        let mut temp = arr2zero(ng);
 
         azip!((
             t in &mut temp,

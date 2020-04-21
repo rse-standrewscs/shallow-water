@@ -203,7 +203,7 @@ mod test {
             nhswps::{Output, Spectral},
         },
         approx::assert_abs_diff_eq,
-        byteorder::{ByteOrder, NetworkEndian},
+        byteorder::ByteOrder,
         lazy_static::lazy_static,
         ndarray::{Array3, ShapeBuilder},
     };
