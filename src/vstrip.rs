@@ -1,6 +1,6 @@
 use {
-    crate::parameters::Parameters,
-    ndarray::{Array2, ShapeBuilder},
+    crate::{parameters::Parameters, utils::arr2zero},
+    ndarray::Array2,
     std::f64::consts::PI,
 };
 
@@ -18,8 +18,8 @@ pub fn init_pv_strip(parameters: &Parameters) -> Array2<f64> {
     let mut qev1 = vec![0f64; (ngu / 2) + 1];
     let mut qev2 = vec![0f64; (ngu / 2) + 1];
 
-    let mut qa = Array2::from_shape_vec((ngu, ngu), vec![0.0; ngu * ngu]).unwrap();
-    let mut qq = Array2::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
+    let mut qa = arr2zero(ngu);
+    let mut qq = arr2zero(ng);
 
     let hwid = parameters.numerical.strip_width / 2.0;
 

@@ -6,7 +6,7 @@ mod test;
 use {
     crate::{constants::*, sta2dfft::D2FFT, utils::*},
     core::f64::consts::PI,
-    ndarray::{Array2, Array3, ArrayView3, ArrayViewMut3, Axis, ShapeBuilder, Zip},
+    ndarray::{Array2, Array3, ArrayView3, ArrayViewMut3, Axis, Zip},
 };
 
 #[derive(Debug, PartialEq, Clone)]
@@ -301,14 +301,8 @@ impl Spectral {
         let nz = self.nz;
         let dsumi = 1.0 / (ng * ng) as f64;
 
-        let mut es = Array3::<f64>::from_shape_vec(
-            (ng, ng, nz + 1).strides((1, ng, ng * ng)),
-            vec![0.0; ng * ng * (nz + 1)],
-        )
-        .unwrap();
-
-        let mut wka =
-            Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
+        let mut es = arr3zero(ng, nz);
+        let mut wka = arr2zero(ng);
         let mut wkb = wka.clone();
         let mut wkc = wka.clone();
         let mut wkd = wka.clone();
@@ -567,10 +561,8 @@ impl Spectral {
         let nz = self.nz;
         let mut fp_matrix = viewmut3d(fp, ng, ng, nz + 1);
 
-        let mut wkp_matrix =
-            Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
-        let mut wks_matrix =
-            Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
+        let mut wkp_matrix = arr2zero(ng);
+        let mut wks_matrix = arr2zero(ng);
 
         for iz in 0..=self.nz {
             wkp_matrix.assign(&fp_matrix.index_axis(Axis(2), iz));

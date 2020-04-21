@@ -2,7 +2,7 @@ use {
     byteorder::{ByteOrder, NetworkEndian},
     criterion::{criterion_group, criterion_main, Benchmark, Criterion},
     ndarray::{Array3, ShapeBuilder},
-    shallow_water::{array3_from_file, spectral::Spectral},
+    shallow_water::{array3_from_file, spectral::Spectral, utils::arr3zero},
 };
 
 macro_rules! _1d_from_file {
@@ -37,11 +37,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 7,
                 "../src/spectral/testdata/main_invert/48_6_gs.bin"
             );
-            let mut r = Array3::from_shape_vec(
-                (48, 48, 7).strides((1, 48, 48 * 48)),
-                vec![0.0; 48 * 48 * 7],
-            )
-            .unwrap();
+            let mut r = arr3zero(48, 6);
             let mut u = r.clone();
             let mut v = r.clone();
             let mut zeta = r.clone();

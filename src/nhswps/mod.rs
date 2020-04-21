@@ -7,12 +7,16 @@ pub mod vertical;
 
 use {
     crate::{
-        constants::*, parameters::Parameters, spectral::Spectral, sta2dfft::D2FFT, utils::arr3zero,
+        constants::*,
+        parameters::Parameters,
+        spectral::Spectral,
+        sta2dfft::D2FFT,
+        utils::{arr2zero, arr3zero},
     },
     advance::advance,
     byteorder::{ByteOrder, LittleEndian},
     log::{debug, info},
-    ndarray::{Array1, Array2, Array3, ArrayView1, Axis, ShapeBuilder, Zip},
+    ndarray::{Array1, Array3, ArrayView1, Axis, ShapeBuilder, Zip},
     psolve::psolve,
     source::source,
     std::f64::consts::PI,
@@ -263,8 +267,7 @@ fn savegrid(state: &mut State) {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
 
-    let arr2zero =
-        Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
+    let arr2zero = arr2zero(ng);
 
     let mut v3d = Array3::<f32>::from_shape_vec(
         (ng, ng, nz + 1).strides((1, ng, ng * ng)),

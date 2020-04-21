@@ -2,9 +2,10 @@ use {
     crate::{
         constants::*,
         nhswps::{coeffs::coeffs, cpsource::cpsource, vertical::vertical, State},
+        utils::{arr2zero, arr3zero},
     },
     log::error,
-    ndarray::{azip, Array2, Array3, Axis, ShapeBuilder},
+    ndarray::{azip, Axis},
     parking_lot::Mutex,
     rayon::prelude::*,
     std::sync::Arc,
@@ -28,14 +29,8 @@ pub fn psolve(state: &mut State) {
     let nitmax: usize = 100;
     // nitmax: maximum number of iterations allowed before stopping
 
-    let zero2 =
-        Array2::<f64>::from_shape_vec((ng, ng).strides((1, ng)), vec![0.0; ng * ng]).unwrap();
-
-    let zero3 = Array3::<f64>::from_shape_vec(
-        (ng, ng, nz + 1).strides((1, ng, ng * ng)),
-        vec![0.0; ng * ng * (nz + 1)],
-    )
-    .unwrap();
+    let zero2 = arr2zero(ng);
+    let zero3 = arr3zero(ng, nz);
 
     // Constant part of the pressure source:
     let mut sp0 = zero3.clone();
@@ -515,7 +510,7 @@ mod test {
             nhswps::{Output, Spectral},
         },
         approx::assert_abs_diff_eq,
-        byteorder::{ByteOrder, NetworkEndian},
+        byteorder::ByteOrder,
         lazy_static::lazy_static,
         ndarray::{Array3, ShapeBuilder},
     };

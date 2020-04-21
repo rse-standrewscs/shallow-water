@@ -38,13 +38,27 @@ pub fn assert_approx_eq_slice(a: &[f64], b: &[f64]) {
 }
 
 #[macro_export]
+macro_rules! array2_from_file {
+    ($x:expr, $y:expr, $name:expr) => {
+        Array2::from_shape_vec(
+            ($x, $y).strides((1, $x)),
+            include_bytes!($name)
+                .chunks(8)
+                .map(byteorder::NetworkEndian::read_f64)
+                .collect::<Vec<f64>>(),
+        )
+        .unwrap();
+    };
+}
+
+#[macro_export]
 macro_rules! array3_from_file {
     ($x:expr, $y:expr, $z:expr, $name:expr) => {
         Array3::from_shape_vec(
             ($x, $y, $z).strides((1, $x, $x * $y)),
             include_bytes!($name)
                 .chunks(8)
-                .map(NetworkEndian::read_f64)
+                .map(byteorder::NetworkEndian::read_f64)
                 .collect::<Vec<f64>>(),
         )
         .unwrap();

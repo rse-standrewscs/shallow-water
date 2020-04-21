@@ -3,6 +3,7 @@ use {
     crate::{array3_from_file, utils::*},
     approx::assert_abs_diff_eq,
     byteorder::{ByteOrder, NetworkEndian},
+    ndarray::ShapeBuilder,
 };
 
 macro_rules! _1d_from_file {
@@ -25,11 +26,7 @@ mod main_invert {
         let ds = array3_from_file!(18, 18, 3, "testdata/main_invert/18_2_ds.bin");
         let gs = array3_from_file!(18, 18, 3, "testdata/main_invert/18_2_gs.bin");
 
-        let mut r = Array3::from_shape_vec(
-            (18, 18, 3).strides((1, 18, 18 * 18)),
-            vec![0.0; 18 * 18 * 3],
-        )
-        .unwrap();
+        let mut r = arr3zero(18, 2);
         let mut u = r.clone();
         let mut v = r.clone();
         let mut zeta = r.clone();
@@ -63,11 +60,7 @@ mod main_invert {
         let ds = array3_from_file!(30, 30, 5, "testdata/main_invert/30_4_ds.bin");
         let gs = array3_from_file!(30, 30, 5, "testdata/main_invert/30_4_gs.bin");
 
-        let mut r = Array3::from_shape_vec(
-            (30, 30, 5).strides((1, 30, 30 * 30)),
-            vec![0.0; 30 * 30 * 5],
-        )
-        .unwrap();
+        let mut r = arr3zero(30, 4);
         let mut u = r.clone();
         let mut v = r.clone();
         let mut zeta = r.clone();
@@ -100,11 +93,7 @@ mod main_invert {
         let ds = array3_from_file!(48, 48, 7, "testdata/main_invert/48_6_ds.bin");
         let gs = array3_from_file!(48, 48, 7, "testdata/main_invert/48_6_gs.bin");
 
-        let mut r = Array3::from_shape_vec(
-            (48, 48, 7).strides((1, 48, 48 * 48)),
-            vec![0.0; 48 * 48 * 7],
-        )
-        .unwrap();
+        let mut r = arr3zero(48, 6);
         let mut u = r.clone();
         let mut v = r.clone();
         let mut zeta = r.clone();
