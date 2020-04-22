@@ -170,10 +170,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench(
         "nhswps",
         Benchmark::new("coeffs", |b| {
-            let state = {
-                let ng = 32;
-                let nz = 4;
+            let ng = 32;
+            let nz = 4;
 
+            let state = {
                 let ri =
                     array3_from_file!(ng, ng, nz + 1, "../src/nhswps/testdata/coeffs/32_4_ri.bin");
                 let zx =
@@ -207,24 +207,41 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     output: Output::default(),
                 }
             };
-            let mut sigx = include_bytes!("../src/nhswps/testdata/coeffs/32_4_sigx.bin")
-                .chunks(8)
-                .map(NetworkEndian::read_f64)
-                .collect::<Vec<f64>>();
-            let mut sigy = include_bytes!("../src/nhswps/testdata/coeffs/32_4_sigy.bin")
-                .chunks(8)
-                .map(NetworkEndian::read_f64)
-                .collect::<Vec<f64>>();
-            let mut cpt1 = include_bytes!("../src/nhswps/testdata/coeffs/32_4_cpt1.bin")
-                .chunks(8)
-                .map(NetworkEndian::read_f64)
-                .collect::<Vec<f64>>();
-            let mut cpt2 = include_bytes!("../src/nhswps/testdata/coeffs/32_4_cpt2.bin")
-                .chunks(8)
-                .map(NetworkEndian::read_f64)
-                .collect::<Vec<f64>>();
 
-            b.iter(|| coeffs(&state, &mut sigx, &mut sigy, &mut cpt1, &mut cpt2))
+            let mut sigx = array3_from_file!(
+                ng,
+                ng,
+                nz + 1,
+                "../src/nhswps/testdata/coeffs/32_4_sigx.bin"
+            );
+            let mut sigy = array3_from_file!(
+                ng,
+                ng,
+                nz + 1,
+                "../src/nhswps/testdata/coeffs/32_4_sigy.bin"
+            );
+            let mut cpt1 = array3_from_file!(
+                ng,
+                ng,
+                nz + 1,
+                "../src/nhswps/testdata/coeffs/32_4_cpt1.bin"
+            );
+            let mut cpt2 = array3_from_file!(
+                ng,
+                ng,
+                nz + 1,
+                "../src/nhswps/testdata/coeffs/32_4_cpt2.bin"
+            );
+
+            b.iter(|| {
+                coeffs(
+                    &state,
+                    sigx.view_mut(),
+                    sigy.view_mut(),
+                    cpt1.view_mut(),
+                    cpt2.view_mut(),
+                )
+            })
         }),
     );
 
