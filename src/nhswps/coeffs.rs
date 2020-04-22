@@ -1,124 +1,114 @@
-use crate::{constants::*, nhswps::State, utils::*};
+use {
+    crate::{constants::*, nhswps::State, utils::*},
+    ndarray::{azip, ArrayViewMut3, Axis},
+};
 
 /// Calculates the fixed coefficients used in the pressure iteration.
 pub fn coeffs(
     state: &State,
-    sigx: &mut [f64],
-    sigy: &mut [f64],
-    cpt1: &mut [f64],
-    cpt2: &mut [f64],
+    mut sigx: ArrayViewMut3<f64>,
+    mut sigy: ArrayViewMut3<f64>,
+    mut cpt1: ArrayViewMut3<f64>,
+    mut cpt2: ArrayViewMut3<f64>,
 ) {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
     let qdzi = (1.0 / 4.0) * (1.0 / (HBAR / nz as f64));
-    let mut wkp = vec![0.0; ng * ng];
-    let mut wka = vec![0.0; ng * ng];
+    let mut wkp = arr2zero(ng);
+    let mut wka = arr2zero(ng);
 
     // Compute sigx and sigy and de-alias:
-    let ri_slice = state.ri.as_slice_memory_order().unwrap();
-    let zx_slice = state.zx.as_slice_memory_order().unwrap();
-    for (i, e) in sigx.iter_mut().enumerate() {
-        *e = ri_slice[i] * zx_slice[i];
-    }
-    let zy_slice = state.zy.as_slice_memory_order().unwrap();
-    for (i, e) in sigy.iter_mut().enumerate() {
-        *e = ri_slice[i] * zy_slice[i];
-    }
-    state.spectral.deal3d(sigx);
-    state.spectral.deal3d(sigy);
+    azip!((sigx in &mut sigx, ri in &state.ri, zx in &state.zx) *sigx = ri * zx);
+    azip!((sigy in &mut sigy, ri in &state.ri, zy in &state.zy) *sigy = ri * zy);
+    state
+        .spectral
+        .deal3d(sigx.as_slice_memory_order_mut().unwrap());
+    state
+        .spectral
+        .deal3d(sigy.as_slice_memory_order_mut().unwrap());
 
     // Compute cpt2 and de-alias:
-    for (i, e) in cpt2.iter_mut().enumerate() {
-        *e = 1.0 - ri_slice[i].powf(2.0) - sigx[i].powf(2.0) - sigy[i].powf(2.0);
-    }
-    state.spectral.deal3d(cpt2);
+    azip!((
+        cpt2 in &mut cpt2,
+        ri in &state.ri,
+        sigx in &sigx,
+        sigy in &sigy)
+    {
+        *cpt2 = 1.0 - ri.powf(2.0) - sigx.powf(2.0) - sigy.powf(2.0)
+    });
+
+    state
+        .spectral
+        .deal3d(cpt2.as_slice_memory_order_mut().unwrap());
 
     // Calculate 0.5*d(cpt2)/dtheta + div(sigx,sigy) and store in cpt1:
 
     // Lower boundary (use higher order formula):
+    azip!((
+        cpt1 in cpt1.index_axis_mut(Axis(2), 0),
+        cpt2_0 in cpt2.index_axis(Axis(2), 0),
+        cpt2_1 in cpt2.index_axis(Axis(2), 1),
+        cpt2_2 in cpt2.index_axis(Axis(2), 2))
     {
-        let mut cpt1_matrix = viewmut3d(cpt1, ng, ng, nz + 1);
-        let cpt2_matrix = view3d(&cpt2, ng, ng, nz + 1);
-        for i in 0..ng {
-            for j in 0..ng {
-                cpt1_matrix[[i, j, 0]] = qdzi
-                    * (4.0 * cpt2_matrix[[i, j, 1]]
-                        - 3.0 * cpt2_matrix[[i, j, 0]]
-                        - cpt2_matrix[[i, j, 2]]);
-            }
-        }
-    }
+        *cpt1 = qdzi *  (4.0 * cpt2_1 - 3.0 * cpt2_0 - cpt2_2)
+    });
+
     // qdzi=1/(4*dz) is used since 0.5*d/dtheta is being computed.
 
     // Interior (centred differencing):
     for iz in 1..nz {
-        let d3_sigx = view3d(sigx, ng, ng, nz + 1);
-        let d3_sigy = view3d(sigy, ng, ng, nz + 1);
-        let mut d2_sigx = vec![0.0; ng * ng];
-        let mut d2_sigy = vec![0.0; ng * ng];
+        state.spectral.divs(
+            sigx.index_axis(Axis(2), iz)
+                .as_slice_memory_order()
+                .unwrap(),
+            sigy.index_axis(Axis(2), iz)
+                .as_slice_memory_order()
+                .unwrap(),
+            wka.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.spctop(
+            wka.as_slice_memory_order_mut().unwrap(),
+            wkp.as_slice_memory_order_mut().unwrap(),
+        );
+
+        azip!((
+            cpt1 in cpt1.index_axis_mut(Axis(2), iz),
+            cpt2_p in cpt2.index_axis(Axis(2), iz + 1),
+            cpt2_m in cpt2.index_axis(Axis(2), iz - 1),
+            wkp in &wkp)
         {
-            let mut d2_sigx = viewmut2d(&mut d2_sigx, ng, ng);
-            let mut d2_sigy = viewmut2d(&mut d2_sigy, ng, ng);
-            for i in 0..ng {
-                for j in 0..ng {
-                    d2_sigx[[i, j]] = d3_sigx[[i, j, iz]];
-                    d2_sigy[[i, j]] = d3_sigy[[i, j, iz]];
-                }
-            }
-        }
-        state.spectral.divs(&d2_sigx, &d2_sigy, &mut wka);
-        state.spectral.d2fft.spctop(&mut wka, &mut wkp);
-        {
-            let mut cpt1_matrix = viewmut3d(cpt1, ng, ng, nz + 1);
-            let cpt2_matrix = view3d(&cpt2, ng, ng, nz + 1);
-            let wkp_matrix = view2d(&wkp, ng, ng);
-            for i in 0..ng {
-                for j in 0..ng {
-                    cpt1_matrix[[i, j, iz]] = qdzi
-                        * (cpt2_matrix[[i, j, iz + 1]] - cpt2_matrix[[i, j, iz - 1]])
-                        + wkp_matrix[[i, j]];
-                }
-            }
-        }
+            *cpt1 = qdzi * (cpt2_p - cpt2_m) + wkp
+        });
     }
 
     // Upper boundary (use higher order formula):
-    let mut d2_sigx = vec![0.0; ng * ng];
-    let mut d2_sigy = vec![0.0; ng * ng];
+    state.spectral.divs(
+        sigx.index_axis(Axis(2), nz)
+            .as_slice_memory_order()
+            .unwrap(),
+        sigy.index_axis(Axis(2), nz)
+            .as_slice_memory_order()
+            .unwrap(),
+        wka.as_slice_memory_order_mut().unwrap(),
+    );
+    state.spectral.d2fft.spctop(
+        wka.as_slice_memory_order_mut().unwrap(),
+        wkp.as_slice_memory_order_mut().unwrap(),
+    );
+
+    azip!((
+        cpt1 in cpt1.index_axis_mut(Axis(2), nz),
+        cpt2_0 in cpt2.index_axis(Axis(2), nz),
+        cpt2_1 in cpt2.index_axis(Axis(2), nz - 1),
+        cpt2_2 in cpt2.index_axis(Axis(2), nz - 2),
+        wkp in &wkp)
     {
-        let mut d2_sigx = viewmut2d(&mut d2_sigx, ng, ng);
-        let mut d2_sigy = viewmut2d(&mut d2_sigy, ng, ng);
-        let d3_sigx = view3d(sigx, ng, ng, nz + 1);
-        let d3_sigy = view3d(sigy, ng, ng, nz + 1);
-        for i in 0..ng {
-            for j in 0..ng {
-                d2_sigx[[i, j]] = d3_sigx[[i, j, nz]];
-                d2_sigy[[i, j]] = d3_sigy[[i, j, nz]];
-            }
-        }
-    }
-    state.spectral.divs(&d2_sigx, &d2_sigy, &mut wka);
-    state.spectral.d2fft.spctop(&mut wka, &mut wkp);
-    {
-        let mut cpt1_matrix = viewmut3d(cpt1, ng, ng, nz + 1);
-        let cpt2_matrix = view3d(&cpt2, ng, ng, nz + 1);
-        let wkp_matrix = view2d(&wkp, ng, ng);
-        for i in 0..ng {
-            for j in 0..ng {
-                cpt1_matrix[[i, j, nz]] = qdzi
-                    * (3.0 * cpt2_matrix[[i, j, nz]] + cpt2_matrix[[i, j, nz - 2]]
-                        - 4.0 * cpt2_matrix[[i, j, nz - 1]])
-                    + wkp_matrix[[i, j]];
-            }
-        }
-    };
+        *cpt1 = qdzi * (3.0 * cpt2_0 + cpt2_2 - 4.0 * cpt2_1) + wkp;
+    });
+
     // Re-define sigx and sigy to include a factor of 2:
-    for e in sigx.iter_mut() {
-        *e *= 2.0;
-    }
-    for e in sigy.iter_mut() {
-        *e *= 2.0;
-    }
+    sigx *= 2.0;
+    sigy *= 2.0;
 }
 
 #[cfg(test)]
@@ -129,7 +119,8 @@ mod test {
             array3_from_file,
             nhswps::{Output, Spectral},
         },
-        byteorder::{ByteOrder, NetworkEndian},
+        approx::assert_abs_diff_eq,
+        byteorder::ByteOrder,
         lazy_static::lazy_static,
         ndarray::{Array3, ShapeBuilder},
     };
@@ -207,225 +198,153 @@ mod test {
 
     #[test]
     fn _18_2_sigx() {
-        let mut sigx = include_bytes!("testdata/coeffs/18_2_sigx.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut sigy = include_bytes!("testdata/coeffs/18_2_sigy.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt1 = include_bytes!("testdata/coeffs/18_2_cpt1.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt2 = include_bytes!("testdata/coeffs/18_2_cpt2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let sigx2 = include_bytes!("testdata/coeffs/18_2_sigx2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut sigx = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_sigx.bin");
+        let mut sigy = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_sigy.bin");
+        let mut cpt1 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_cpt1.bin");
+        let mut cpt2 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_cpt2.bin");
+        let sigx2 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_sigx2.bin");
 
-        coeffs(&STATE_18_2, &mut sigx, &mut sigy, &mut cpt1, &mut cpt2);
+        coeffs(
+            &STATE_18_2,
+            sigx.view_mut(),
+            sigy.view_mut(),
+            cpt1.view_mut(),
+            cpt2.view_mut(),
+        );
 
-        assert_approx_eq_slice(&sigx2, &sigx);
+        assert_abs_diff_eq!(sigx2, sigx, epsilon = 1.0E-10);
     }
 
     #[test]
     fn _18_2_sigy() {
-        let mut sigx = include_bytes!("testdata/coeffs/18_2_sigx.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut sigy = include_bytes!("testdata/coeffs/18_2_sigy.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt1 = include_bytes!("testdata/coeffs/18_2_cpt1.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt2 = include_bytes!("testdata/coeffs/18_2_cpt2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let sigy2 = include_bytes!("testdata/coeffs/18_2_sigy2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut sigx = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_sigx.bin");
+        let mut sigy = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_sigy.bin");
+        let mut cpt1 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_cpt1.bin");
+        let mut cpt2 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_cpt2.bin");
+        let sigy2 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_sigy2.bin");
 
-        coeffs(&STATE_18_2, &mut sigx, &mut sigy, &mut cpt1, &mut cpt2);
+        coeffs(
+            &STATE_18_2,
+            sigx.view_mut(),
+            sigy.view_mut(),
+            cpt1.view_mut(),
+            cpt2.view_mut(),
+        );
 
-        assert_approx_eq_slice(&sigy2, &sigy);
+        assert_abs_diff_eq!(sigy2, sigy, epsilon = 1.0E-10);
     }
 
     #[test]
     fn _18_2_cpt1() {
-        let mut sigx = include_bytes!("testdata/coeffs/18_2_sigx.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut sigy = include_bytes!("testdata/coeffs/18_2_sigy.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt1 = include_bytes!("testdata/coeffs/18_2_cpt1.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt2 = include_bytes!("testdata/coeffs/18_2_cpt2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let cpt12 = include_bytes!("testdata/coeffs/18_2_cpt12.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut sigx = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_sigx.bin");
+        let mut sigy = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_sigy.bin");
+        let mut cpt1 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_cpt1.bin");
+        let mut cpt2 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_cpt2.bin");
+        let cpt12 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_cpt12.bin");
 
-        coeffs(&STATE_18_2, &mut sigx, &mut sigy, &mut cpt1, &mut cpt2);
+        coeffs(
+            &STATE_18_2,
+            sigx.view_mut(),
+            sigy.view_mut(),
+            cpt1.view_mut(),
+            cpt2.view_mut(),
+        );
 
-        assert_approx_eq_slice(&cpt12, &cpt1);
+        assert_abs_diff_eq!(&cpt12, &cpt1, epsilon = 1.0E-10);
     }
 
     #[test]
     fn _18_2_cpt2() {
-        let mut sigx = include_bytes!("testdata/coeffs/18_2_sigx.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut sigy = include_bytes!("testdata/coeffs/18_2_sigy.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt1 = include_bytes!("testdata/coeffs/18_2_cpt1.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt2 = include_bytes!("testdata/coeffs/18_2_cpt2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let cpt22 = include_bytes!("testdata/coeffs/18_2_cpt22.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut sigx = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_sigx.bin");
+        let mut sigy = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_sigy.bin");
+        let mut cpt1 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_cpt1.bin");
+        let mut cpt2 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_cpt2.bin");
+        let cpt22 = array3_from_file!(18, 18, 3, "testdata/coeffs/18_2_cpt22.bin");
 
-        coeffs(&STATE_18_2, &mut sigx, &mut sigy, &mut cpt1, &mut cpt2);
+        coeffs(
+            &STATE_18_2,
+            sigx.view_mut(),
+            sigy.view_mut(),
+            cpt1.view_mut(),
+            cpt2.view_mut(),
+        );
 
-        assert_approx_eq_slice(&cpt22, &cpt2);
+        assert_abs_diff_eq!(&cpt22, &cpt2, epsilon = 1.0E-10);
     }
 
     #[test]
     fn _32_4_sigx() {
-        let mut sigx = include_bytes!("testdata/coeffs/32_4_sigx.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut sigy = include_bytes!("testdata/coeffs/32_4_sigy.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt1 = include_bytes!("testdata/coeffs/32_4_cpt1.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt2 = include_bytes!("testdata/coeffs/32_4_cpt2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let sigx2 = include_bytes!("testdata/coeffs/32_4_sigx2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut sigx = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_sigx.bin");
+        let mut sigy = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_sigy.bin");
+        let mut cpt1 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_cpt1.bin");
+        let mut cpt2 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_cpt2.bin");
+        let sigx2 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_sigx2.bin");
 
-        coeffs(&STATE_32_4, &mut sigx, &mut sigy, &mut cpt1, &mut cpt2);
+        coeffs(
+            &STATE_32_4,
+            sigx.view_mut(),
+            sigy.view_mut(),
+            cpt1.view_mut(),
+            cpt2.view_mut(),
+        );
 
-        assert_approx_eq_slice(&sigx2, &sigx);
+        assert_abs_diff_eq!(&sigx2, &sigx, epsilon = 1.0E-10);
     }
 
     #[test]
     fn _32_4_sigy() {
-        let mut sigx = include_bytes!("testdata/coeffs/32_4_sigx.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut sigy = include_bytes!("testdata/coeffs/32_4_sigy.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt1 = include_bytes!("testdata/coeffs/32_4_cpt1.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt2 = include_bytes!("testdata/coeffs/32_4_cpt2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let sigy2 = include_bytes!("testdata/coeffs/32_4_sigy2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut sigx = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_sigx.bin");
+        let mut sigy = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_sigy.bin");
+        let mut cpt1 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_cpt1.bin");
+        let mut cpt2 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_cpt2.bin");
+        let sigy2 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_sigy2.bin");
 
-        coeffs(&STATE_32_4, &mut sigx, &mut sigy, &mut cpt1, &mut cpt2);
+        coeffs(
+            &STATE_32_4,
+            sigx.view_mut(),
+            sigy.view_mut(),
+            cpt1.view_mut(),
+            cpt2.view_mut(),
+        );
 
-        assert_approx_eq_slice(&sigy2, &sigy);
+        assert_abs_diff_eq!(&sigy2, &sigy, epsilon = 1.0E-10);
     }
 
     #[test]
     fn _32_4_cpt1() {
-        let mut sigx = include_bytes!("testdata/coeffs/32_4_sigx.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut sigy = include_bytes!("testdata/coeffs/32_4_sigy.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt1 = include_bytes!("testdata/coeffs/32_4_cpt1.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt2 = include_bytes!("testdata/coeffs/32_4_cpt2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let cpt12 = include_bytes!("testdata/coeffs/32_4_cpt12.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut sigx = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_sigx.bin");
+        let mut sigy = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_sigy.bin");
+        let mut cpt1 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_cpt1.bin");
+        let mut cpt2 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_cpt2.bin");
+        let cpt12 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_cpt12.bin");
 
-        coeffs(&STATE_32_4, &mut sigx, &mut sigy, &mut cpt1, &mut cpt2);
+        coeffs(
+            &STATE_32_4,
+            sigx.view_mut(),
+            sigy.view_mut(),
+            cpt1.view_mut(),
+            cpt2.view_mut(),
+        );
 
-        assert_approx_eq_slice(&cpt12, &cpt1);
+        assert_abs_diff_eq!(&cpt12, &cpt1, epsilon = 1.0E-10);
     }
 
     #[test]
     fn _32_4_cpt2() {
-        let mut sigx = include_bytes!("testdata/coeffs/32_4_sigx.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut sigy = include_bytes!("testdata/coeffs/32_4_sigy.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt1 = include_bytes!("testdata/coeffs/32_4_cpt1.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut cpt2 = include_bytes!("testdata/coeffs/32_4_cpt2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let cpt22 = include_bytes!("testdata/coeffs/32_4_cpt22.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut sigx = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_sigx.bin");
+        let mut sigy = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_sigy.bin");
+        let mut cpt1 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_cpt1.bin");
+        let mut cpt2 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_cpt2.bin");
+        let cpt22 = array3_from_file!(32, 32, 5, "testdata/coeffs/32_4_cpt22.bin");
 
-        coeffs(&STATE_32_4, &mut sigx, &mut sigy, &mut cpt1, &mut cpt2);
+        coeffs(
+            &STATE_32_4,
+            sigx.view_mut(),
+            sigy.view_mut(),
+            cpt1.view_mut(),
+            cpt2.view_mut(),
+        );
 
-        assert_approx_eq_slice(&cpt22, &cpt2);
+        assert_abs_diff_eq!(&cpt22, &cpt2, epsilon = 1.0E-10);
     }
 }

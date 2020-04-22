@@ -70,10 +70,10 @@ pub fn psolve(state: &mut State) {
     // Define constant coefficients in pressure inversion:
     coeffs(
         state,
-        sigx.as_slice_memory_order_mut().unwrap(),
-        sigy.as_slice_memory_order_mut().unwrap(),
-        cpt1.as_slice_memory_order_mut().unwrap(),
-        cpt2.as_slice_memory_order_mut().unwrap(),
+        sigx.view_mut(),
+        sigy.view_mut(),
+        cpt1.view_mut(),
+        cpt2.view_mut(),
     );
 
     // Define constant part of the pressure source (sp0):
