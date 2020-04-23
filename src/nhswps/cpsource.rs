@@ -4,7 +4,7 @@ use {
         nhswps::State,
         utils::{arr2zero, arr3zero},
     },
-    ndarray::{azip, ArrayViewMut3, Axis},
+    ndarray::{ArrayViewMut3, Axis, Zip},
     parking_lot::Mutex,
     rayon::prelude::*,
     std::sync::Arc,
@@ -56,67 +56,56 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
     // Calculate u_theta, v_theta & w_theta:
 
     // Lower boundary (use higher order formula):
-    azip!((
-        ut in ut.index_axis_mut(Axis(2), 0),
-        u0 in state.u.index_axis(Axis(2), 0),
-        u1 in state.u.index_axis(Axis(2), 1),
-        u2 in state.u.index_axis(Axis(2), 2))
-    {
-        *ut = hdzi * (4.0 * u1 - 3.0 * u0 - u2)
-    });
+    Zip::from(ut.index_axis_mut(Axis(2), 0))
+        .and(state.u.index_axis(Axis(2), 0))
+        .and(state.u.index_axis(Axis(2), 1))
+        .and(state.u.index_axis(Axis(2), 2))
+        .apply(|ut, u0, u1, u2| *ut = hdzi * (4.0 * u1 - 3.0 * u0 - u2));
 
-    azip!((
-        vt in vt.index_axis_mut(Axis(2), 0),
-        v0 in state.v.index_axis(Axis(2), 0),
-        v1 in state.v.index_axis(Axis(2), 1),
-        v2 in state.v.index_axis(Axis(2), 2))
-    {
-        *vt = hdzi * (4.0 * v1 - 3.0 * v0 - v2)
-    });
+    Zip::from(vt.index_axis_mut(Axis(2), 0))
+        .and(state.v.index_axis(Axis(2), 0))
+        .and(state.v.index_axis(Axis(2), 1))
+        .and(state.v.index_axis(Axis(2), 2))
+        .apply(|vt, v0, v1, v2| *vt = hdzi * (4.0 * v1 - 3.0 * v0 - v2));
 
-    azip!((
-        wt in wt.index_axis_mut(Axis(2), 0),
-        w0 in state.w.index_axis(Axis(2), 0),
-        w1 in state.w.index_axis(Axis(2), 1),
-        w2 in state.w.index_axis(Axis(2), 2))
-    {
-        *wt = hdzi * (4.0 * w1 - 3.0 * w0 - w2)
-    });
+    Zip::from(wt.index_axis_mut(Axis(2), 0))
+        .and(state.w.index_axis(Axis(2), 0))
+        .and(state.w.index_axis(Axis(2), 1))
+        .and(state.w.index_axis(Axis(2), 2))
+        .apply(|wt, w0, w1, w2| *wt = hdzi * (4.0 * w1 - 3.0 * w0 - w2));
 
     // Interior (centred differencing):
     for iz in 1..nz {
-        azip!((
-            ut in ut.index_axis_mut(Axis(2), iz),
-            up in state.u.index_axis(Axis(2), iz+1),
-            um in state.u.index_axis(Axis(2), iz-1)) *ut = hdzi * (up - um));
-
-        azip!((
-            vt in vt.index_axis_mut(Axis(2), iz),
-            vp in state.v.index_axis(Axis(2), iz+1),
-            vm in state.v.index_axis(Axis(2), iz-1)) *vt = hdzi * (vp - vm));
-
-        azip!((
-            wt in wt.index_axis_mut(Axis(2), iz),
-            wp in state.w.index_axis(Axis(2), iz+1),
-            wm in state.w.index_axis(Axis(2), iz-1)) *wt = hdzi * (wp - wm));
+        Zip::from(ut.index_axis_mut(Axis(2), iz))
+            .and(state.u.index_axis(Axis(2), iz + 1))
+            .and(state.u.index_axis(Axis(2), iz - 1))
+            .apply(|ut, up, um| *ut = hdzi * (up - um));
+        Zip::from(vt.index_axis_mut(Axis(2), iz))
+            .and(state.v.index_axis(Axis(2), iz + 1))
+            .and(state.v.index_axis(Axis(2), iz - 1))
+            .apply(|vt, vp, vm| *vt = hdzi * (vp - vm));
+        Zip::from(wt.index_axis_mut(Axis(2), iz))
+            .and(state.w.index_axis(Axis(2), iz + 1))
+            .and(state.w.index_axis(Axis(2), iz - 1))
+            .apply(|wt, wp, wm| *wt = hdzi * (wp - wm));
     }
 
     // Upper boundary (use higher order formula):
-    azip!((
-        ut in ut.index_axis_mut(Axis(2), nz),
-        u in state.u.index_axis(Axis(2), nz),
-        u1 in state.u.index_axis(Axis(2), nz-1),
-        u2 in state.u.index_axis(Axis(2), nz-2)) *ut = hdzi * (3.0 * u + u2 - 4.0 * u1));
-    azip!((
-        vt in vt.index_axis_mut(Axis(2), nz),
-        v in state.v.index_axis(Axis(2), nz),
-        v1 in state.v.index_axis(Axis(2), nz-1),
-        v2 in state.v.index_axis(Axis(2), nz-2)) *vt = hdzi * (3.0 * v + v2 - 4.0 * v1));
-    azip!((
-        wt in wt.index_axis_mut(Axis(2), nz),
-        w in state.w.index_axis(Axis(2), nz),
-        w1 in state.w.index_axis(Axis(2), nz-1),
-        w2 in state.w.index_axis(Axis(2), nz-2)) *wt = hdzi * (3.0 * w + w2 - 4.0 * w1));
+    Zip::from(ut.index_axis_mut(Axis(2), nz))
+        .and(state.u.index_axis(Axis(2), nz))
+        .and(state.u.index_axis(Axis(2), nz - 1))
+        .and(state.u.index_axis(Axis(2), nz - 2))
+        .apply(|ut, u, u1, u2| *ut = hdzi * (3.0 * u + u2 - 4.0 * u1));
+    Zip::from(vt.index_axis_mut(Axis(2), nz))
+        .and(state.v.index_axis(Axis(2), nz))
+        .and(state.v.index_axis(Axis(2), nz - 1))
+        .and(state.v.index_axis(Axis(2), nz - 2))
+        .apply(|vt, v, v1, v2| *vt = hdzi * (3.0 * v + v2 - 4.0 * v1));
+    Zip::from(wt.index_axis_mut(Axis(2), nz))
+        .and(state.w.index_axis(Axis(2), nz))
+        .and(state.w.index_axis(Axis(2), nz - 1))
+        .and(state.w.index_axis(Axis(2), nz - 2))
+        .apply(|wt, w, w1, w2| *wt = hdzi * (3.0 * w + w2 - 4.0 * w1));
 
     // Loop over layers and build up source, sp0:
 
@@ -172,33 +161,27 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
         vy.as_slice_memory_order_mut().unwrap(),
     );
 
-    azip!((
-        wkq in &mut wkq,
-        ri in state.ri.index_axis(Axis(2), 0),
-        wt in wt.index_axis(Axis(2), 0)) *wkq = ri * wt);
+    Zip::from(&mut wkq)
+        .and(state.ri.index_axis(Axis(2), 0))
+        .and(wt.index_axis(Axis(2), 0))
+        .apply(|wkq, ri, wt| *wkq = ri * wt);
 
     state
         .spectral
         .deal2d(wkq.as_slice_memory_order_mut().unwrap());
 
-    azip!((
-        sp0 in sp0.index_axis_mut(Axis(2), 0),
-        hsrc in &hsrc,
-        zeta in state.zeta.index_axis(Axis(2), 0))
-    {
-        *sp0 = hsrc + COF * zeta
-    });
+    Zip::from(sp0.index_axis_mut(Axis(2), 0))
+        .and(&hsrc)
+        .and(state.zeta.index_axis(Axis(2), 0))
+        .apply(|sp0, hsrc, zeta| *sp0 = hsrc + COF * zeta);
 
-    azip!((
-        sp0 in sp0.index_axis_mut(Axis(2), 0),
-        wkq in &wkq,
-        ux in &ux,
-        uy in &uy,
-        vx in &vx,
-        vy in &vy)
-    {
-        *sp0 += 2.0 * (ux * vy - uy * vx + wkq * (ux + vy))
-    });
+    Zip::from(sp0.index_axis_mut(Axis(2), 0))
+        .and(&wkq)
+        .and(&ux)
+        .and(&uy)
+        .and(&vx)
+        .and(&vy)
+        .apply(|sp0, wkq, ux, uy, vx, vy| *sp0 += 2.0 * (ux * vy - uy * vx + wkq * (ux + vy)));
 
     let sp0 = Arc::new(Mutex::new(sp0));
 
@@ -292,70 +275,54 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
         );
 
         // Calculate pressure source:
-        azip!((
-            wkp in &mut wkp,
-            vt in vt.index_axis(Axis(2), iz),
-            ut in ut.index_axis(Axis(2), iz),
-            zx in state.zx.index_axis(Axis(2), iz),
-            zy in state.zy.index_axis(Axis(2), iz),
-        ){
-            *wkp = vt * zx - ut * zy
-        });
+        Zip::from(&mut wkp)
+            .and(vt.index_axis(Axis(2), iz))
+            .and(ut.index_axis(Axis(2), iz))
+            .and(state.zx.index_axis(Axis(2), iz))
+            .and(state.zy.index_axis(Axis(2), iz))
+            .apply(|wkp, vt, ut, zx, zy| *wkp = vt * zx - ut * zy);
 
         state
             .spectral
             .deal2d(wkp.as_slice_memory_order_mut().unwrap());
 
-        azip!((
-            wkq in &mut wkq,
-            uy in &uy,
-            vt in vt.index_axis(Axis(2), iz),
-            ut in ut.index_axis(Axis(2), iz),
-            vy in &vy)
-        {
-            *wkq = uy * vt - ut * vy
-        });
+        Zip::from(&mut wkq)
+            .and(&uy)
+            .and(vt.index_axis(Axis(2), iz))
+            .and(ut.index_axis(Axis(2), iz))
+            .and(&vy)
+            .apply(|wkq, uy, vt, ut, vy| *wkq = uy * vt - ut * vy);
 
         state
             .spectral
             .deal2d(wkq.as_slice_memory_order_mut().unwrap());
 
-        azip!((
-            wkr in &mut wkr,
-            ut in ut.index_axis(Axis(2), iz),
-            vt in vt.index_axis(Axis(2), iz),
-            vx in &vx,
-            ux in &ux)
-        {
-            *wkr = ut * vx - ux * vt
-        });
+        Zip::from(&mut wkr)
+            .and(ut.index_axis(Axis(2), iz))
+            .and(vt.index_axis(Axis(2), iz))
+            .and(&vx)
+            .and(&ux)
+            .apply(|wkr, ut, vt, vx, ux| *wkr = ut * vx - ux * vt);
 
         state
             .spectral
             .deal2d(wkr.as_slice_memory_order_mut().unwrap());
 
-        azip!((
-            wkq in &mut wkq,
-            wkr in &wkr,
-            zx in state.zx.index_axis(Axis(2), iz),
-            zy in state.zy.index_axis(Axis(2), iz),
-            wy in &wy,
-            vt in vt.index_axis(Axis(2), iz)
-        )
-        {
-            *wkq = *wkq * zx + wkr * zy - wy * vt
-        });
+        Zip::from(&mut wkq)
+            .and(&wkr)
+            .and(state.zx.index_axis(Axis(2), iz))
+            .and(state.zy.index_axis(Axis(2), iz))
+            .and(&wy)
+            .and(vt.index_axis(Axis(2), iz))
+            .apply(|wkq, wkr, zx, zy, wy, vt| *wkq = *wkq * zx + wkr * zy - wy * vt);
 
-        azip!((
-            wkq in &mut wkq,
-            ux in &ux,
-            vy in &vy,
-            ut in ut.index_axis(Axis(2), iz),
-            wt in wt.index_axis(Axis(2), iz),
-            wx in &wx,
-        ) {
-            *wkq += (ux + vy) * wt - wx * ut
-        });
+        Zip::from(&mut wkq)
+            .and(&ux)
+            .and(&vy)
+            .and(ut.index_axis(Axis(2), iz))
+            .and(wt.index_axis(Axis(2), iz))
+            .and(&wx)
+            .apply(|wkq, ux, vy, ut, wt, wx| *wkq += (ux + vy) * wt - wx * ut);
 
         state
             .spectral
@@ -363,26 +330,22 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
         //sp0(:,:,iz)=hsrc+cof*(zeta(:,:,iz)-ri(:,:,iz)*wkp)+ two*(ux*vy-uy*vx+ri(:,:,iz)*wkq);
         let mut temp = arr2zero(ng);
 
-        azip!((
-            t in &mut temp,
-            hsrc in &hsrc,
-            zeta in state.zeta.index_axis(Axis(2), iz),
-            ri in state.ri.index_axis(Axis(2), iz),
-            wkp in &wkp,
-            wkq in &wkq)
-        {
-            *t = hsrc + COF * (zeta - ri * wkp) + 2.0 * (ri * wkq)
-        });
+        Zip::from(&mut temp)
+            .and(&hsrc)
+            .and(state.zeta.index_axis(Axis(2), iz))
+            .and(state.ri.index_axis(Axis(2), iz))
+            .and(&wkp)
+            .and(&wkq)
+            .apply(|t, hsrc, zeta, ri, wkp, wkq| {
+                *t = hsrc + COF * (zeta - ri * wkp) + 2.0 * (ri * wkq)
+            });
 
-        azip!((
-            t in &mut temp,
-            ux in &ux,
-            vy in &vy,
-            uy in &uy,
-            vx in &vx)
-        {
-            *t += 2.0 * (ux * vy - uy * vx)
-        });
+        Zip::from(&mut temp)
+            .and(&ux)
+            .and(&vy)
+            .and(&uy)
+            .and(&vx)
+            .apply(|t, ux, vy, uy, vx| *t += 2.0 * (ux * vy - uy * vx));
 
         sp0.lock().index_axis_mut(Axis(2), iz).assign(&temp);
     });

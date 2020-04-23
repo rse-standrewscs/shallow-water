@@ -4,7 +4,7 @@ use {
         nhswps::{diagnose, psolve, source, State},
         utils::{arr2zero, arr3zero},
     },
-    ndarray::{azip, Axis},
+    ndarray::{Axis, Zip},
 };
 
 /// Advances fields from time t to t+dt using an iterative implicit
@@ -67,29 +67,36 @@ pub fn advance(state: &mut State) {
     //Update PV field:
     qsi.assign(&state.qs);
 
-    azip!((qsm in &mut qsm, qs in &state.qs, sqs in &sqs) *qsm = qs + dt4 * sqs);
+    Zip::from(&mut qsm)
+        .and(&state.qs)
+        .and(&sqs)
+        .apply(|qsm, qs, sqs| *qsm = qs + dt4 * sqs);
 
     {
         let mut diss_broadcast = state.spectral.diss.broadcast((nz + 1, ng, ng)).unwrap();
         diss_broadcast.swap_axes(0, 2);
         diss_broadcast.swap_axes(0, 1);
 
-        azip!((
-            qs in &mut state.qs,
-            diss in diss_broadcast,
-            qsm in &qsm, sqs in &sqs,
-            qsi in &qsi)
-        {
-            *qs = diss * (qsm + dt4 * sqs) - qsi
-        });
+        Zip::from(&mut state.qs)
+            .and(diss_broadcast)
+            .and(&qsm)
+            .and(&sqs)
+            .and(&qsi)
+            .apply(|qs, diss, qsm, sqs, qsi| *qs = diss * (qsm + dt4 * sqs) - qsi);
     }
 
     // Update divergence and acceleration divergence:
     let dsi = state.ds.clone();
     let gsi = state.gs.clone();
 
-    azip!((nds in &mut nds, sds in &sds, dsi in &dsi) *nds = sds + dt4i * dsi);
-    azip!((ngs in &mut ngs, sgs in &sgs, gsi in &gsi) *ngs = sgs + dt4i * gsi);
+    Zip::from(&mut nds)
+        .and(&sds)
+        .and(&dsi)
+        .apply(|nds, sds, dsi| *nds = sds + dt4i * dsi);
+    Zip::from(&mut ngs)
+        .and(&sgs)
+        .and(&gsi)
+        .apply(|ngs, sgs, gsi| *ngs = sgs + dt4i * gsi);
 
     // 2*N_tilde_delta
     sds += &nds;
@@ -103,27 +110,20 @@ pub fn advance(state: &mut State) {
         rdis_broadcast.swap_axes(0, 2);
         rdis_broadcast.swap_axes(0, 1);
 
-        azip!((
-            ds in &mut state.ds,
-            sgs in &sgs,
-            rdis in &rdis_broadcast,
-            sds in &sds
-        ) *ds = sgs + rdis * sds);
+        Zip::from(&mut state.ds)
+            .and(&sgs)
+            .and(&rdis_broadcast)
+            .and(&sds)
+            .apply(|ds, sgs, rdis, sds| *ds = sgs + rdis * sds);
 
         for iz in 0..=nz {
-            azip!((
-                wka in &mut wka,
-                ds in state.ds.index_axis(Axis(2), iz))
-            {
-                *wka += state.spectral.weight[iz] * ds
-            });
+            Zip::from(&mut wka)
+                .and(state.ds.index_axis(Axis(2), iz))
+                .apply(|wka, ds| *wka += state.spectral.weight[iz] * ds);
 
-            azip!((
-                wkb in &mut wkb,
-                sds in sds.index_axis(Axis(2), iz))
-            {
-                *wkb += state.spectral.weight[iz] * sds
-            });
+            Zip::from(&mut wkb)
+                .and(sds.index_axis(Axis(2), iz))
+                .apply(|wkb, sds| *wkb += state.spectral.weight[iz] * sds);
         }
     }
 
@@ -134,35 +134,26 @@ pub fn advance(state: &mut State) {
 
     for iz in 0..=nz {
         // simp = (R^2 + f^2)^{-1}
-        azip!((
-            ds in state.ds.index_axis_mut(Axis(2), iz),
-            simp in &state.spectral.simp,
-            wka in &wka,
-            dsi in dsi.index_axis(Axis(2), iz))
-        {
-            *ds = simp * (*ds - wka) - dsi
-        });
+        Zip::from(state.ds.index_axis_mut(Axis(2), iz))
+            .and(&state.spectral.simp)
+            .and(&wka)
+            .and(dsi.index_axis(Axis(2), iz))
+            .apply(|ds, simp, wka, dsi| *ds = simp * (*ds - wka) - dsi);
 
         // 2*T_tilde_gamma
-        azip!((
-            gs in state.gs.index_axis_mut(Axis(2), iz),
-            wkb in &wkb,
-            sds in sds.index_axis(Axis(2), iz),
-            rdis in &state.spectral.rdis,
-            sgs in sgs.index_axis(Axis(2), iz))
-        {
-            *gs = wkb - FSQ * sds + rdis * sgs
-        });
+        Zip::from(state.gs.index_axis_mut(Axis(2), iz))
+            .and(&wkb)
+            .and(sds.index_axis(Axis(2), iz))
+            .and(&state.spectral.rdis)
+            .and(sgs.index_axis(Axis(2), iz))
+            .apply(|gs, wkb, sds, rdis, sgs| *gs = wkb - FSQ * sds + rdis * sgs);
     }
 
     wka.fill(0.0);
     for iz in 0..=nz {
-        azip!((
-            wka in &mut wka,
-            gs in state.gs.index_axis(Axis(2), iz))
-        {
-            *wka += state.spectral.weight[iz] * gs
-        });
+        Zip::from(&mut wka)
+            .and(state.gs.index_axis(Axis(2), iz))
+            .apply(|wka, gs| *wka += state.spectral.weight[iz] * gs);
     }
 
     // fope = F operator in paper
@@ -170,14 +161,11 @@ pub fn advance(state: &mut State) {
 
     for iz in 0..=nz {
         // simp = (R^2 + f^2)^{-1}
-        azip!((
-            gs in state.gs.index_axis_mut(Axis(2), iz),
-            simp in &state.spectral.simp,
-            wka in &wka,
-            gsi in gsi.index_axis(Axis(2), iz))
-        {
-            *gs = simp * (*gs - wka) - gsi
-        });
+        Zip::from(state.gs.index_axis_mut(Axis(2), iz))
+            .and(&state.spectral.simp)
+            .and(&wka)
+            .and(gsi.index_axis(Axis(2), iz))
+            .apply(|gs, simp, wka, gsi| *gs = simp * (*gs - wka) - gsi);
     }
 
     // Iterate to improve estimates of F^{n+1}:
@@ -204,11 +192,12 @@ pub fn advance(state: &mut State) {
         let mut diss_broadcast = state.spectral.diss.broadcast((nz + 1, ng, ng)).unwrap();
         diss_broadcast.swap_axes(0, 2);
         diss_broadcast.swap_axes(0, 1);
-        azip!((
-            qs in &mut state.qs,
-            diss in &diss_broadcast,
-            qsm in &qsm, sqs in &sqs,
-            qsi in &qsi) *qs = diss * (qsm + dt4 * sqs) - qsi);
+        Zip::from(&mut state.qs)
+            .and(&diss_broadcast)
+            .and(&qsm)
+            .and(&sqs)
+            .and(&qsi)
+            .apply(|qs, diss, qsm, sqs, qsi| *qs = diss * (qsm + dt4 * sqs) - qsi);
 
         // Update divergence and acceleration divergence:
         // 2*N_tilde_delta
@@ -223,27 +212,19 @@ pub fn advance(state: &mut State) {
         let mut rdis_broadcast = state.spectral.rdis.broadcast((nz + 1, ng, ng)).unwrap();
         rdis_broadcast.swap_axes(0, 2);
         rdis_broadcast.swap_axes(0, 1);
-        azip!((
-            ds in &mut state.ds,
-            sgs in &sgs,
-            rdis in &rdis_broadcast,
-            sds in &sds
-        ) *ds = sgs + rdis * sds);
+        Zip::from(&mut state.ds)
+            .and(&sgs)
+            .and(&rdis_broadcast)
+            .and(&sds)
+            .apply(|ds, sgs, rdis, sds| *ds = sgs + rdis * sds);
 
         for iz in 0..=nz {
-            azip!((
-                wka in &mut wka,
-                ds in &state.ds.index_axis(Axis(2), iz))
-            {
-                *wka += state.spectral.weight[iz] * ds
-            });
-
-            azip!((
-                wkb in &mut wkb,
-                sds in &sds.index_axis(Axis(2), iz))
-            {
-                *wkb += state.spectral.weight[iz] * sds
-            });
+            Zip::from(&mut wka)
+                .and(&state.ds.index_axis(Axis(2), iz))
+                .apply(|wka, ds| *wka += state.spectral.weight[iz] * ds);
+            Zip::from(&mut wkb)
+                .and(&sds.index_axis(Axis(2), iz))
+                .apply(|wkb, sds| *wkb += state.spectral.weight[iz] * sds);
         }
 
         // fope = F operator
@@ -253,34 +234,25 @@ pub fn advance(state: &mut State) {
 
         for iz in 0..=nz {
             // simp = (R^2 + f^2)^{-1}
-            azip!((
-                ds in &mut state.ds.index_axis_mut(Axis(2), iz),
-                simp in &state.spectral.simp,
-                wka in &wka,
-                dsi in &dsi.index_axis(Axis(2), iz))
-            {
-                *ds = simp * (*ds - wka) - dsi
-            });
+            Zip::from(&mut state.ds.index_axis_mut(Axis(2), iz))
+                .and(&state.spectral.simp)
+                .and(&wka)
+                .and(&dsi.index_axis(Axis(2), iz))
+                .apply(|ds, simp, wka, dsi| *ds = simp * (*ds - wka) - dsi);
 
             // 2*T_tilde_gamma
-            azip!((
-                gs in &mut state.gs.index_axis_mut(Axis(2), iz),
-                wkb in &wkb,
-                sds in &sds.index_axis(Axis(2), iz),
-                rdis in &state.spectral.rdis,
-                sgs in &sgs.index_axis(Axis(2), iz))
-            {
-                *gs = wkb - FSQ * sds + rdis * sgs
-            });
+            Zip::from(&mut state.gs.index_axis_mut(Axis(2), iz))
+                .and(&wkb)
+                .and(&sds.index_axis(Axis(2), iz))
+                .and(&state.spectral.rdis)
+                .and(&sgs.index_axis(Axis(2), iz))
+                .apply(|gs, wkb, sds, rdis, sgs| *gs = wkb - FSQ * sds + rdis * sgs);
         }
         wka.fill(0.0);
         for iz in 0..=nz {
-            azip!((
-                wka in &mut wka,
-                gs in &state.gs.index_axis(Axis(2), iz))
-            {
-                *wka += state.spectral.weight[iz] * gs
-            });
+            Zip::from(&mut wka)
+                .and(&state.gs.index_axis(Axis(2), iz))
+                .apply(|wka, gs| *wka += state.spectral.weight[iz] * gs);
         }
         // fope = F operator
         wka *= &state.spectral.fope;
@@ -292,14 +264,11 @@ pub fn advance(state: &mut State) {
         wka_broadcast.swap_axes(0, 2);
         wka_broadcast.swap_axes(0, 1);
 
-        azip!((
-            gs in &mut state.gs,
-            simp in simp_broadcast,
-            wka in wka_broadcast,
-            gsi in &gsi)
-        {
-            *gs = simp * (*gs - wka) - gsi
-        });
+        Zip::from(&mut state.gs)
+            .and(simp_broadcast)
+            .and(wka_broadcast)
+            .and(&gsi)
+            .apply(|gs, simp, wka, gsi| *gs = simp * (*gs - wka) - gsi);
     }
 
     // Advance time:

@@ -1,6 +1,6 @@
 use {
     crate::{constants::*, nhswps::State, utils::*},
-    ndarray::{azip, ArrayViewMut3, Axis},
+    ndarray::{ArrayViewMut3, Axis, Zip},
 };
 
 /// Calculates the fixed coefficients used in the pressure iteration.
@@ -18,8 +18,14 @@ pub fn coeffs(
     let mut wka = arr2zero(ng);
 
     // Compute sigx and sigy and de-alias:
-    azip!((sigx in &mut sigx, ri in &state.ri, zx in &state.zx) *sigx = ri * zx);
-    azip!((sigy in &mut sigy, ri in &state.ri, zy in &state.zy) *sigy = ri * zy);
+    Zip::from(&mut sigx)
+        .and(&state.ri)
+        .and(&state.zx)
+        .apply(|sigx, ri, zx| *sigx = ri * zx);
+    Zip::from(&mut sigy)
+        .and(&state.ri)
+        .and(&state.zy)
+        .apply(|sigy, ri, zy| *sigy = ri * zy);
     state
         .spectral
         .deal3d(sigx.as_slice_memory_order_mut().unwrap());
@@ -28,14 +34,11 @@ pub fn coeffs(
         .deal3d(sigy.as_slice_memory_order_mut().unwrap());
 
     // Compute cpt2 and de-alias:
-    azip!((
-        cpt2 in &mut cpt2,
-        ri in &state.ri,
-        sigx in &sigx,
-        sigy in &sigy)
-    {
-        *cpt2 = 1.0 - ri.powf(2.0) - sigx.powf(2.0) - sigy.powf(2.0)
-    });
+    Zip::from(&mut cpt2)
+        .and(&state.ri)
+        .and(&sigx)
+        .and(&sigy)
+        .apply(|cpt2, ri, sigx, sigy| *cpt2 = 1.0 - ri.powf(2.0) - sigx.powf(2.0) - sigy.powf(2.0));
 
     state
         .spectral
@@ -44,14 +47,13 @@ pub fn coeffs(
     // Calculate 0.5*d(cpt2)/dtheta + div(sigx,sigy) and store in cpt1:
 
     // Lower boundary (use higher order formula):
-    azip!((
-        cpt1 in cpt1.index_axis_mut(Axis(2), 0),
-        cpt2_0 in cpt2.index_axis(Axis(2), 0),
-        cpt2_1 in cpt2.index_axis(Axis(2), 1),
-        cpt2_2 in cpt2.index_axis(Axis(2), 2))
-    {
-        *cpt1 = qdzi *  (4.0 * cpt2_1 - 3.0 * cpt2_0 - cpt2_2)
-    });
+    Zip::from(cpt1.index_axis_mut(Axis(2), 0))
+        .and(cpt2.index_axis(Axis(2), 0))
+        .and(cpt2.index_axis(Axis(2), 1))
+        .and(cpt2.index_axis(Axis(2), 2))
+        .apply(|cpt1, cpt2_0, cpt2_1, cpt2_2| {
+            *cpt1 = qdzi * (4.0 * cpt2_1 - 3.0 * cpt2_0 - cpt2_2)
+        });
 
     // qdzi=1/(4*dz) is used since 0.5*d/dtheta is being computed.
 
@@ -71,14 +73,11 @@ pub fn coeffs(
             wkp.as_slice_memory_order_mut().unwrap(),
         );
 
-        azip!((
-            cpt1 in cpt1.index_axis_mut(Axis(2), iz),
-            cpt2_p in cpt2.index_axis(Axis(2), iz + 1),
-            cpt2_m in cpt2.index_axis(Axis(2), iz - 1),
-            wkp in &wkp)
-        {
-            *cpt1 = qdzi * (cpt2_p - cpt2_m) + wkp
-        });
+        Zip::from(cpt1.index_axis_mut(Axis(2), iz))
+            .and(cpt2.index_axis(Axis(2), iz + 1))
+            .and(cpt2.index_axis(Axis(2), iz - 1))
+            .and(&wkp)
+            .apply(|cpt1, cpt2_p, cpt2_m, wkp| *cpt1 = qdzi * (cpt2_p - cpt2_m) + wkp);
     }
 
     // Upper boundary (use higher order formula):
@@ -96,15 +95,14 @@ pub fn coeffs(
         wkp.as_slice_memory_order_mut().unwrap(),
     );
 
-    azip!((
-        cpt1 in cpt1.index_axis_mut(Axis(2), nz),
-        cpt2_0 in cpt2.index_axis(Axis(2), nz),
-        cpt2_1 in cpt2.index_axis(Axis(2), nz - 1),
-        cpt2_2 in cpt2.index_axis(Axis(2), nz - 2),
-        wkp in &wkp)
-    {
-        *cpt1 = qdzi * (3.0 * cpt2_0 + cpt2_2 - 4.0 * cpt2_1) + wkp;
-    });
+    Zip::from(cpt1.index_axis_mut(Axis(2), nz))
+        .and(cpt2.index_axis(Axis(2), nz))
+        .and(cpt2.index_axis(Axis(2), nz - 1))
+        .and(cpt2.index_axis(Axis(2), nz - 2))
+        .and(&wkp)
+        .apply(|cpt1, cpt2_0, cpt2_1, cpt2_2, wkp| {
+            *cpt1 = qdzi * (3.0 * cpt2_0 + cpt2_2 - 4.0 * cpt2_1) + wkp;
+        });
 
     // Re-define sigx and sigy to include a factor of 2:
     sigx *= 2.0;
