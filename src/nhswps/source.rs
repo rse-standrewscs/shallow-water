@@ -1,6 +1,6 @@
 use {
     crate::{constants::*, nhswps::State, utils::*},
-    ndarray::{azip, ArrayViewMut3, Axis},
+    ndarray::{ArrayViewMut3, Axis, Zip},
     rayon::prelude::*,
     std::sync::{Arc, Mutex},
 };
@@ -30,7 +30,9 @@ pub fn source(
 
     //Calculate vertically-independent part of gs source (wkd):;
     for iz in 0..=nz {
-        azip!((wkd in &mut wkd, aa in state.aa.index_axis(Axis(2), iz)) *wkd += state.spectral.weight[iz] * aa);
+        Zip::from(&mut wkd)
+            .and(state.aa.index_axis(Axis(2), iz))
+            .apply(|wkd, aa| *wkd += state.spectral.weight[iz] * aa);
     }
 
     //Note: aa contains div(u*rho_theta) in spectral space
@@ -88,15 +90,11 @@ pub fn source(
         );
 
         // Sum to get qs source:
-        azip!((
-                sqs in sqs.lock().unwrap().index_axis_mut(Axis(2), iz),
-                filt in &state.spectral.filt,
-                wkb in &wkb,
-                wka in &wka,
-            )
-        {
-            *sqs = filt * (wkb - wka)
-        });
+        Zip::from(sqs.lock().unwrap().index_axis_mut(Axis(2), iz))
+            .and(&state.spectral.filt)
+            .and(&wkb)
+            .and(&wka)
+            .apply(|sqs, filt, wkb, wka| *sqs = filt * (wkb - wka));
 
         // Nonlinear part of ds source:
 
@@ -124,25 +122,19 @@ pub fn source(
         );
 
         // Compute div(F*grad{z}-delta*{u,v}) (wkb in spectral space):
-        azip!((
-            wkp in &mut wkp,
-            ff in &ff,
-            zx in state.zx.index_axis(Axis(2), iz),
-            dd in &dd,
-            u in state.u.index_axis(Axis(2), iz))
-        {
-            *wkp = ff * zx - dd * u
-        });
+        Zip::from(&mut wkp)
+            .and(&ff)
+            .and(state.zx.index_axis(Axis(2), iz))
+            .and(&dd)
+            .and(state.u.index_axis(Axis(2), iz))
+            .apply(|wkp, ff, zx, dd, u| *wkp = ff * zx - dd * u);
 
-        azip!((
-            wkq in &mut wkq,
-            ff in &ff,
-            zy in state.zy.index_axis(Axis(2), iz),
-            dd in &dd,
-            v in state.v.index_axis(Axis(2), iz))
-        {
-            *wkq = ff * zy - dd * v
-        });
+        Zip::from(&mut wkq)
+            .and(&ff)
+            .and(state.zy.index_axis(Axis(2), iz))
+            .and(&dd)
+            .and(state.v.index_axis(Axis(2), iz))
+            .apply(|wkq, ff, zy, dd, v| *wkq = ff * zy - dd * v);
 
         state.spectral.divs(
             wkp.as_slice_memory_order().unwrap(),
@@ -151,26 +143,20 @@ pub fn source(
         );
 
         // Add Lap(P') and complete definition of ds source:
-        azip!((
-            sds in sds.lock().unwrap().index_axis_mut(Axis(2), iz),
-            filt in &state.spectral.filt,
-            wkc in &wkc,
-            wkb in &wkb,
-            hlap in &state.spectral.hlap,
-            ps in state.ps.index_axis(Axis(2), iz))
-        {
-            *sds = filt * (2.0 * wkc + wkb - hlap * ps)
-        });
+        Zip::from(sds.lock().unwrap().index_axis_mut(Axis(2), iz))
+            .and(&state.spectral.filt)
+            .and(&wkc)
+            .and(&wkb)
+            .and(&state.spectral.hlap)
+            .and(state.ps.index_axis(Axis(2), iz))
+            .apply(|sds, filt, wkc, wkb, hlap, ps| *sds = filt * (2.0 * wkc + wkb - hlap * ps));
 
         // Nonlinear part of gs source:
-        azip!((
-            sgs in sgs.lock().unwrap().index_axis_mut(Axis(2), iz),
-            sqs in sqs.lock().unwrap().index_axis(Axis(2), iz),
-            wkd in &wkd,
-            aa in state.aa.index_axis(Axis(2), iz))
-        {
-            *sgs = COF * sqs + wkd - FSQ * aa
-        });
+        Zip::from(sgs.lock().unwrap().index_axis_mut(Axis(2), iz))
+            .and(sqs.lock().unwrap().index_axis(Axis(2), iz))
+            .and(&wkd)
+            .and(state.aa.index_axis(Axis(2), iz))
+            .apply(|sgs, sqs, wkd, aa| *sgs = COF * sqs + wkd - FSQ * aa);
     });
 }
 
