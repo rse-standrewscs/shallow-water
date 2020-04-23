@@ -1,4 +1,7 @@
-use crate::{constants::*, nhswps::State, utils::*};
+use {
+    crate::{constants::*, nhswps::State, utils::*},
+    ndarray::{Axis, Zip},
+};
 
 /// Calculates layer heights (z), as well as dz/dx & dz/dy (zx & zy),
 /// the vertical velocity (w), and the A = grad{u*rho'_theta} (aa).
@@ -8,189 +11,156 @@ pub fn vertical(state: &mut State) {
 
     let dz2 = (HBAR / nz as f64) / 2.0;
 
-    let mut rsrc = vec![0.0; ng * ng * (nz + 1)];
-    let mut wkq = vec![0.0; ng * ng];
-    let mut wka = vec![0.0; ng * ng];
-    let mut wkb = vec![0.0; ng * ng];
-    let mut wkc = vec![0.0; ng * ng];
+    let mut rsrc = arr3zero(ng, nz);
+    let mut wkq = arr2zero(ng);
+    let mut wka = arr2zero(ng);
+    let mut wkb = arr2zero(ng);
+    let mut wkc = arr2zero(ng);
 
     // Only need to consider iz > 0 as z = w = 0 for iz = 0:
 
     // Find z by trapezoidal integration of rho_theta (integrate over
     // rho'_theta then add theta to the result):
-    {
-        for i in 0..ng {
-            for j in 0..ng {
-                state.z[[i, j, 1]] = dz2 * (state.r[[i, j, 0]] + state.r[[i, j, 1]]);
-            }
-        }
 
-        for iz in 1..nz {
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.z[[i, j, iz + 1]] =
-                        state.z[[i, j, iz]] + dz2 * (state.r[[i, j, iz]] + state.r[[i, j, iz + 1]]);
-                }
-            }
-        }
+    Zip::from(state.z.index_axis_mut(Axis(2), 1))
+        .and(state.r.index_axis(Axis(2), 0))
+        .and(state.r.index_axis(Axis(2), 1))
+        .apply(|z, r0, r1| *z = dz2 * (r0 + r1));
+
+    for iz in 1..nz {
+        let z_clone = state.z.clone();
+        Zip::from(state.z.index_axis_mut(Axis(2), iz + 1))
+            .and(z_clone.index_axis(Axis(2), iz))
+            .and(state.r.index_axis(Axis(2), iz))
+            .and(state.r.index_axis(Axis(2), iz + 1))
+            .apply(|z1, z0, r0, r1| *z1 = z0 + dz2 * (r0 + r1));
     }
 
     for iz in 1..=nz {
         // Add on theta (a linear function) to complete definition of z:
-        for i in 0..ng {
-            for j in 0..ng {
-                state.z[[i, j, iz]] += state.spectral.theta[iz];
-            }
-        }
+        let theta = state.spectral.theta[iz];
+        Zip::from(state.z.index_axis_mut(Axis(2), iz)).apply(|z| *z += theta);
 
         // Calculate z_x & z_y:
-        let mut wkq_matrix = viewmut2d(&mut wkq, ng, ng);
-        for i in 0..ng {
-            for j in 0..ng {
-                wkq_matrix[[i, j]] = state.z[[i, j, iz]];
-            }
-        }
+        wkq.assign(&state.z.index_axis(Axis(2), iz));
 
-        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
-        state
-            .spectral
-            .d2fft
-            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
-        state.spectral.d2fft.spctop(&mut wkb, &mut wkq);
-        {
-            let wkq_matrix = view2d(&wkq, ng, ng);
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.zx[[i, j, iz]] = wkq_matrix[[i, j]];
-                }
-            }
-        }
-        state
-            .spectral
-            .d2fft
-            .yderiv(&state.spectral.hrky, &wka, &mut wkb);
-        state.spectral.d2fft.spctop(&mut wkb, &mut wkq);
-        {
-            let wkq_matrix = view2d(&wkq, ng, ng);
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.zy[[i, j, iz]] = wkq_matrix[[i, j]];
-                }
-            }
-        }
+        state.spectral.d2fft.ptospc(
+            wkq.as_slice_memory_order_mut().unwrap(),
+            wka.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.xderiv(
+            &state.spectral.hrkx,
+            wka.as_slice_memory_order().unwrap(),
+            wkb.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.spctop(
+            wkb.as_slice_memory_order_mut().unwrap(),
+            wkq.as_slice_memory_order_mut().unwrap(),
+        );
+
+        state.zx.index_axis_mut(Axis(2), iz).assign(&wkq);
+
+        state.spectral.d2fft.yderiv(
+            &state.spectral.hrky,
+            wka.as_slice_memory_order().unwrap(),
+            wkb.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.spctop(
+            wkb.as_slice_memory_order_mut().unwrap(),
+            wkq.as_slice_memory_order_mut().unwrap(),
+        );
+
+        state.zy.index_axis_mut(Axis(2), iz).assign(&wkq);
     }
 
     // Calculate A = grad{u*rho'_theta} (spectral):
     for iz in 0..=nz {
         // Calculate (u*rho'_theta)_x:
-        {
-            let mut wkq = viewmut2d(&mut wkq, ng, ng);
+        Zip::from(&mut wkq)
+            .and(state.u.index_axis(Axis(2), iz))
+            .and(state.r.index_axis(Axis(2), iz))
+            .apply(|wkq, u, r| *wkq = u * r);
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    wkq[[i, j]] = state.u[[i, j, iz]] * state.r[[i, j, iz]];
-                }
-            }
-        }
-        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
-        state
-            .spectral
-            .d2fft
-            .xderiv(&state.spectral.hrkx, &wka, &mut wkb);
+        state.spectral.d2fft.ptospc(
+            wkq.as_slice_memory_order_mut().unwrap(),
+            wka.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.xderiv(
+            &state.spectral.hrkx,
+            wka.as_slice_memory_order().unwrap(),
+            wkb.as_slice_memory_order_mut().unwrap(),
+        );
 
         // Calculate (v*rho'_theta)_y:
-        {
-            let mut wkq = viewmut2d(&mut wkq, ng, ng);
+        Zip::from(&mut wkq)
+            .and(state.v.index_axis(Axis(2), iz))
+            .and(state.r.index_axis(Axis(2), iz))
+            .apply(|wkq, v, r| *wkq = v * r);
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    wkq[[i, j]] = state.v[[i, j, iz]] * state.r[[i, j, iz]];
-                }
-            }
-        }
-        state.spectral.d2fft.ptospc(&mut wkq, &mut wka);
-        state
-            .spectral
-            .d2fft
-            .yderiv(&state.spectral.hrky, &wka, &mut wkc);
+        state.spectral.d2fft.ptospc(
+            wkq.as_slice_memory_order_mut().unwrap(),
+            wka.as_slice_memory_order_mut().unwrap(),
+        );
+        state.spectral.d2fft.yderiv(
+            &state.spectral.hrky,
+            wka.as_slice_memory_order().unwrap(),
+            wkc.as_slice_memory_order_mut().unwrap(),
+        );
 
         // Apply de-aliasing filter and complete definition of A:
-        {
-            let wkb = view2d(&wkb, ng, ng);
-            let wkc = view2d(&wkc, ng, ng);
+        Zip::from(state.aa.index_axis_mut(Axis(2), iz))
+            .and(&state.spectral.filt)
+            .and(&wkb)
+            .and(&wkc)
+            .apply(|aa, filt, wkb, wkc| *aa = filt * (wkb + wkc));
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.aa[[i, j, iz]] =
-                        state.spectral.filt[[i, j]] * (wkb[[i, j]] + wkc[[i, j]]);
-                }
-            }
-        }
         // Need -(A + delta) in physical space for computing w just below:
-        {
-            let mut wka = viewmut2d(&mut wka, ng, ng);
+        Zip::from(&mut wka)
+            .and(state.aa.index_axis(Axis(2), iz))
+            .and(state.ds.index_axis(Axis(2), iz))
+            .apply(|wka, aa, ds| *wka = aa + ds);
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    wka[[i, j]] = state.aa[[i, j, iz]] + state.ds[[i, j, iz]];
-                }
-            }
-        }
-        state.spectral.d2fft.spctop(&mut wka, &mut wkq);
-        {
-            let mut rsrc = viewmut3d(&mut rsrc, ng, ng, nz + 1);
-            let wkq = view2d(&wkq, ng, ng);
+        state.spectral.d2fft.spctop(
+            wka.as_slice_memory_order_mut().unwrap(),
+            wkq.as_slice_memory_order_mut().unwrap(),
+        );
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    rsrc[[i, j, iz]] = -wkq[[i, j]];
-                }
-            }
-        }
+        Zip::from(rsrc.index_axis_mut(Axis(2), iz))
+            .and(&wkq)
+            .apply(|rsrc, wkq| *rsrc = -wkq);
     }
 
     // Calculate vertical velocity (0 at iz = 0):
-    {
-        let rsrc = view3d(&rsrc, ng, ng, nz + 1);
-        for i in 0..ng {
-            for j in 0..ng {
-                state.w[[i, j, 1]] = dz2 * (rsrc[[i, j, 0]] + rsrc[[i, j, 1]]);
-            }
-        }
-    }
+    Zip::from(state.w.index_axis_mut(Axis(2), 1))
+        .and(rsrc.index_axis(Axis(2), 0))
+        .and(rsrc.index_axis(Axis(2), 1))
+        .apply(|w, rsrc0, rsrc1| *w = dz2 * (rsrc0 + rsrc1));
+
     for iz in 1..nz {
-        {
-            let rsrc = view3d(&rsrc, ng, ng, nz + 1);
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.w[[i, j, iz + 1]] =
-                        state.w[[i, j, iz]] + dz2 * (rsrc[[i, j, iz]] + rsrc[[i, j, iz + 1]]);
-                }
-            }
-        };
+        let w0 = state.w.clone();
+        Zip::from(state.w.index_axis_mut(Axis(2), iz + 1))
+            .and(w0.index_axis(Axis(2), iz))
+            .and(rsrc.index_axis(Axis(2), iz))
+            .and(rsrc.index_axis(Axis(2), iz + 1))
+            .apply(|w1, w0, rsrc0, rsrc1| *w1 = w0 + dz2 * (rsrc0 + rsrc1));
     }
 
     // Complete definition of w by adding u*z_x + v*z_y after de-aliasing:
     for iz in 1..=nz {
-        {
-            let mut wkq = viewmut2d(&mut wkq, ng, ng);
-            for i in 0..ng {
-                for j in 0..ng {
-                    wkq[[i, j]] = state.u[[i, j, iz]] * state.zx[[i, j, iz]]
-                        + state.v[[i, j, iz]] * state.zy[[i, j, iz]];
-                }
-            }
-        }
-        state.spectral.deal2d(&mut wkq);
-        {
-            let wkq = view2d(&wkq, ng, ng);
+        Zip::from(&mut wkq)
+            .and(state.u.index_axis(Axis(2), iz))
+            .and(state.zx.index_axis(Axis(2), iz))
+            .and(state.v.index_axis(Axis(2), iz))
+            .and(state.zy.index_axis(Axis(2), iz))
+            .apply(|wkq, u, zx, v, zy| *wkq = u * zx + v * zy);
 
-            for i in 0..ng {
-                for j in 0..ng {
-                    state.w[[i, j, iz]] += wkq[[i, j]];
-                }
-            }
-        }
+        state
+            .spectral
+            .deal2d(wkq.as_slice_memory_order_mut().unwrap());
+
+        Zip::from(state.w.index_axis_mut(Axis(2), iz))
+            .and(&wkq)
+            .apply(|w, wkq| *w += wkq);
     }
 }
 

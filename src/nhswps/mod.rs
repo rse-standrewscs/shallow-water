@@ -183,13 +183,15 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], parameters: &Parameters) -> Ou
     };
 
     for iz in 0..=nz {
-        for i in 0..ng {
-            for j in 0..ng {
-                state.qs[[i, j, iz]] *= state.spectral.filt[[i, j]];
-                state.ds[[i, j, iz]] *= state.spectral.filt[[i, j]];
-                state.gs[[i, j, iz]] *= state.spectral.filt[[i, j]];
-            }
-        }
+        Zip::from(state.qs.index_axis_mut(Axis(2), iz))
+            .and(&state.spectral.filt)
+            .apply(|qs, filt| *qs *= filt);
+        Zip::from(state.ds.index_axis_mut(Axis(2), iz))
+            .and(&state.spectral.filt)
+            .apply(|ds, filt| *ds *= filt);
+        Zip::from(state.gs.index_axis_mut(Axis(2), iz))
+            .and(&state.spectral.filt)
+            .apply(|gs, filt| *gs *= filt);
     }
 
     state.spectral.main_invert(
