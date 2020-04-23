@@ -3,8 +3,8 @@ extern crate clap;
 
 use {
     byteorder::{ByteOrder, LittleEndian},
-    jemallocator::Jemalloc,
     log::{error, info},
+    mimalloc::MiMalloc,
     shallow_water::{
         balinit::balinit, nhswps::nhswps, parameters::Parameters, swto3d::swto3d,
         vstrip::init_pv_strip,
@@ -16,7 +16,7 @@ use {
 };
 
 #[global_allocator]
-static GLOBAL: Jemalloc = Jemalloc;
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[quit::main]
 fn main() {
