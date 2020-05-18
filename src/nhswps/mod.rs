@@ -18,11 +18,12 @@ use {
     log::{debug, info},
     ndarray::{Array1, Array3, ArrayView1, Axis, ShapeBuilder, Zip},
     psolve::psolve,
+    serde::{Deserialize, Serialize},
     source::source,
     std::f64::consts::PI,
 };
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Output {
     // Plain text diagnostics
     pub ecomp: String,   //16
@@ -47,7 +48,7 @@ pub struct Output {
     pub d2zeta: Vec<u8>, //45
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct State {
     pub spectral: Spectral,
 
