@@ -7,9 +7,10 @@ use {
     crate::{constants::*, sta2dfft::D2FFT, utils::*},
     core::f64::consts::PI,
     ndarray::{Array2, Array3, ArrayView3, ArrayViewMut3, Axis, Zip},
+    serde::{Deserialize, Serialize},
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Spectral {
     // Spectral operators
     pub hlap: Array2<f64>,
