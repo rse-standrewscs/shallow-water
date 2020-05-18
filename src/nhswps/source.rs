@@ -2,7 +2,6 @@ use {
     crate::{constants::*, nhswps::State, utils::*},
     ndarray::{ArrayViewMut3, Axis, Zip},
     rayon::prelude::*,
-    std::sync::{Arc, Mutex},
 };
 
 /// Gets the nonlinear source terms for linearised PV, divergence and
@@ -19,9 +18,9 @@ use {
 /// spectrally truncated.
 pub fn source(
     state: &State,
-    sqs: ArrayViewMut3<f64>,
-    sds: ArrayViewMut3<f64>,
-    sgs: ArrayViewMut3<f64>,
+    mut sqs: ArrayViewMut3<f64>,
+    mut sds: ArrayViewMut3<f64>,
+    mut sgs: ArrayViewMut3<f64>,
 ) {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
@@ -38,126 +37,130 @@ pub fn source(
     //Note: aa contains div(u*rho_theta) in spectral space
     wkd *= &state.spectral.c2g2;
 
-    let sqs = Arc::new(Mutex::new(sqs));
-    let sds = Arc::new(Mutex::new(sds));
-    let sgs = Arc::new(Mutex::new(sgs));
+    sqs.axis_iter_mut(Axis(2))
+        .into_par_iter()
+        .zip(sds.axis_iter_mut(Axis(2)).into_par_iter())
+        .zip(sgs.axis_iter_mut(Axis(2)).into_par_iter())
+        .zip(0..=(nz as u16))
+        .for_each(|(((mut sqs_slice, sds_slice), sgs_slice), iz)| {
+            let iz = iz as usize;
+            let mut dd = arr2zero(ng);
+            let mut ff = arr2zero(ng);
 
-    (0..=nz).into_par_iter().for_each(|iz| {
-        let mut dd = arr2zero(ng);
-        let mut ff = arr2zero(ng);
+            let mut wkp = arr2zero(ng);
+            let mut wkq = arr2zero(ng);
 
-        let mut wkp = arr2zero(ng);
-        let mut wkq = arr2zero(ng);
+            let mut wka = arr2zero(ng);
+            let mut wkb = arr2zero(ng);
+            let mut wkc = arr2zero(ng);
 
-        let mut wka = arr2zero(ng);
-        let mut wkb = arr2zero(ng);
-        let mut wkc = arr2zero(ng);
+            // qs source:
 
-        // qs source:
+            // Compute div(ql*u,ql*v) (wka in spectral space):
+            wka.assign(&state.qs.index_axis(Axis(2), iz));
 
-        // Compute div(ql*u,ql*v) (wka in spectral space):
-        wka.assign(&state.qs.index_axis(Axis(2), iz));
+            state.spectral.d2fft.spctop(
+                wka.as_slice_memory_order_mut().unwrap(),
+                wkq.as_slice_memory_order_mut().unwrap(),
+            );
+            // wkq contains the linearised PV in physical space
 
-        state.spectral.d2fft.spctop(
-            wka.as_slice_memory_order_mut().unwrap(),
-            wkq.as_slice_memory_order_mut().unwrap(),
-        );
-        // wkq contains the linearised PV in physical space
+            wkp.assign(&(&wkq * &state.u.index_axis(Axis(2), iz)));
+            wkq *= &state.v.index_axis(Axis(2), iz);
 
-        wkp.assign(&(&wkq * &state.u.index_axis(Axis(2), iz)));
-        wkq *= &state.v.index_axis(Axis(2), iz);
+            // Compute spectral divergence from physical fields:
+            state.spectral.divs(
+                wkp.as_slice_memory_order().unwrap(),
+                wkq.as_slice_memory_order().unwrap(),
+                wka.as_slice_memory_order_mut().unwrap(),
+            );
 
-        // Compute spectral divergence from physical fields:
-        state.spectral.divs(
-            wkp.as_slice_memory_order().unwrap(),
-            wkq.as_slice_memory_order().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
+            // Compute Jacobian of F = (1/rho_theta)*dP'/dtheta & z (wkb, spectral):
+            ff.assign(&(&state.ri.index_axis(Axis(2), iz) * &state.dpn.index_axis(Axis(2), iz)));
 
-        // Compute Jacobian of F = (1/rho_theta)*dP'/dtheta & z (wkb, spectral):
-        ff.assign(&(&state.ri.index_axis(Axis(2), iz) * &state.dpn.index_axis(Axis(2), iz)));
+            state
+                .spectral
+                .deal2d(ff.as_slice_memory_order_mut().unwrap());
 
-        state
-            .spectral
-            .deal2d(ff.as_slice_memory_order_mut().unwrap());
+            wkq.assign(&state.z.index_axis(Axis(2), iz));
 
-        wkq.assign(&state.z.index_axis(Axis(2), iz));
+            state.spectral.jacob(
+                ff.as_slice_memory_order().unwrap(),
+                wkq.as_slice_memory_order().unwrap(),
+                wkb.as_slice_memory_order_mut().unwrap(),
+            );
 
-        state.spectral.jacob(
-            ff.as_slice_memory_order().unwrap(),
-            wkq.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
+            // Sum to get qs source:
+            {
+                Zip::from(&mut sqs_slice)
+                    .and(&state.spectral.filt)
+                    .and(&wkb)
+                    .and(&wka)
+                    .apply(|sqs, filt, wkb, wka| *sqs = filt * (wkb - wka));
+            }
 
-        // Sum to get qs source:
-        Zip::from(sqs.lock().unwrap().index_axis_mut(Axis(2), iz))
-            .and(&state.spectral.filt)
-            .and(&wkb)
-            .and(&wka)
-            .apply(|sqs, filt, wkb, wka| *sqs = filt * (wkb - wka));
+            // Nonlinear part of ds source:
 
-        // Nonlinear part of ds source:
+            // Compute J(u,v) (wkc in spectral space):
+            state.spectral.jacob(
+                &state
+                    .u
+                    .index_axis(Axis(2), iz)
+                    .as_slice_memory_order()
+                    .unwrap(),
+                &state
+                    .v
+                    .index_axis(Axis(2), iz)
+                    .as_slice_memory_order()
+                    .unwrap(),
+                wkc.as_slice_memory_order_mut().unwrap(),
+            );
 
-        // Compute J(u,v) (wkc in spectral space):
-        state.spectral.jacob(
-            &state
-                .u
-                .index_axis(Axis(2), iz)
-                .as_slice_memory_order()
-                .unwrap(),
-            &state
-                .v
-                .index_axis(Axis(2), iz)
-                .as_slice_memory_order()
-                .unwrap(),
-            wkc.as_slice_memory_order_mut().unwrap(),
-        );
+            // Convert ds to physical space as dd:
+            wka.assign(&state.ds.index_axis(Axis(2), iz));
 
-        // Convert ds to physical space as dd:
-        wka.assign(&state.ds.index_axis(Axis(2), iz));
+            state.spectral.d2fft.spctop(
+                wka.as_slice_memory_order_mut().unwrap(),
+                dd.as_slice_memory_order_mut().unwrap(),
+            );
 
-        state.spectral.d2fft.spctop(
-            wka.as_slice_memory_order_mut().unwrap(),
-            dd.as_slice_memory_order_mut().unwrap(),
-        );
+            // Compute div(F*grad{z}-delta*{u,v}) (wkb in spectral space):
+            Zip::from(&mut wkp)
+                .and(&ff)
+                .and(state.zx.index_axis(Axis(2), iz))
+                .and(&dd)
+                .and(state.u.index_axis(Axis(2), iz))
+                .apply(|wkp, ff, zx, dd, u| *wkp = ff * zx - dd * u);
 
-        // Compute div(F*grad{z}-delta*{u,v}) (wkb in spectral space):
-        Zip::from(&mut wkp)
-            .and(&ff)
-            .and(state.zx.index_axis(Axis(2), iz))
-            .and(&dd)
-            .and(state.u.index_axis(Axis(2), iz))
-            .apply(|wkp, ff, zx, dd, u| *wkp = ff * zx - dd * u);
+            Zip::from(&mut wkq)
+                .and(&ff)
+                .and(state.zy.index_axis(Axis(2), iz))
+                .and(&dd)
+                .and(state.v.index_axis(Axis(2), iz))
+                .apply(|wkq, ff, zy, dd, v| *wkq = ff * zy - dd * v);
 
-        Zip::from(&mut wkq)
-            .and(&ff)
-            .and(state.zy.index_axis(Axis(2), iz))
-            .and(&dd)
-            .and(state.v.index_axis(Axis(2), iz))
-            .apply(|wkq, ff, zy, dd, v| *wkq = ff * zy - dd * v);
+            state.spectral.divs(
+                wkp.as_slice_memory_order().unwrap(),
+                wkq.as_slice_memory_order().unwrap(),
+                wkb.as_slice_memory_order_mut().unwrap(),
+            );
 
-        state.spectral.divs(
-            wkp.as_slice_memory_order().unwrap(),
-            wkq.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
+            // Add Lap(P') and complete definition of ds source:
+            Zip::from(sds_slice)
+                .and(&state.spectral.filt)
+                .and(&wkc)
+                .and(&wkb)
+                .and(&state.spectral.hlap)
+                .and(state.ps.index_axis(Axis(2), iz))
+                .apply(|sds, filt, wkc, wkb, hlap, ps| *sds = filt * (2.0 * wkc + wkb - hlap * ps));
 
-        // Add Lap(P') and complete definition of ds source:
-        Zip::from(sds.lock().unwrap().index_axis_mut(Axis(2), iz))
-            .and(&state.spectral.filt)
-            .and(&wkc)
-            .and(&wkb)
-            .and(&state.spectral.hlap)
-            .and(state.ps.index_axis(Axis(2), iz))
-            .apply(|sds, filt, wkc, wkb, hlap, ps| *sds = filt * (2.0 * wkc + wkb - hlap * ps));
-
-        // Nonlinear part of gs source:
-        Zip::from(sgs.lock().unwrap().index_axis_mut(Axis(2), iz))
-            .and(sqs.lock().unwrap().index_axis(Axis(2), iz))
-            .and(&wkd)
-            .and(state.aa.index_axis(Axis(2), iz))
-            .apply(|sgs, sqs, wkd, aa| *sgs = COF * sqs + wkd - FSQ * aa);
-    });
+            // Nonlinear part of gs source:
+            Zip::from(sgs_slice)
+                .and(sqs_slice)
+                .and(&wkd)
+                .and(state.aa.index_axis(Axis(2), iz))
+                .apply(|sgs, sqs, wkd, aa| *sgs = COF * *sqs + wkd - FSQ * aa);
+        });
 }
 
 #[cfg(test)]
