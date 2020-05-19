@@ -4,7 +4,6 @@ extern crate clap;
 use {
     byteorder::{ByteOrder, LittleEndian},
     log::{error, info},
-    mimalloc::MiMalloc,
     shallow_water::{
         balinit::balinit, nhswps::nhswps, parameters::Parameters, swto3d::swto3d,
         vstrip::init_pv_strip,
@@ -14,9 +13,6 @@ use {
         io::{self, prelude::*},
     },
 };
-
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
 
 #[quit::main]
 fn main() {
