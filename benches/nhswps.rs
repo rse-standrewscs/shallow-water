@@ -91,8 +91,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     viewmut3d(&mut sgs, 32, 32, 5),
                 )
             })
-        })
-        .sample_size(50),
+        }),
     );
 
     c.bench(
@@ -392,8 +391,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             };
 
             b.iter(|| psolve(&mut state))
-        })
-        .sample_size(30),
+        }),
     );
 
     c.bench(
@@ -471,8 +469,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             };
             b.iter(|| advance(&mut state))
-        })
-        .sample_size(10),
+        }),
     );
 
     c.bench(
