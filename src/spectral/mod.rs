@@ -67,22 +67,22 @@ impl Spectral {
         let dzi = 1.0 / dz;
         let dzisq = dzi.powf(2.0);
 
-        let mut hlap = Array2::<f64>::zeros((ng, ng));
-        let mut glap = Array2::<f64>::zeros((ng, ng));
-        let mut rlap = Array2::<f64>::zeros((ng, ng));
-        let mut helm = Array2::<f64>::zeros((ng, ng));
-        let mut c2g2 = Array2::<f64>::zeros((ng, ng));
-        let mut simp = Array2::<f64>::zeros((ng, ng));
-        let mut rope = Array2::<f64>::zeros((ng, ng));
-        let mut fope = Array2::<f64>::zeros((ng, ng));
-        let mut filt = Array2::<f64>::zeros((ng, ng));
-        let mut diss = Array2::<f64>::zeros((ng, ng));
-        let mut opak = Array2::<f64>::zeros((ng, ng));
-        let mut rdis = Array2::<f64>::zeros((ng, ng));
+        let mut hlap = arr2zero(ng);
+        let mut glap = arr2zero(ng);
+        let mut rlap = arr2zero(ng);
+        let mut helm = arr2zero(ng);
+        let mut c2g2 = arr2zero(ng);
+        let mut simp = arr2zero(ng);
+        let mut rope = arr2zero(ng);
+        let mut fope = arr2zero(ng);
+        let mut filt = arr2zero(ng);
+        let mut diss = arr2zero(ng);
+        let mut opak = arr2zero(ng);
+        let mut rdis = arr2zero(ng);
 
         let mut etdv = Array3::<f64>::zeros((ng, ng, nz));
         let mut htdv = Array3::<f64>::zeros((ng, ng, nz));
-        let mut ap = Array2::<f64>::zeros((ng, ng));
+        let mut ap = arr2zero(ng);
         let mut etd1 = vec![0.0; nz];
         let mut htd1 = vec![0.0; nz];
         let mut theta = vec![0.0; nz + 1];
@@ -93,12 +93,12 @@ impl Spectral {
         let mut spmf = vec![0.0; ng + 1];
         let mut alk = vec![0.0; ng];
         let mut kmag = Array2::<usize>::zeros((ng, ng));
-        let kmax;
-        let kmaxred;
+        let kmax: usize;
+        let kmaxred: usize;
 
-        let mut a0 = Array2::<f64>::zeros((ng, ng));
-        let mut a0b = Array2::<f64>::zeros((ng, ng));
-        let mut apb = Array2::<f64>::zeros((ng, ng));
+        let mut a0 = arr2zero(ng);
+        let mut a0b = arr2zero(ng);
+        let mut apb = arr2zero(ng);
 
         let rkmax: f64;
         let mut rks: f64;
@@ -230,17 +230,27 @@ impl Spectral {
             .and(&apb)
             .and(&htdv.index_axis(Axis(2), 0))
             .apply(|etdv, apb, htdv| *etdv = -apb * htdv);
-        for i in 0..ng {
-            for j in 0..ng {
-                for iz in 1..=nz - 2 {
-                    htdv[[i, j, iz]] =
-                        filt[[i, j]] / (a0[[i, j]] + ap[[i, j]] * etdv[[i, j, iz - 1]]);
-                    etdv[[i, j, iz]] = -ap[[i, j]] * htdv[[i, j, iz]];
-                }
-                htdv[[i, j, nz - 1]] =
-                    filt[[i, j]] / (a0[[i, j]] + ap[[i, j]] * etdv[[i, j, nz - 2]]);
-            }
+
+        for iz in 1..=nz - 2 {
+            Zip::from(htdv.index_axis_mut(Axis(2), iz))
+                .and(&filt)
+                .and(&a0)
+                .and(&ap)
+                .and(etdv.index_axis(Axis(2), iz - 1))
+                .apply(|htdv, filt, a0, ap, etdv| *htdv = filt / (a0 + ap * etdv));
+
+            Zip::from(etdv.index_axis_mut(Axis(2), iz))
+                .and(&ap)
+                .and(htdv.index_axis(Axis(2), iz))
+                .apply(|etdv, ap, htdv| *etdv = -ap * htdv);
         }
+
+        Zip::from(htdv.index_axis_mut(Axis(2), nz - 1))
+            .and(&filt)
+            .and(&a0)
+            .and(&ap)
+            .and(etdv.index_axis(Axis(2), nz - 2))
+            .apply(|htdv, filt, a0, ap, etdv| *htdv = filt / (a0 + ap * etdv));
 
         //Tridiagonal arrays for the compact difference calculation of d/dz:
         htd1[0] = 1.0 / (2.0 / 3.0);
