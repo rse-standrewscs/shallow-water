@@ -85,20 +85,22 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         "spectral",
         Benchmark::new("ptospc3d", |b| {
             let spectral = Spectral::new(30, 4);
-            let fp = _1d_from_file!("../src/spectral/testdata/ptospc3d/30_4_fp.bin");
-            let mut fs = _1d_from_file!("../src/spectral/testdata/ptospc3d/30_4_fs.bin");
+            let fp = array3_from_file!(30, 30, 5, "../src/spectral/testdata/ptospc3d/30_4_fp.bin");
+            let mut fs =
+                array3_from_file!(30, 30, 5, "../src/spectral/testdata/ptospc3d/30_4_fs.bin");
 
-            b.iter(|| spectral.ptospc3d(&fp, &mut fs, 0, 3))
+            b.iter(|| spectral.ptospc3d(fp.view(), fs.view_mut(), 0, 3))
         }),
     );
     c.bench(
         "spectral",
         Benchmark::new("spctop3d", |b| {
             let spectral = Spectral::new(30, 4);
-            let fs = _1d_from_file!("../src/spectral/testdata/spctop3d/30_4_fs.bin");
-            let mut fp = _1d_from_file!("../src/spectral/testdata/spctop3d/30_4_fp.bin");
+            let fs = array3_from_file!(30, 30, 5, "../src/spectral/testdata/spctop3d/30_4_fs.bin");
+            let mut fp =
+                array3_from_file!(30, 30, 5, "../src/spectral/testdata/spctop3d/30_4_fp.bin");
 
-            b.iter(|| spectral.spctop3d(&fs, &mut fp, 0, 3))
+            b.iter(|| spectral.spctop3d(fs.view(), fp.view_mut(), 0, 3))
         }),
     );
     c.bench(

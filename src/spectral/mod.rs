@@ -6,7 +6,9 @@ mod test;
 use {
     crate::{constants::*, sta2dfft::D2FFT, utils::*},
     core::f64::consts::PI,
-    ndarray::{Array2, Array3, ArrayView2, ArrayView3, ArrayViewMut2, ArrayViewMut3, Axis, Zip},
+    ndarray::{
+        Array2, Array3, ArrayView2, ArrayView3, ArrayViewMut2, ArrayViewMut3, Axis, Slice, Zip,
+    },
     rayon::prelude::*,
     serde::{Deserialize, Serialize},
     std::sync::{Arc, Mutex},
@@ -560,44 +562,54 @@ impl Spectral {
 
     /// Transforms a physical 3d field fp to spectral space (horizontally)
     /// as the array fs.
-    pub fn ptospc3d(&self, fp: &[f64], fs: &mut [f64], izbeg: usize, izend: usize) {
-        let mut wkp = vec![0.0; self.ng * self.ng];
-        let mut wks = vec![0.0; self.ng * self.ng];
+    pub fn ptospc3d(
+        &self,
+        fp: ArrayView3<f64>,
+        mut fs: ArrayViewMut3<f64>,
+        izbeg: usize,
+        izend: usize,
+    ) {
+        (izbeg as u16..=izend as u16)
+            .into_par_iter()
+            .zip(
+                fs.slice_axis_mut(Axis(2), Slice::from(izbeg..=izend))
+                    .axis_iter_mut(Axis(2))
+                    .into_par_iter(),
+            )
+            .for_each(|(iz, mut fs)| {
+                let mut wkp = fp.index_axis(Axis(2), iz as usize).to_owned();
 
-        for iz in izbeg..=izend {
-            let mut wkp_matrix = viewmut2d(&mut wkp, self.ng, self.ng);
-            let fp_matrix = view3d(fp, self.ng, self.ng, self.nz + 1);
-            {
-                wkp_matrix.assign(&fp_matrix.index_axis(Axis(2), iz));
-            }
-
-            self.d2fft.ptospc(&mut wkp, &mut wks);
-
-            let wks_matrix = view2d(&wks, self.ng, self.ng);
-            let mut fs_matrix = viewmut3d(fs, self.ng, self.ng, self.nz + 1);
-            fs_matrix.index_axis_mut(Axis(2), iz).assign(&wks_matrix);
-        }
+                self.d2fft.ptospc(
+                    wkp.as_slice_memory_order_mut().unwrap(),
+                    fs.as_slice_memory_order_mut().unwrap(),
+                );
+            });
     }
 
     /// Transforms a spectral 3d field fs to physical space (horizontally)
     /// as the array fp.
-    pub fn spctop3d(&self, fs: &[f64], fp: &mut [f64], izbeg: usize, izend: usize) {
-        let mut wks = vec![0.0; self.ng * self.ng];
-        let mut wkp = vec![0.0; self.ng * self.ng];
+    pub fn spctop3d(
+        &self,
+        fs: ArrayView3<f64>,
+        mut fp: ArrayViewMut3<f64>,
+        izbeg: usize,
+        izend: usize,
+    ) {
+        (izbeg as u16..=izend as u16)
+            .into_par_iter()
+            .zip(
+                fp.slice_axis_mut(Axis(2), Slice::from(izbeg..=izend))
+                    .axis_iter_mut(Axis(2))
+                    .into_par_iter(),
+            )
+            .for_each(|(iz, mut fp)| {
+                let mut wks = fs.index_axis(Axis(2), iz as usize).to_owned();
 
-        for iz in izbeg..=izend {
-            let mut wks_matrix = viewmut2d(&mut wks, self.ng, self.ng);
-            let fs_matrix = view3d(fs, self.ng, self.ng, self.nz + 1);
-            {
-                wks_matrix.assign(&fs_matrix.index_axis(Axis(2), iz));
-            }
-
-            self.d2fft.spctop(&mut wks, &mut wkp);
-
-            let wkp_matrix = view2d(&wkp, self.ng, self.ng);
-            let mut fp_matrix = viewmut3d(fp, self.ng, self.ng, self.nz + 1);
-            fp_matrix.index_axis_mut(Axis(2), iz).assign(&wkp_matrix);
-        }
+                self.d2fft.spctop(
+                    wks.as_slice_memory_order_mut().unwrap(),
+                    fp.as_slice_memory_order_mut().unwrap(),
+                );
+            });
     }
 
     /// Filters (horizontally) a physical 3d field fp (overwrites fp)
