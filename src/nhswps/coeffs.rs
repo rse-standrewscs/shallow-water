@@ -1,6 +1,7 @@
 use {
     crate::{constants::*, nhswps::State, utils::*},
     ndarray::{ArrayViewMut3, Axis, Zip},
+    rayon::prelude::*,
 };
 
 /// Calculates the fixed coefficients used in the pressure iteration.
@@ -14,8 +15,6 @@ pub fn coeffs(
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
     let qdzi = (1.0 / 4.0) * (1.0 / (HBAR / nz as f64));
-    let mut wkp = arr2zero(ng);
-    let mut wka = arr2zero(ng);
 
     // Compute sigx and sigy and de-alias:
     Zip::from(&mut sigx)
@@ -44,43 +43,53 @@ pub fn coeffs(
         .spectral
         .deal3d(cpt2.as_slice_memory_order_mut().unwrap());
 
-    // Calculate 0.5*d(cpt2)/dtheta + div(sigx,sigy) and store in cpt1:
+    // Interior (centred differencing):
+    cpt1.axis_iter_mut(Axis(2))
+        .into_par_iter()
+        .zip(0..(nz as u16))
+        .for_each(|(cpt1, iz)| {
+            let iz = iz as usize;
+            let mut wka = arr2zero(ng);
+            let mut wkp = arr2zero(ng);
 
-    // Lower boundary (use higher order formula):
-    Zip::from(cpt1.index_axis_mut(Axis(2), 0))
-        .and(cpt2.index_axis(Axis(2), 0))
-        .and(cpt2.index_axis(Axis(2), 1))
-        .and(cpt2.index_axis(Axis(2), 2))
-        .apply(|cpt1, cpt2_0, cpt2_1, cpt2_2| {
-            *cpt1 = qdzi * (4.0 * cpt2_1 - 3.0 * cpt2_0 - cpt2_2)
+            if iz == 0 {
+                // qdzi=1/(4*dz) is used since 0.5*d/dtheta is being computed.
+                // Calculate 0.5*d(cpt2)/dtheta + div(sigx,sigy) and store in cpt1:
+
+                // Lower boundary (use higher order formula):
+                Zip::from(cpt1)
+                    .and(cpt2.index_axis(Axis(2), 0))
+                    .and(cpt2.index_axis(Axis(2), 1))
+                    .and(cpt2.index_axis(Axis(2), 2))
+                    .apply(|cpt1, cpt2_0, cpt2_1, cpt2_2| {
+                        *cpt1 = qdzi * (4.0 * cpt2_1 - 3.0 * cpt2_0 - cpt2_2)
+                    });
+            } else {
+                state.spectral.divs(
+                    sigx.index_axis(Axis(2), iz)
+                        .as_slice_memory_order()
+                        .unwrap(),
+                    sigy.index_axis(Axis(2), iz)
+                        .as_slice_memory_order()
+                        .unwrap(),
+                    wka.as_slice_memory_order_mut().unwrap(),
+                );
+                state.spectral.d2fft.spctop(
+                    wka.as_slice_memory_order_mut().unwrap(),
+                    wkp.as_slice_memory_order_mut().unwrap(),
+                );
+
+                Zip::from(cpt1)
+                    .and(cpt2.index_axis(Axis(2), iz + 1))
+                    .and(cpt2.index_axis(Axis(2), iz - 1))
+                    .and(&wkp)
+                    .apply(|cpt1, cpt2_p, cpt2_m, wkp| *cpt1 = qdzi * (cpt2_p - cpt2_m) + wkp);
+            }
         });
 
-    // qdzi=1/(4*dz) is used since 0.5*d/dtheta is being computed.
-
-    // Interior (centred differencing):
-    for iz in 1..nz {
-        state.spectral.divs(
-            sigx.index_axis(Axis(2), iz)
-                .as_slice_memory_order()
-                .unwrap(),
-            sigy.index_axis(Axis(2), iz)
-                .as_slice_memory_order()
-                .unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.spctop(
-            wka.as_slice_memory_order_mut().unwrap(),
-            wkp.as_slice_memory_order_mut().unwrap(),
-        );
-
-        Zip::from(cpt1.index_axis_mut(Axis(2), iz))
-            .and(cpt2.index_axis(Axis(2), iz + 1))
-            .and(cpt2.index_axis(Axis(2), iz - 1))
-            .and(&wkp)
-            .apply(|cpt1, cpt2_p, cpt2_m, wkp| *cpt1 = qdzi * (cpt2_p - cpt2_m) + wkp);
-    }
-
     // Upper boundary (use higher order formula):
+    let mut wkp = arr2zero(ng);
+    let mut wka = arr2zero(ng);
     state.spectral.divs(
         sigx.index_axis(Axis(2), nz)
             .as_slice_memory_order()
