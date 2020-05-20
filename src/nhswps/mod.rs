@@ -11,7 +11,7 @@ use {
         parameters::Parameters,
         spectral::Spectral,
         sta2dfft::D2FFT,
-        utils::{arr2zero, arr3zero},
+        utils::{arr2zero, arr3zero, view3d},
     },
     advance::advance,
     byteorder::{ByteOrder, LittleEndian},
@@ -158,7 +158,7 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], parameters: &Parameters) -> Ou
 
     state
         .spectral
-        .ptospc3d(qq, state.qs.as_slice_memory_order_mut().unwrap(), 0, nz);
+        .ptospc3d(view3d(&qq, ng, ng, nz + 1), state.qs.view_mut(), 0, nz);
     {
         for i in 0..=nz {
             state.qs[[0, 0, i]] = 0.0;
@@ -167,7 +167,7 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], parameters: &Parameters) -> Ou
 
     state
         .spectral
-        .ptospc3d(dd, state.ds.as_slice_memory_order_mut().unwrap(), 0, nz);
+        .ptospc3d(view3d(&dd, ng, ng, nz + 1), state.ds.view_mut(), 0, nz);
     {
         for i in 0..=nz {
             state.ds[[0, 0, i]] = 0.0;
@@ -176,7 +176,7 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], parameters: &Parameters) -> Ou
 
     state
         .spectral
-        .ptospc3d(gg, state.gs.as_slice_memory_order_mut().unwrap(), 0, nz);
+        .ptospc3d(view3d(&gg, ng, ng, nz + 1), state.gs.view_mut(), 0, nz);
     {
         for i in 0..=nz {
             state.gs[[0, 0, i]] = 0.0;

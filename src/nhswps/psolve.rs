@@ -92,12 +92,9 @@ pub fn psolve(state: &mut State) {
     let mut iter = 0;
     while errp > toler && iter < nitmax {
         // Get spectral coefficients for pressure:
-        state.spectral.ptospc3d(
-            state.pn.as_slice_memory_order().unwrap(),
-            state.ps.as_slice_memory_order_mut().unwrap(),
-            0,
-            nz - 1,
-        );
+        state
+            .spectral
+            .ptospc3d(state.pn.view(), state.ps.view_mut(), 0, nz - 1);
         state.ps.index_axis_mut(Axis(2), nz).fill(0.0);
 
         // Compute pressure derivatives needed in the non-constant part of the
@@ -404,12 +401,9 @@ pub fn psolve(state: &mut State) {
         state.ps.index_axis_mut(Axis(2), nz).fill(0.0);
 
         // Transform to physical space:
-        state.spectral.spctop3d(
-            state.ps.as_slice_memory_order().unwrap(),
-            state.pn.as_slice_memory_order_mut().unwrap(),
-            0,
-            nz - 1,
-        );
+        state
+            .spectral
+            .spctop3d(state.ps.view(), state.pn.view_mut(), 0, nz - 1);
 
         state.pn.index_axis_mut(Axis(2), nz).fill(0.0);
 
@@ -483,12 +477,9 @@ pub fn psolve(state: &mut State) {
     }
 
     // Transform to physical space:
-    state.spectral.spctop3d(
-        &gg.as_slice_memory_order_mut().unwrap(),
-        state.dpn.as_slice_memory_order_mut().unwrap(),
-        1,
-        nz,
-    );
+    state
+        .spectral
+        .spctop3d(gg.view(), state.dpn.view_mut(), 1, nz);
 }
 
 #[cfg(test)]
