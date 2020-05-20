@@ -153,14 +153,23 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
 
     while toterr > toler {
         //Obtain balanced estimate for gamma (gg):
-        spectral.jacob(&uu, &vv, &mut wkb);
+        spectral.jacob(
+            view2d(&uu, ng, ng),
+            view2d(&vv, ng, ng),
+            viewmut2d(&mut wkb, ng, ng),
+        );
+
         for (i, e) in wkp.iter_mut().enumerate() {
             *e = dd[i] * uu[i];
         }
         for (i, e) in wkq.iter_mut().enumerate() {
             *e = dd[i] * vv[i];
         }
-        spectral.divs(&wkp, &wkq, &mut wka);
+        spectral.divs(
+            view2d(&wkp, ng, ng),
+            view2d(&wkq, ng, ng),
+            viewmut2d(&mut wka, ng, ng),
+        );
 
         let wka_matrix = view2d(&wka, ng, ng);
         let wkb_matrix = view2d(&wkb, ng, ng);
@@ -193,14 +202,22 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
         for (i, e) in wkq.iter_mut().enumerate() {
             *e = hh[i] * vv[i];
         }
-        spectral.divs(&wkp, &wkq, &mut wka);
+        spectral.divs(
+            view2d(&wkp, ng, ng),
+            view2d(&wkq, ng, ng),
+            viewmut2d(&mut wka, ng, ng),
+        );
         for (i, e) in wkp.iter_mut().enumerate() {
             *e = zz[i] * uu[i];
         }
         for (i, e) in wkq.iter_mut().enumerate() {
             *e = zz[i] * vv[i];
         }
-        spectral.divs(&wkp, &wkq, &mut wkb);
+        spectral.divs(
+            view2d(&wkp, ng, ng),
+            view2d(&wkq, ng, ng),
+            viewmut2d(&mut wkb, ng, ng),
+        );
 
         let wka_matrix = view2d(&wka, ng, ng);
         let wkb_matrix = view2d(&wkb, ng, ng);
