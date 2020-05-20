@@ -1,6 +1,6 @@
 use {
     super::*,
-    crate::{array3_from_file, utils::*},
+    crate::{array2_from_file, array3_from_file, utils::*},
     approx::assert_abs_diff_eq,
     byteorder::{ByteOrder, NetworkEndian},
     ndarray::ShapeBuilder,
@@ -123,60 +123,60 @@ mod main_invert {
 fn jacob_30_4() {
     let spectral = Spectral::new(30, 4);
 
-    let aa = _1d_from_file!("testdata/jacob/30_4_aa.bin");
-    let bb = _1d_from_file!("testdata/jacob/30_4_bb.bin");
-    let cs2 = _1d_from_file!("testdata/jacob/30_4_cs.bin");
+    let aa = array2_from_file!(30, 30, "testdata/jacob/30_4_aa.bin");
+    let bb = array2_from_file!(30, 30, "testdata/jacob/30_4_bb.bin");
+    let cs2 = array2_from_file!(30, 30, "testdata/jacob/30_4_cs.bin");
 
-    let mut cs = vec![0.0; 30 * 30];
+    let mut cs = arr2zero(30);
 
-    spectral.jacob(&aa, &bb, &mut cs);
+    spectral.jacob(aa.view(), bb.view(), cs.view_mut());
 
-    assert_approx_eq_slice(&cs2, &cs);
+    assert_abs_diff_eq!(cs, cs2, epsilon = 1.0E-10);
 }
 
 #[test]
 fn jacob_48_6() {
     let spectral = Spectral::new(48, 6);
 
-    let aa = _1d_from_file!("testdata/jacob/48_6_aa.bin");
-    let bb = _1d_from_file!("testdata/jacob/48_6_bb.bin");
-    let cs2 = _1d_from_file!("testdata/jacob/48_6_cs.bin");
+    let aa = array2_from_file!(48, 48, "testdata/jacob/48_6_aa.bin");
+    let bb = array2_from_file!(48, 48, "testdata/jacob/48_6_bb.bin");
+    let cs2 = array2_from_file!(48, 48, "testdata/jacob/48_6_cs.bin");
 
-    let mut cs = vec![0.0; 48 * 48];
+    let mut cs = arr2zero(48);
 
-    spectral.jacob(&aa, &bb, &mut cs);
+    spectral.jacob(aa.view(), bb.view(), cs.view_mut());
 
-    assert_approx_eq_slice(&cs2, &cs);
+    assert_abs_diff_eq!(cs, cs2, epsilon = 1.0E-10);
 }
 
 #[test]
 fn divs_30_4() {
     let spectral = Spectral::new(30, 4);
 
-    let aa = _1d_from_file!("testdata/divs/30_4_aa.bin");
-    let bb = _1d_from_file!("testdata/divs/30_4_bb.bin");
-    let cs2 = _1d_from_file!("testdata/divs/30_4_cs.bin");
+    let aa = array2_from_file!(30, 30, "testdata/divs/30_4_aa.bin");
+    let bb = array2_from_file!(30, 30, "testdata/divs/30_4_bb.bin");
+    let cs2 = array2_from_file!(30, 30, "testdata/divs/30_4_cs.bin");
 
-    let mut cs = vec![0.0; 30 * 30];
+    let mut cs = arr2zero(30);
 
-    spectral.divs(&aa, &bb, &mut cs);
+    spectral.divs(aa.view(), bb.view(), cs.view_mut());
 
-    assert_approx_eq_slice(&cs2, &cs);
+    assert_abs_diff_eq!(cs, cs2, epsilon = 1.0E-10);
 }
 
 #[test]
 fn divs_48_6() {
     let spectral = Spectral::new(48, 6);
 
-    let aa = _1d_from_file!("testdata/divs/48_6_aa.bin");
-    let bb = _1d_from_file!("testdata/divs/48_6_bb.bin");
-    let cs2 = _1d_from_file!("testdata/divs/48_6_cs.bin");
+    let aa = array2_from_file!(48, 48, "testdata/divs/48_6_aa.bin");
+    let bb = array2_from_file!(48, 48, "testdata/divs/48_6_bb.bin");
+    let cs2 = array2_from_file!(48, 48, "testdata/divs/48_6_cs.bin");
 
-    let mut cs = vec![0.0; 48 * 48];
+    let mut cs = arr2zero(48);
 
-    spectral.divs(&aa, &bb, &mut cs);
+    spectral.divs(aa.view(), bb.view(), cs.view_mut());
 
-    assert_approx_eq_slice(&cs2, &cs);
+    assert_abs_diff_eq!(cs, cs2, epsilon = 1.0E-10);
 }
 
 #[test]
@@ -243,48 +243,48 @@ fn spctop3d_30_4() {
 fn deal3d_18_2() {
     let spectral = Spectral::new(18, 2);
 
-    let mut fp = _1d_from_file!("testdata/deal3d/18_2_fp.bin");
-    let fp2 = _1d_from_file!("testdata/deal3d/18_2_fp2.bin");
+    let mut fp = array3_from_file!(18, 18, 3, "testdata/deal3d/18_2_fp.bin");
+    let fp2 = array3_from_file!(18, 18, 3, "testdata/deal3d/18_2_fp2.bin");
 
-    spectral.deal3d(&mut fp);
+    spectral.deal3d(fp.view_mut());
 
-    assert_approx_eq_slice(&fp2, &fp);
+    assert_abs_diff_eq!(fp, fp2, epsilon = 1.0E-10);
 }
 
 #[test]
 fn deal3d_30_4() {
     let spectral = Spectral::new(30, 4);
 
-    let mut fp = _1d_from_file!("testdata/deal3d/30_4_fp.bin");
-    let fp2 = _1d_from_file!("testdata/deal3d/30_4_fp2.bin");
+    let mut fp = array3_from_file!(30, 30, 5, "testdata/deal3d/30_4_fp.bin");
+    let fp2 = array3_from_file!(30, 30, 5, "testdata/deal3d/30_4_fp2.bin");
 
-    spectral.deal3d(&mut fp);
+    spectral.deal3d(fp.view_mut());
 
-    assert_approx_eq_slice(&fp2, &fp);
+    assert_abs_diff_eq!(fp, fp2, epsilon = 1.0E-10);
 }
 
 #[test]
 fn deal2d_18_2() {
     let spectral = Spectral::new(18, 2);
 
-    let mut fp = _1d_from_file!("testdata/deal2d/18_2_fp.bin");
-    let fp2 = _1d_from_file!("testdata/deal2d/18_2_fp2.bin");
+    let mut fp = array2_from_file!(18, 18, "testdata/deal2d/18_2_fp.bin");
+    let fp2 = array2_from_file!(18, 18, "testdata/deal2d/18_2_fp2.bin");
 
-    spectral.deal2d(&mut fp);
+    spectral.deal2d(fp.view_mut());
 
-    assert_approx_eq_slice(&fp2, &fp);
+    assert_abs_diff_eq!(fp, fp2, epsilon = 1.0E-10);
 }
 
 #[test]
 fn deal2d_32_4() {
     let spectral = Spectral::new(32, 4);
 
-    let mut fp = _1d_from_file!("testdata/deal2d/32_4_fp.bin");
-    let fp2 = _1d_from_file!("testdata/deal2d/32_4_fp2.bin");
+    let mut fp = array2_from_file!(32, 32, "testdata/deal2d/32_4_fp.bin");
+    let fp2 = array2_from_file!(32, 32, "testdata/deal2d/32_4_fp2.bin");
 
-    spectral.deal2d(&mut fp);
+    spectral.deal2d(fp.view_mut());
 
-    assert_approx_eq_slice(&fp2, &fp);
+    assert_abs_diff_eq!(fp, fp2, epsilon = 1.0E-10);
 }
 
 #[test]

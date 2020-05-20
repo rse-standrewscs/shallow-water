@@ -1,8 +1,12 @@
 use {
     byteorder::{ByteOrder, NetworkEndian},
     criterion::{criterion_group, criterion_main, Benchmark, Criterion},
-    ndarray::{Array3, ShapeBuilder},
-    shallow_water::{array3_from_file, spectral::Spectral, utils::arr3zero},
+    ndarray::{Array2, Array3, ShapeBuilder},
+    shallow_water::{
+        array2_from_file, array3_from_file,
+        spectral::Spectral,
+        utils::{arr2zero, arr3zero},
+    },
 };
 
 macro_rules! _1d_from_file {
@@ -59,22 +63,22 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         "spectral",
         Benchmark::new("jacob", |b| {
             let spectral = Spectral::new(48, 6);
-            let aa = _1d_from_file!("../src/spectral/testdata/jacob/48_6_aa.bin");
-            let bb = _1d_from_file!("../src/spectral/testdata/jacob/48_6_bb.bin");
-            let mut cs = vec![0.0; 48 * 48];
+            let aa = array2_from_file!(48, 48, "../src/spectral/testdata/jacob/48_6_aa.bin");
+            let bb = array2_from_file!(48, 48, "../src/spectral/testdata/jacob/48_6_bb.bin");
+            let mut cs = arr2zero(48);
 
-            b.iter(|| spectral.jacob(&aa, &bb, &mut cs))
+            b.iter(|| spectral.jacob(aa.view(), bb.view(), cs.view_mut()))
         }),
     );
     c.bench(
         "spectral",
         Benchmark::new("divs", |b| {
             let spectral = Spectral::new(48, 6);
-            let aa = _1d_from_file!("../src/spectral/testdata/divs/48_6_aa.bin");
-            let bb = _1d_from_file!("../src/spectral/testdata/divs/48_6_bb.bin");
-            let mut cs = vec![0.0; 48 * 48];
+            let aa = array2_from_file!(48, 48, "../src/spectral/testdata/divs/48_6_aa.bin");
+            let bb = array2_from_file!(48, 48, "../src/spectral/testdata/divs/48_6_bb.bin");
+            let mut cs = arr2zero(48);
 
-            b.iter(|| spectral.divs(&aa, &bb, &mut cs))
+            b.iter(|| spectral.divs(aa.view(), bb.view(), cs.view_mut()))
         }),
     );
     c.bench(
@@ -101,18 +105,19 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         "spectral",
         Benchmark::new("deal3d", |b| {
             let spectral = Spectral::new(30, 4);
-            let mut fp = _1d_from_file!("../src/spectral/testdata/deal3d/30_4_fp.bin");
+            let mut fp =
+                array3_from_file!(30, 30, 5, "../src/spectral/testdata/deal3d/30_4_fp.bin");
 
-            b.iter(|| spectral.deal3d(&mut fp))
+            b.iter(|| spectral.deal3d(fp.view_mut()))
         }),
     );
     c.bench(
         "spectral",
         Benchmark::new("deal2d", |b| {
             let spectral = Spectral::new(32, 4);
-            let mut fp = _1d_from_file!("../src/spectral/testdata/deal2d/32_4_fp.bin");
+            let mut fp = array2_from_file!(32, 32, "../src/spectral/testdata/deal2d/32_4_fp.bin");
 
-            b.iter(|| spectral.deal2d(&mut fp))
+            b.iter(|| spectral.deal2d(fp.view_mut()))
         }),
     );
     c.bench(

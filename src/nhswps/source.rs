@@ -69,26 +69,16 @@ pub fn source(
             wkq *= &state.v.index_axis(Axis(2), iz);
 
             // Compute spectral divergence from physical fields:
-            state.spectral.divs(
-                wkp.as_slice_memory_order().unwrap(),
-                wkq.as_slice_memory_order().unwrap(),
-                wka.as_slice_memory_order_mut().unwrap(),
-            );
+            state.spectral.divs(wkp.view(), wkq.view(), wka.view_mut());
 
             // Compute Jacobian of F = (1/rho_theta)*dP'/dtheta & z (wkb, spectral):
             ff.assign(&(&state.ri.index_axis(Axis(2), iz) * &state.dpn.index_axis(Axis(2), iz)));
 
-            state
-                .spectral
-                .deal2d(ff.as_slice_memory_order_mut().unwrap());
+            state.spectral.deal2d(ff.view_mut());
 
             wkq.assign(&state.z.index_axis(Axis(2), iz));
 
-            state.spectral.jacob(
-                ff.as_slice_memory_order().unwrap(),
-                wkq.as_slice_memory_order().unwrap(),
-                wkb.as_slice_memory_order_mut().unwrap(),
-            );
+            state.spectral.jacob(ff.view(), wkq.view(), wkb.view_mut());
 
             // Sum to get qs source:
             {
@@ -103,17 +93,9 @@ pub fn source(
 
             // Compute J(u,v) (wkc in spectral space):
             state.spectral.jacob(
-                &state
-                    .u
-                    .index_axis(Axis(2), iz)
-                    .as_slice_memory_order()
-                    .unwrap(),
-                &state
-                    .v
-                    .index_axis(Axis(2), iz)
-                    .as_slice_memory_order()
-                    .unwrap(),
-                wkc.as_slice_memory_order_mut().unwrap(),
+                state.u.index_axis(Axis(2), iz),
+                state.v.index_axis(Axis(2), iz),
+                wkc.view_mut(),
             );
 
             // Convert ds to physical space as dd:
@@ -139,11 +121,7 @@ pub fn source(
                 .and(state.v.index_axis(Axis(2), iz))
                 .apply(|wkq, ff, zy, dd, v| *wkq = ff * zy - dd * v);
 
-            state.spectral.divs(
-                wkp.as_slice_memory_order().unwrap(),
-                wkq.as_slice_memory_order().unwrap(),
-                wkb.as_slice_memory_order_mut().unwrap(),
-            );
+            state.spectral.divs(wkp.view(), wkq.view(), wkb.view_mut());
 
             // Add Lap(P') and complete definition of ds source:
             Zip::from(sds_slice)

@@ -166,9 +166,7 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
         .and(wt.index_axis(Axis(2), 0))
         .apply(|wkq, ri, wt| *wkq = ri * wt);
 
-    state
-        .spectral
-        .deal2d(wkq.as_slice_memory_order_mut().unwrap());
+    state.spectral.deal2d(wkq.view_mut());
 
     Zip::from(sp0.index_axis_mut(Axis(2), 0))
         .and(&hsrc)
@@ -282,9 +280,7 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
             .and(state.zy.index_axis(Axis(2), iz))
             .apply(|wkp, vt, ut, zx, zy| *wkp = vt * zx - ut * zy);
 
-        state
-            .spectral
-            .deal2d(wkp.as_slice_memory_order_mut().unwrap());
+        state.spectral.deal2d(wkp.view_mut());
 
         Zip::from(&mut wkq)
             .and(&uy)
@@ -293,9 +289,7 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
             .and(&vy)
             .apply(|wkq, uy, vt, ut, vy| *wkq = uy * vt - ut * vy);
 
-        state
-            .spectral
-            .deal2d(wkq.as_slice_memory_order_mut().unwrap());
+        state.spectral.deal2d(wkq.view_mut());
 
         Zip::from(&mut wkr)
             .and(ut.index_axis(Axis(2), iz))
@@ -304,9 +298,7 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
             .and(&ux)
             .apply(|wkr, ut, vt, vx, ux| *wkr = ut * vx - ux * vt);
 
-        state
-            .spectral
-            .deal2d(wkr.as_slice_memory_order_mut().unwrap());
+        state.spectral.deal2d(wkr.view_mut());
 
         Zip::from(&mut wkq)
             .and(&wkr)
@@ -324,9 +316,7 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
             .and(&wx)
             .apply(|wkq, ux, vy, ut, wt, wx| *wkq += (ux + vy) * wt - wx * ut);
 
-        state
-            .spectral
-            .deal2d(wkq.as_slice_memory_order_mut().unwrap());
+        state.spectral.deal2d(wkq.view_mut());
         //sp0(:,:,iz)=hsrc+cof*(zeta(:,:,iz)-ri(:,:,iz)*wkp)+ two*(ux*vy-uy*vx+ri(:,:,iz)*wkq);
         let mut temp = arr2zero(ng);
 

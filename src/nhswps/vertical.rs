@@ -154,9 +154,7 @@ pub fn vertical(state: &mut State) {
             .and(state.zy.index_axis(Axis(2), iz))
             .apply(|wkq, u, zx, v, zy| *wkq = u * zx + v * zy);
 
-        state
-            .spectral
-            .deal2d(wkq.as_slice_memory_order_mut().unwrap());
+        state.spectral.deal2d(wkq.view_mut());
 
         Zip::from(state.w.index_axis_mut(Axis(2), iz))
             .and(&wkq)

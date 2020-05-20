@@ -25,12 +25,8 @@ pub fn coeffs(
         .and(&state.ri)
         .and(&state.zy)
         .apply(|sigy, ri, zy| *sigy = ri * zy);
-    state
-        .spectral
-        .deal3d(sigx.as_slice_memory_order_mut().unwrap());
-    state
-        .spectral
-        .deal3d(sigy.as_slice_memory_order_mut().unwrap());
+    state.spectral.deal3d(sigx.view_mut());
+    state.spectral.deal3d(sigy.view_mut());
 
     // Compute cpt2 and de-alias:
     Zip::from(&mut cpt2)
@@ -39,9 +35,7 @@ pub fn coeffs(
         .and(&sigy)
         .apply(|cpt2, ri, sigx, sigy| *cpt2 = 1.0 - ri.powf(2.0) - sigx.powf(2.0) - sigy.powf(2.0));
 
-    state
-        .spectral
-        .deal3d(cpt2.as_slice_memory_order_mut().unwrap());
+    state.spectral.deal3d(cpt2.view_mut());
 
     // Interior (centred differencing):
     cpt1.axis_iter_mut(Axis(2))
@@ -66,13 +60,9 @@ pub fn coeffs(
                     });
             } else {
                 state.spectral.divs(
-                    sigx.index_axis(Axis(2), iz)
-                        .as_slice_memory_order()
-                        .unwrap(),
-                    sigy.index_axis(Axis(2), iz)
-                        .as_slice_memory_order()
-                        .unwrap(),
-                    wka.as_slice_memory_order_mut().unwrap(),
+                    sigx.index_axis(Axis(2), iz),
+                    sigy.index_axis(Axis(2), iz),
+                    wka.view_mut(),
                 );
                 state.spectral.d2fft.spctop(
                     wka.as_slice_memory_order_mut().unwrap(),
@@ -91,13 +81,9 @@ pub fn coeffs(
     let mut wkp = arr2zero(ng);
     let mut wka = arr2zero(ng);
     state.spectral.divs(
-        sigx.index_axis(Axis(2), nz)
-            .as_slice_memory_order()
-            .unwrap(),
-        sigy.index_axis(Axis(2), nz)
-            .as_slice_memory_order()
-            .unwrap(),
-        wka.as_slice_memory_order_mut().unwrap(),
+        sigx.index_axis(Axis(2), nz),
+        sigy.index_axis(Axis(2), nz),
+        wka.view_mut(),
     );
     state.spectral.d2fft.spctop(
         wka.as_slice_memory_order_mut().unwrap(),

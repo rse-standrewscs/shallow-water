@@ -61,9 +61,7 @@ pub fn psolve(state: &mut State) {
     Zip::from(&mut state.ri)
         .and(&state.r)
         .apply(|ri, r| *ri = 1.0 / (r + 1.0));
-    state
-        .spectral
-        .deal3d(state.ri.as_slice_memory_order_mut().unwrap());
+    state.spectral.deal3d(state.ri.view_mut());
 
     // Calcuate layer heights z and z_x & z_y, vertical velocity w
     // and A = grad(u*rho'_theta):
