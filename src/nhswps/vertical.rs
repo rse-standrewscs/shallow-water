@@ -27,13 +27,15 @@ pub fn vertical(state: &mut State) {
         .and(state.r.index_axis(Axis(2), 1))
         .apply(|z, r0, r1| *z = dz2 * (r0 + r1));
 
+    let mut last_layer = state.z.index_axis(Axis(2), 1).into_owned();
     for iz in 1..nz {
-        let z_clone = state.z.clone();
         Zip::from(state.z.index_axis_mut(Axis(2), iz + 1))
-            .and(z_clone.index_axis(Axis(2), iz))
+            .and(&last_layer)
             .and(state.r.index_axis(Axis(2), iz))
             .and(state.r.index_axis(Axis(2), iz + 1))
             .apply(|z1, z0, r0, r1| *z1 = z0 + dz2 * (r0 + r1));
+
+        last_layer.assign(&state.z.index_axis(Axis(2), iz + 1));
     }
 
     for iz in 1..=nz {
@@ -42,7 +44,7 @@ pub fn vertical(state: &mut State) {
         Zip::from(state.z.index_axis_mut(Axis(2), iz)).apply(|z| *z += theta);
 
         // Calculate z_x & z_y:
-        wkq.assign(&state.z.index_axis(Axis(2), iz));
+        let mut wkq = state.z.index_axis(Axis(2), iz).to_owned();
 
         state.spectral.d2fft.ptospc(
             wkq.as_slice_memory_order_mut().unwrap(),
