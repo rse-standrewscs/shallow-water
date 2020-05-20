@@ -9,6 +9,7 @@ use {
     ndarray::{Array2, Array3, ArrayView2, ArrayView3, ArrayViewMut2, ArrayViewMut3, Axis, Zip},
     rayon::prelude::*,
     serde::{Deserialize, Serialize},
+    std::sync::{Arc, Mutex},
 };
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -314,17 +315,7 @@ impl Spectral {
         let dsumi = 1.0 / (ng * ng) as f64;
 
         let mut es = arr3zero(ng, nz);
-        let mut wka = arr2zero(ng);
-        let mut wkb = wka.clone();
-        let mut wkc = wka.clone();
-        let mut wkd = wka.clone();
-        let mut wke = wka.clone();
-        let mut wkf = wka.clone();
-        let mut wkg = wka.clone();
-        let mut wkh = wka.clone();
-
-        let mut uio: f64;
-        let mut vio: f64;
+        let mut wkh = arr2zero(ng);
 
         //Define eta = gamma_l/f^2 - q_l/f (spectral):
         Zip::from(&mut es)
@@ -347,116 +338,115 @@ impl Spectral {
             .apply(|wkh, rope| *wkh *= rope);
 
         //Initialise mean flow:
-        uio = 0.0;
-        vio = 0.0;
+        let uio = Arc::new(Mutex::new(0.0));
+        let vio = Arc::new(Mutex::new(0.0));
 
         //Complete inversion:
-        (0..=nz).for_each(|iz| {
-            //Obtain layer thickness anomaly (spectral, in wka):
-            Zip::from(&mut wka)
-                .and(&es.index_axis(Axis(2), iz))
-                .and(&wkh)
-                .apply(|wka, es, wkh| *wka = es - wkh);
+        (0..=nz as u16)
+            .into_par_iter()
+            .zip(r.axis_iter_mut(Axis(2)).into_par_iter())
+            .zip(zeta.axis_iter_mut(Axis(2)).into_par_iter())
+            .zip(u.axis_iter_mut(Axis(2)).into_par_iter())
+            .zip(v.axis_iter_mut(Axis(2)).into_par_iter())
+            .for_each(|((((iz, mut r), mut zeta), mut u), mut v)| {
+                let iz = iz as usize;
 
-            //Obtain relative vorticity (spectral, in wkb):
-            //wkb=qs(:,:,iz)+COF*wka;
-            Zip::from(&mut wkb)
-                .and(&qs.index_axis(Axis(2), iz))
-                .and(&wka)
-                .apply(|wkb, qs, wka| *wkb = qs + COF * wka);
+                let mut wka = arr2zero(ng);
+                let mut wkb = arr2zero(ng);
+                let mut wkc = arr2zero(ng);
+                let mut wkd = arr2zero(ng);
+                let mut wke = arr2zero(ng);
+                let mut wkf = arr2zero(ng);
+                let mut wkg = arr2zero(ng);
 
-            //Invert Laplace operator on zeta & delta to define velocity:
-            Zip::from(&mut wkc)
-                .and(&self.rlap)
-                .and(&wkb)
-                .apply(|wkc, rlap, wkb| *wkc = rlap * wkb);
-            Zip::from(&mut wkd)
-                .and(&self.rlap)
-                .and(&ds.index_axis(Axis(2), iz))
-                .apply(|wkd, rlap, ds| *wkd = rlap * ds);
+                //Obtain layer thickness anomaly (spectral, in wka):
+                Zip::from(&mut wka)
+                    .and(&es.index_axis(Axis(2), iz))
+                    .and(&wkh)
+                    .apply(|wka, es, wkh| *wka = es - wkh);
 
-            //Calculate derivatives spectrally:
-            self.d2fft.xderiv(
-                &self.hrkx,
-                wkd.as_slice_memory_order().unwrap(),
-                wke.as_slice_memory_order_mut().unwrap(),
-            );
-            self.d2fft.yderiv(
-                &self.hrky,
-                wkd.as_slice_memory_order().unwrap(),
-                wkf.as_slice_memory_order_mut().unwrap(),
-            );
-            self.d2fft.xderiv(
-                &self.hrkx,
-                wkc.as_slice_memory_order().unwrap(),
-                wkd.as_slice_memory_order_mut().unwrap(),
-            );
-            self.d2fft.yderiv(
-                &self.hrky,
-                wkc.as_slice_memory_order().unwrap(),
-                wkg.as_slice_memory_order_mut().unwrap(),
-            );
+                //Obtain relative vorticity (spectral, in wkb):
+                //wkb=qs(:,:,iz)+COF*wka;
+                Zip::from(&mut wkb)
+                    .and(&qs.index_axis(Axis(2), iz))
+                    .and(&wka)
+                    .apply(|wkb, qs, wka| *wkb = qs + COF * wka);
 
-            //Define velocity components:
-            for (e, g) in wke.iter_mut().zip(&wkg) {
-                *e -= g;
-            }
-            //wke=wke-wkg;
-            for (f, d) in wkf.iter_mut().zip(&wkd) {
-                *f += d;
-            }
-            //wkf=wkf+wkd;
+                //Invert Laplace operator on zeta & delta to define velocity:
+                Zip::from(&mut wkc)
+                    .and(&self.rlap)
+                    .and(&wkb)
+                    .apply(|wkc, rlap, wkb| *wkc = rlap * wkb);
+                Zip::from(&mut wkd)
+                    .and(&self.rlap)
+                    .and(&ds.index_axis(Axis(2), iz))
+                    .apply(|wkd, rlap, ds| *wkd = rlap * ds);
 
-            //Bring quantities back to physical space and store:
-            self.d2fft.spctop(
-                wka.as_slice_memory_order_mut().unwrap(),
-                wkc.as_slice_memory_order_mut().unwrap(),
-            );
+                //Calculate derivatives spectrally:
+                self.d2fft.xderiv(
+                    &self.hrkx,
+                    wkd.as_slice_memory_order().unwrap(),
+                    wke.as_slice_memory_order_mut().unwrap(),
+                );
+                self.d2fft.yderiv(
+                    &self.hrky,
+                    wkd.as_slice_memory_order().unwrap(),
+                    wkf.as_slice_memory_order_mut().unwrap(),
+                );
+                self.d2fft.xderiv(
+                    &self.hrkx,
+                    wkc.as_slice_memory_order().unwrap(),
+                    wkd.as_slice_memory_order_mut().unwrap(),
+                );
+                self.d2fft.yderiv(
+                    &self.hrky,
+                    wkc.as_slice_memory_order().unwrap(),
+                    wkg.as_slice_memory_order_mut().unwrap(),
+                );
 
-            r.index_axis_mut(Axis(2), iz).assign(&wkc);
+                //Define velocity components:
+                //wke=wke-wkg;
+                Zip::from(&mut wke).and(&wkg).apply(|wke, wkg| *wke -= wkg);
+                //wkf=wkf+wkd;
+                Zip::from(&mut wkf).and(&wkd).apply(|wkf, wkd| *wkf += wkd);
 
-            self.d2fft.spctop(
-                wkb.as_slice_memory_order_mut().unwrap(),
-                wkd.as_slice_memory_order_mut().unwrap(),
-            );
+                //Bring quantities back to physical space and store:
+                self.d2fft.spctop(
+                    wka.as_slice_memory_order_mut().unwrap(),
+                    wkc.as_slice_memory_order_mut().unwrap(),
+                );
 
-            zeta.index_axis_mut(Axis(2), iz).assign(&wkd);
+                r.assign(&wkc);
 
-            self.d2fft.spctop(
-                wke.as_slice_memory_order_mut().unwrap(),
-                wka.as_slice_memory_order_mut().unwrap(),
-            );
+                self.d2fft.spctop(
+                    wkb.as_slice_memory_order_mut().unwrap(),
+                    wkd.as_slice_memory_order_mut().unwrap(),
+                );
 
-            u.index_axis_mut(Axis(2), iz).assign(&wka);
+                zeta.assign(&wkd);
 
-            self.d2fft.spctop(
-                wkf.as_slice_memory_order_mut().unwrap(),
-                wkb.as_slice_memory_order_mut().unwrap(),
-            );
+                self.d2fft.spctop(
+                    wke.as_slice_memory_order_mut().unwrap(),
+                    wka.as_slice_memory_order_mut().unwrap(),
+                );
 
-            v.index_axis_mut(Axis(2), iz).assign(&wkb);
+                u.assign(&wka);
 
-            //Accumulate mean flow (uio,vio):
-            let mut sum_ca = 0.0;
-            let mut sum_cb = 0.0;
-            for j in 0..ng {
-                for i in 0..ng {
-                    sum_ca += wkc[[i, j]] * wka[[i, j]];
-                    sum_cb += wkc[[i, j]] * wkb[[i, j]];
-                }
-            }
+                self.d2fft.spctop(
+                    wkf.as_slice_memory_order_mut().unwrap(),
+                    wkb.as_slice_memory_order_mut().unwrap(),
+                );
 
-            uio -= self.weight[iz] * sum_ca * dsumi;
-            vio -= self.weight[iz] * sum_cb * dsumi;
-        });
+                v.assign(&wkb);
+
+                //Accumulate mean flow (uio,vio):
+                *uio.lock().unwrap() -= self.weight[iz] * (&wka * &wkc).sum() * dsumi;
+                *vio.lock().unwrap() -= self.weight[iz] * (&wkb * &wkc).sum() * dsumi;
+            });
 
         //Add mean flow:
-        for e in u.iter_mut() {
-            *e += uio;
-        }
-        for e in v.iter_mut() {
-            *e += vio;
-        }
+        u += *uio.lock().unwrap();
+        v += *vio.lock().unwrap();
     }
 
     /// Computes the (xy) Jacobian of aa and bb and returns it in cs.
