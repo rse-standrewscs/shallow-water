@@ -53,7 +53,7 @@
 //! the sine modes (in reverse order ie. wave number increasing from n back to nw+1).
 //! [Here, for even n, nw=n/2, and for odd n, nw=(n-1)/2].
 
-use {crate::utils::*, core::f64::consts::PI, log::error};
+use {crate::utils::*, core::f64::consts::PI, log::error, ndarray::ArrayViewMut2};
 
 mod forward;
 mod reverse;
@@ -155,7 +155,9 @@ pub fn factorisen(n: usize, factors: &mut [usize; 5]) {
 /// should be kept from call to call.
 /// Backend consists of mixed-radix routines, with 'decimation in time'.
 /// Transform is stored in Hermitian form.
-pub fn forfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize; 5]) {
+pub fn forfft(m: usize, n: usize, mut xs: ArrayViewMut2<f64>, trig: &[f64], factors: &[usize; 5]) {
+    let xs = xs.as_slice_memory_order_mut().unwrap();
+
     assert_eq!(m * n, xs.len());
     assert_eq!(2 * n, trig.len());
 
@@ -296,7 +298,9 @@ pub fn forfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
 /// should be kept from call to call.
 /// Backend consists of mixed-radix routines, with 'decimation in frequency'.
 /// Reverse transform starts in Hermitian form.
-pub fn revfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize; 5]) {
+pub fn revfft(m: usize, n: usize, mut xs: ArrayViewMut2<f64>, trig: &[f64], factors: &[usize; 5]) {
+    let xs = xs.as_slice_memory_order_mut().unwrap();
+
     assert_eq!(m * n, xs.len());
     assert_eq!(2 * n, trig.len());
 
@@ -451,8 +455,10 @@ pub fn revfft(m: usize, n: usize, xs: &mut [f64], trig: &[f64], factors: &[usize
 mod test {
     use {
         super::*,
+        crate::array2_from_file,
         byteorder::{ByteOrder, NetworkEndian},
         insta::assert_debug_snapshot,
+        ndarray::{Array2, ShapeBuilder},
     };
 
     #[test]
@@ -524,21 +530,15 @@ mod test {
     fn forfft_ng12_1() {
         let m = 12;
         let n = 12;
-        let mut x = include_bytes!("testdata/forfft/forfft_ng12_1_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/forfft/forfft_ng12_1_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(12, 12, "testdata/forfft/forfft_ng12_1_x.bin");
+        let x2 = array2_from_file!(12, 12, "testdata/forfft/forfft_ng12_1_x2.bin");
         let trig = include_bytes!("testdata/forfft/forfft_ng12_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [1, 0, 1, 0, 0];
 
-        forfft(m, n, &mut x, &trig, &factors);
+        forfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -547,21 +547,15 @@ mod test {
     fn forfft_ng12_2() {
         let m = 12;
         let n = 12;
-        let mut x = include_bytes!("testdata/forfft/forfft_ng12_2_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/forfft/forfft_ng12_2_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(12, 12, "testdata/forfft/forfft_ng12_2_x.bin");
+        let x2 = array2_from_file!(12, 12, "testdata/forfft/forfft_ng12_2_x2.bin");
         let trig = include_bytes!("testdata/forfft/forfft_ng12_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [1, 0, 1, 0, 0];
 
-        forfft(m, n, &mut x, &trig, &factors);
+        forfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -570,14 +564,8 @@ mod test {
     fn forfft_ng15_1() {
         let m = 15;
         let n = 15;
-        let mut x = include_bytes!("testdata/forfft/forfft_ng15_1_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/forfft/forfft_ng15_1_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(15, 15, "testdata/forfft/forfft_ng15_1_x.bin");
+        let x2 = array2_from_file!(15, 15, "testdata/forfft/forfft_ng15_1_x2.bin");
         let trig = include_bytes!("testdata/forfft/forfft_ng15_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -585,7 +573,7 @@ mod test {
 
         let factors = [0, 0, 0, 1, 1];
 
-        forfft(m, n, &mut x, &trig, &factors);
+        forfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -594,21 +582,15 @@ mod test {
     fn forfft_ng15_2() {
         let m = 15;
         let n = 15;
-        let mut x = include_bytes!("testdata/forfft/forfft_ng15_2_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/forfft/forfft_ng15_2_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(15, 15, "testdata/forfft/forfft_ng15_2_x.bin");
+        let x2 = array2_from_file!(15, 15, "testdata/forfft/forfft_ng15_2_x2.bin");
         let trig = include_bytes!("testdata/forfft/forfft_ng15_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [0, 0, 0, 1, 1];
 
-        forfft(m, n, &mut x, &trig, &factors);
+        forfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -617,21 +599,15 @@ mod test {
     fn forfft_ng16_1() {
         let m = 16;
         let n = 16;
-        let mut x = include_bytes!("testdata/forfft/forfft_ng16_1_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/forfft/forfft_ng16_1_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(16, 16, "testdata/forfft/forfft_ng16_1_x.bin");
+        let x2 = array2_from_file!(16, 16, "testdata/forfft/forfft_ng16_1_x2.bin");
         let trig = include_bytes!("testdata/forfft/forfft_ng16_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [0, 2, 0, 0, 0];
 
-        forfft(m, n, &mut x, &trig, &factors);
+        forfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -640,21 +616,15 @@ mod test {
     fn forfft_ng16_2() {
         let m = 16;
         let n = 16;
-        let mut x = include_bytes!("testdata/forfft/forfft_ng16_2_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/forfft/forfft_ng16_2_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(16, 16, "testdata/forfft/forfft_ng16_2_x.bin");
+        let x2 = array2_from_file!(16, 16, "testdata/forfft/forfft_ng16_2_x2.bin");
         let trig = include_bytes!("testdata/forfft/forfft_ng16_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [0, 2, 0, 0, 0];
 
-        forfft(m, n, &mut x, &trig, &factors);
+        forfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -663,21 +633,15 @@ mod test {
     fn forfft_ng18_1() {
         let m = 18;
         let n = 18;
-        let mut x = include_bytes!("testdata/forfft/forfft_ng18_1_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/forfft/forfft_ng18_1_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(18, 18, "testdata/forfft/forfft_ng18_1_x.bin");
+        let x2 = array2_from_file!(18, 18, "testdata/forfft/forfft_ng18_1_x2.bin");
         let trig = include_bytes!("testdata/forfft/forfft_ng18_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [1, 0, 0, 1, 0];
 
-        forfft(m, n, &mut x, &trig, &factors);
+        forfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -686,21 +650,15 @@ mod test {
     fn forfft_ng18_2() {
         let m = 18;
         let n = 18;
-        let mut x = include_bytes!("testdata/forfft/forfft_ng18_2_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/forfft/forfft_ng18_2_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(18, 18, "testdata/forfft/forfft_ng18_2_x.bin");
+        let x2 = array2_from_file!(18, 18, "testdata/forfft/forfft_ng18_2_x2.bin");
         let trig = include_bytes!("testdata/forfft/forfft_ng18_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [1, 0, 0, 1, 0];
 
-        forfft(m, n, &mut x, &trig, &factors);
+        forfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -709,21 +667,15 @@ mod test {
     fn forfft_ng24_1() {
         let m = 24;
         let n = 24;
-        let mut x = include_bytes!("testdata/forfft/forfft_ng24_1_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/forfft/forfft_ng24_1_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(24, 24, "testdata/forfft/forfft_ng24_1_x.bin");
+        let x2 = array2_from_file!(24, 24, "testdata/forfft/forfft_ng24_1_x2.bin");
         let trig = include_bytes!("testdata/forfft/forfft_ng24_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [1, 1, 0, 0, 0];
 
-        forfft(m, n, &mut x, &trig, &factors);
+        forfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -732,21 +684,15 @@ mod test {
     fn forfft_ng24_2() {
         let m = 24;
         let n = 24;
-        let mut x = include_bytes!("testdata/forfft/forfft_ng24_2_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/forfft/forfft_ng24_2_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(24, 24, "testdata/forfft/forfft_ng24_2_x.bin");
+        let x2 = array2_from_file!(24, 24, "testdata/forfft/forfft_ng24_2_x2.bin");
         let trig = include_bytes!("testdata/forfft/forfft_ng24_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [1, 1, 0, 0, 0];
 
-        forfft(m, n, &mut x, &trig, &factors);
+        forfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -755,21 +701,15 @@ mod test {
     fn revfft_ng12_1() {
         let m = 12;
         let n = 12;
-        let mut x = include_bytes!("testdata/revfft/revfft_ng12_1_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/revfft/revfft_ng12_1_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(12, 12, "testdata/revfft/revfft_ng12_1_x.bin");
+        let x2 = array2_from_file!(12, 12, "testdata/revfft/revfft_ng12_1_x2.bin");
         let trig = include_bytes!("testdata/revfft/revfft_ng12_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [1, 0, 1, 0, 0];
 
-        revfft(m, n, &mut x, &trig, &factors);
+        revfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -778,21 +718,15 @@ mod test {
     fn revfft_ng12_2() {
         let m = 12;
         let n = 12;
-        let mut x = include_bytes!("testdata/revfft/revfft_ng12_2_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/revfft/revfft_ng12_2_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(12, 12, "testdata/revfft/revfft_ng12_2_x.bin");
+        let x2 = array2_from_file!(12, 12, "testdata/revfft/revfft_ng12_2_x2.bin");
         let trig = include_bytes!("testdata/revfft/revfft_ng12_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
         let factors = [1, 0, 1, 0, 0];
 
-        revfft(m, n, &mut x, &trig, &factors);
+        revfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -801,14 +735,8 @@ mod test {
     fn revfft_ng15_1() {
         let m = 15;
         let n = 15;
-        let mut x = include_bytes!("testdata/revfft/revfft_ng15_1_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/revfft/revfft_ng15_1_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(15, 15, "testdata/revfft/revfft_ng15_1_x.bin");
+        let x2 = array2_from_file!(15, 15, "testdata/revfft/revfft_ng15_1_x2.bin");
         let trig = include_bytes!("testdata/revfft/revfft_ng15_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -816,7 +744,7 @@ mod test {
 
         let factors = [0, 0, 0, 1, 1];
 
-        revfft(m, n, &mut x, &trig, &factors);
+        revfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -825,14 +753,8 @@ mod test {
     fn revfft_ng15_2() {
         let m = 15;
         let n = 15;
-        let mut x = include_bytes!("testdata/revfft/revfft_ng15_2_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/revfft/revfft_ng15_2_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(15, 15, "testdata/revfft/revfft_ng15_2_x.bin");
+        let x2 = array2_from_file!(15, 15, "testdata/revfft/revfft_ng15_2_x2.bin");
         let trig = include_bytes!("testdata/revfft/revfft_ng15_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -840,7 +762,7 @@ mod test {
 
         let factors = [0, 0, 0, 1, 1];
 
-        revfft(m, n, &mut x, &trig, &factors);
+        revfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -849,14 +771,8 @@ mod test {
     fn revfft_ng16_1() {
         let m = 16;
         let n = 16;
-        let mut x = include_bytes!("testdata/revfft/revfft_ng16_1_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/revfft/revfft_ng16_1_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(16, 16, "testdata/revfft/revfft_ng16_1_x.bin");
+        let x2 = array2_from_file!(16, 16, "testdata/revfft/revfft_ng16_1_x2.bin");
         let trig = include_bytes!("testdata/revfft/revfft_ng16_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -864,7 +780,7 @@ mod test {
 
         let factors = [0, 2, 0, 0, 0];
 
-        revfft(m, n, &mut x, &trig, &factors);
+        revfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -873,14 +789,8 @@ mod test {
     fn revfft_ng16_2() {
         let m = 16;
         let n = 16;
-        let mut x = include_bytes!("testdata/revfft/revfft_ng16_2_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/revfft/revfft_ng16_2_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(16, 16, "testdata/revfft/revfft_ng16_2_x.bin");
+        let x2 = array2_from_file!(16, 16, "testdata/revfft/revfft_ng16_2_x2.bin");
         let trig = include_bytes!("testdata/revfft/revfft_ng16_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -888,7 +798,7 @@ mod test {
 
         let factors = [0, 2, 0, 0, 0];
 
-        revfft(m, n, &mut x, &trig, &factors);
+        revfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -897,14 +807,8 @@ mod test {
     fn revfft_ng18_1() {
         let m = 18;
         let n = 18;
-        let mut x = include_bytes!("testdata/revfft/revfft_ng18_1_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/revfft/revfft_ng18_1_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(18, 18, "testdata/revfft/revfft_ng18_1_x.bin");
+        let x2 = array2_from_file!(18, 18, "testdata/revfft/revfft_ng18_1_x2.bin");
         let trig = include_bytes!("testdata/revfft/revfft_ng18_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -912,7 +816,7 @@ mod test {
 
         let factors = [1, 0, 0, 1, 0];
 
-        revfft(m, n, &mut x, &trig, &factors);
+        revfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -921,14 +825,8 @@ mod test {
     fn revfft_ng18_2() {
         let m = 18;
         let n = 18;
-        let mut x = include_bytes!("testdata/revfft/revfft_ng18_2_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/revfft/revfft_ng18_2_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(18, 18, "testdata/revfft/revfft_ng18_2_x.bin");
+        let x2 = array2_from_file!(18, 18, "testdata/revfft/revfft_ng18_2_x2.bin");
         let trig = include_bytes!("testdata/revfft/revfft_ng18_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -936,7 +834,7 @@ mod test {
 
         let factors = [1, 0, 0, 1, 0];
 
-        revfft(m, n, &mut x, &trig, &factors);
+        revfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -945,14 +843,8 @@ mod test {
     fn revfft_ng24_1() {
         let m = 24;
         let n = 24;
-        let mut x = include_bytes!("testdata/revfft/revfft_ng24_1_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/revfft/revfft_ng24_1_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(24, 24, "testdata/revfft/revfft_ng24_1_x.bin");
+        let x2 = array2_from_file!(24, 24, "testdata/revfft/revfft_ng24_1_x2.bin");
         let trig = include_bytes!("testdata/revfft/revfft_ng24_1_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -960,7 +852,7 @@ mod test {
 
         let factors = [1, 1, 0, 0, 0];
 
-        revfft(m, n, &mut x, &trig, &factors);
+        revfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
@@ -969,14 +861,8 @@ mod test {
     fn revfft_ng24_2() {
         let m = 24;
         let n = 24;
-        let mut x = include_bytes!("testdata/revfft/revfft_ng24_2_x.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let x2 = include_bytes!("testdata/revfft/revfft_ng24_2_x2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut x = array2_from_file!(24, 24, "testdata/revfft/revfft_ng24_2_x.bin");
+        let x2 = array2_from_file!(24, 24, "testdata/revfft/revfft_ng24_2_x2.bin");
         let trig = include_bytes!("testdata/revfft/revfft_ng24_2_trig.bin")
             .chunks(8)
             .map(NetworkEndian::read_f64)
@@ -984,7 +870,7 @@ mod test {
 
         let factors = [1, 1, 0, 0, 0];
 
-        revfft(m, n, &mut x, &trig, &factors);
+        revfft(m, n, x.view_mut(), &trig, &factors);
 
         assert_eq!(x2, x);
     }
