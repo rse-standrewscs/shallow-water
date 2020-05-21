@@ -59,10 +59,7 @@ pub fn source(
             // Compute div(ql*u,ql*v) (wka in spectral space):
             wka.assign(&state.qs.index_axis(Axis(2), iz));
 
-            state.spectral.d2fft.spctop(
-                wka.as_slice_memory_order_mut().unwrap(),
-                wkq.as_slice_memory_order_mut().unwrap(),
-            );
+            state.spectral.d2fft.spctop(wka.view_mut(), wkq.view_mut());
             // wkq contains the linearised PV in physical space
 
             wkp.assign(&(&wkq * &state.u.index_axis(Axis(2), iz)));
@@ -101,10 +98,7 @@ pub fn source(
             // Convert ds to physical space as dd:
             wka.assign(&state.ds.index_axis(Axis(2), iz));
 
-            state.spectral.d2fft.spctop(
-                wka.as_slice_memory_order_mut().unwrap(),
-                dd.as_slice_memory_order_mut().unwrap(),
-            );
+            state.spectral.d2fft.spctop(wka.view_mut(), dd.view_mut());
 
             // Compute div(F*grad{z}-delta*{u,v}) (wkb in spectral space):
             Zip::from(&mut wkp)

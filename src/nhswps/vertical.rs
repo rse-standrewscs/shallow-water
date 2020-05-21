@@ -46,31 +46,20 @@ pub fn vertical(state: &mut State) {
         // Calculate z_x & z_y:
         let mut wkq = state.z.index_axis(Axis(2), iz).to_owned();
 
-        state.spectral.d2fft.ptospc(
-            wkq.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.xderiv(
-            &state.spectral.hrkx,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            wkq.as_slice_memory_order_mut().unwrap(),
-        );
+        state.spectral.d2fft.ptospc(wkq.view_mut(), wka.view_mut());
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
+        state.spectral.d2fft.spctop(wkb.view_mut(), wkq.view_mut());
 
         state.zx.index_axis_mut(Axis(2), iz).assign(&wkq);
 
-        state.spectral.d2fft.yderiv(
-            &state.spectral.hrky,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            wkq.as_slice_memory_order_mut().unwrap(),
-        );
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, wka.view(), wkb.view_mut());
+        state.spectral.d2fft.spctop(wkb.view_mut(), wkq.view_mut());
 
         state.zy.index_axis_mut(Axis(2), iz).assign(&wkq);
     }
@@ -83,15 +72,11 @@ pub fn vertical(state: &mut State) {
             .and(state.r.index_axis(Axis(2), iz))
             .apply(|wkq, u, r| *wkq = u * r);
 
-        state.spectral.d2fft.ptospc(
-            wkq.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.xderiv(
-            &state.spectral.hrkx,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
+        state.spectral.d2fft.ptospc(wkq.view_mut(), wka.view_mut());
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
 
         // Calculate (v*rho'_theta)_y:
         Zip::from(&mut wkq)
@@ -99,15 +84,11 @@ pub fn vertical(state: &mut State) {
             .and(state.r.index_axis(Axis(2), iz))
             .apply(|wkq, v, r| *wkq = v * r);
 
-        state.spectral.d2fft.ptospc(
-            wkq.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.yderiv(
-            &state.spectral.hrky,
-            wka.as_slice_memory_order().unwrap(),
-            wkc.as_slice_memory_order_mut().unwrap(),
-        );
+        state.spectral.d2fft.ptospc(wkq.view_mut(), wka.view_mut());
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, wka.view(), wkc.view_mut());
 
         // Apply de-aliasing filter and complete definition of A:
         Zip::from(state.aa.index_axis_mut(Axis(2), iz))
@@ -122,10 +103,7 @@ pub fn vertical(state: &mut State) {
             .and(state.ds.index_axis(Axis(2), iz))
             .apply(|wka, aa, ds| *wka = aa + ds);
 
-        state.spectral.d2fft.spctop(
-            wka.as_slice_memory_order_mut().unwrap(),
-            wkq.as_slice_memory_order_mut().unwrap(),
-        );
+        state.spectral.d2fft.spctop(wka.view_mut(), wkq.view_mut());
 
         Zip::from(rsrc.index_axis_mut(Axis(2), iz))
             .and(&wkq)

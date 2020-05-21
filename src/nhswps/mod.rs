@@ -365,10 +365,7 @@ fn savegrid(state: &mut State) {
                 wkp[[i, j]] = state.zeta[[i, j, iz]];
             }
         }
-        d2fft.ptospc(
-            wkp.as_slice_memory_order_mut().unwrap(),
-            wks.as_slice_memory_order_mut().unwrap(),
-        );
+        d2fft.ptospc(wkp.view_mut(), wks.view_mut());
         state.spectral.spec1d(
             wks.as_slice_memory_order().unwrap(),
             tmpspec.as_slice_memory_order_mut().unwrap(),
@@ -417,10 +414,7 @@ fn savegrid(state: &mut State) {
     // PV field:
     for iz in 0..=nz {
         wks.assign(&state.qs.index_axis(Axis(2), iz));
-        d2fft.spctop(
-            wks.as_slice_memory_order_mut().unwrap(),
-            wkp.as_slice_memory_order_mut().unwrap(),
-        );
+        d2fft.spctop(wks.view_mut(), wkp.view_mut());
         for i in 0..ng {
             for j in 0..ng {
                 v3d[[i, j, iz]] = wkp[[i, j]] as f32;
@@ -436,10 +430,7 @@ fn savegrid(state: &mut State) {
     // Divergence field:
     for iz in 0..=nz {
         wks.assign(&state.ds.index_axis(Axis(2), iz));
-        d2fft.spctop(
-            wks.as_slice_memory_order_mut().unwrap(),
-            wkp.as_slice_memory_order_mut().unwrap(),
-        );
+        d2fft.spctop(wks.view_mut(), wkp.view_mut());
         for i in 0..ng {
             for j in 0..ng {
                 v3d[[i, j, iz]] = wkp[[i, j]] as f32;
@@ -455,10 +446,7 @@ fn savegrid(state: &mut State) {
     // Acceleration divergence field:
     for iz in 0..=nz {
         wks.assign(&state.gs.index_axis(Axis(2), iz));
-        d2fft.spctop(
-            wks.as_slice_memory_order_mut().unwrap(),
-            wkp.as_slice_memory_order_mut().unwrap(),
-        );
+        d2fft.spctop(wks.view_mut(), wkp.view_mut());
         for i in 0..ng {
             for j in 0..ng {
                 v3d[[i, j, iz]] = wkp[[i, j]] as f32;
@@ -556,10 +544,7 @@ fn savegrid(state: &mut State) {
     wkp.fill(0.0);
     for iz in 0..=nz {
         wks.assign(&state.gs.index_axis(Axis(2), iz));
-        d2fft.spctop(
-            wks.as_slice_memory_order_mut().unwrap(),
-            wkq.as_slice_memory_order_mut().unwrap(),
-        );
+        d2fft.spctop(wks.view_mut(), wkq.view_mut());
         Zip::from(&mut wkp)
             .and(&wkq)
             .and(&state.r.index_axis(Axis(2), iz))
