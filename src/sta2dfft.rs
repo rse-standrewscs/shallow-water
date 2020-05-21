@@ -95,7 +95,7 @@ impl D2FFT {
         forfft(
             self.ny,
             self.nx,
-            rvar.as_slice_memory_order_mut().unwrap(),
+            rvar.view_mut(),
             &self.xtrig,
             &self.xfactors,
         );
@@ -103,13 +103,7 @@ impl D2FFT {
         rvar.swap_axes(0, 1);
         svar.assign(&rvar);
 
-        forfft(
-            nx,
-            ny,
-            svar.as_slice_memory_order_mut().unwrap(),
-            &self.ytrig,
-            &self.yfactors,
-        );
+        forfft(nx, ny, svar, &self.ytrig, &self.yfactors);
     }
 
     /// Performs a spectral -> physical transform of a variable
@@ -120,24 +114,12 @@ impl D2FFT {
         let nx = self.nx;
         let ny = self.ny;
 
-        revfft(
-            nx,
-            ny,
-            svar.as_slice_memory_order_mut().unwrap(),
-            &self.ytrig,
-            &self.yfactors,
-        );
+        revfft(nx, ny, svar.view_mut(), &self.ytrig, &self.yfactors);
 
         svar.swap_axes(0, 1);
         rvar.assign(&svar);
 
-        revfft(
-            ny,
-            nx,
-            rvar.as_slice_memory_order_mut().unwrap(),
-            &self.xtrig,
-            &self.xfactors,
-        );
+        revfft(ny, nx, rvar, &self.xtrig, &self.xfactors);
     }
 
     /// Computes der = d(var)/dx, spectrally, for a variable
