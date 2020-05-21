@@ -385,26 +385,10 @@ impl Spectral {
                     .apply(|wkd, rlap, ds| *wkd = rlap * ds);
 
                 //Calculate derivatives spectrally:
-                self.d2fft.xderiv(
-                    &self.hrkx,
-                    wkd.as_slice_memory_order().unwrap(),
-                    wke.as_slice_memory_order_mut().unwrap(),
-                );
-                self.d2fft.yderiv(
-                    &self.hrky,
-                    wkd.as_slice_memory_order().unwrap(),
-                    wkf.as_slice_memory_order_mut().unwrap(),
-                );
-                self.d2fft.xderiv(
-                    &self.hrkx,
-                    wkc.as_slice_memory_order().unwrap(),
-                    wkd.as_slice_memory_order_mut().unwrap(),
-                );
-                self.d2fft.yderiv(
-                    &self.hrky,
-                    wkc.as_slice_memory_order().unwrap(),
-                    wkg.as_slice_memory_order_mut().unwrap(),
-                );
+                self.d2fft.xderiv(&self.hrkx, wkd.view(), wke.view_mut());
+                self.d2fft.yderiv(&self.hrky, wkd.view(), wkf.view_mut());
+                self.d2fft.xderiv(&self.hrkx, wkc.view(), wkd.view_mut());
+                self.d2fft.yderiv(&self.hrky, wkc.view(), wkg.view_mut());
 
                 //Define velocity components:
                 //wke=wke-wkg;
@@ -413,37 +397,14 @@ impl Spectral {
                 Zip::from(&mut wkf).and(&wkd).apply(|wkf, wkd| *wkf += wkd);
 
                 //Bring quantities back to physical space and store:
-                self.d2fft.spctop(
-                    wka.as_slice_memory_order_mut().unwrap(),
-                    wkc.as_slice_memory_order_mut().unwrap(),
-                );
-
-                r.assign(&wkc);
-
-                self.d2fft.spctop(
-                    wkb.as_slice_memory_order_mut().unwrap(),
-                    wkd.as_slice_memory_order_mut().unwrap(),
-                );
-
-                zeta.assign(&wkd);
-
-                self.d2fft.spctop(
-                    wke.as_slice_memory_order_mut().unwrap(),
-                    wka.as_slice_memory_order_mut().unwrap(),
-                );
-
-                u.assign(&wka);
-
-                self.d2fft.spctop(
-                    wkf.as_slice_memory_order_mut().unwrap(),
-                    wkb.as_slice_memory_order_mut().unwrap(),
-                );
-
-                v.assign(&wkb);
+                self.d2fft.spctop(wka.view_mut(), r.view_mut());
+                self.d2fft.spctop(wkb.view_mut(), zeta.view_mut());
+                self.d2fft.spctop(wke.view_mut(), u.view_mut());
+                self.d2fft.spctop(wkf.view_mut(), v.view_mut());
 
                 //Accumulate mean flow (uio,vio):
-                *uio.lock().unwrap() -= self.weight[iz] * (&wka * &wkc).sum() * dsumi;
-                *vio.lock().unwrap() -= self.weight[iz] * (&wkb * &wkc).sum() * dsumi;
+                *uio.lock().unwrap() -= self.weight[iz] * (&u * &r).sum() * dsumi;
+                *vio.lock().unwrap() -= self.weight[iz] * (&v * &r).sum() * dsumi;
             });
 
         //Add mean flow:
@@ -465,55 +426,21 @@ impl Spectral {
         let mut wka = arr2zero(ng);
         let mut wkb = aa.to_owned();
 
-        self.d2fft.ptospc(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
+        self.d2fft.ptospc(wkb.view_mut(), wka.view_mut());
         //Get derivatives of aa:
-        self.d2fft.xderiv(
-            &self.hrkx,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        self.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            ax.as_slice_memory_order_mut().unwrap(),
-        );
-        self.d2fft.yderiv(
-            &self.hrky,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        self.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            ay.as_slice_memory_order_mut().unwrap(),
-        );
+        self.d2fft.xderiv(&self.hrkx, wka.view(), wkb.view_mut());
+        self.d2fft.spctop(wkb.view_mut(), ax.view_mut());
+        self.d2fft.yderiv(&self.hrky, wka.view(), wkb.view_mut());
+        self.d2fft.spctop(wkb.view_mut(), ay.view_mut());
 
         let mut wkb = bb.to_owned();
 
-        self.d2fft.ptospc(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
+        self.d2fft.ptospc(wkb.view_mut(), wka.view_mut());
         //Get derivatives of bb:
-        self.d2fft.xderiv(
-            &self.hrkx,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        self.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            bx.as_slice_memory_order_mut().unwrap(),
-        );
-        self.d2fft.yderiv(
-            &self.hrky,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        self.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            by.as_slice_memory_order_mut().unwrap(),
-        );
+        self.d2fft.xderiv(&self.hrkx, wka.view(), wkb.view_mut());
+        self.d2fft.spctop(wkb.view_mut(), bx.view_mut());
+        self.d2fft.yderiv(&self.hrky, wka.view(), wkb.view_mut());
+        self.d2fft.spctop(wkb.view_mut(), by.view_mut());
 
         Zip::from(&mut wkb)
             .and(&ax)
@@ -522,10 +449,7 @@ impl Spectral {
             .and(&by)
             .apply(|wkb, ax, ay, bx, by| *wkb = ax * by - ay * bx);
 
-        self.d2fft.ptospc(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            cs.as_slice_memory_order_mut().unwrap(),
-        );
+        self.d2fft.ptospc(wkb.view_mut(), cs.view_mut());
     }
 
     /// Computes the divergence of (aa,bb) and returns it in cs.
@@ -535,27 +459,13 @@ impl Spectral {
         let mut wka = arr2zero(self.ng);
         let mut wkb = arr2zero(self.ng);
 
-        self.d2fft.ptospc(
-            wkp.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
-        self.d2fft.xderiv(
-            &self.hrkx,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
+        self.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
+        self.d2fft.xderiv(&self.hrkx, wka.view(), wkb.view_mut());
 
         let mut wkp = bb.to_owned();
 
-        self.d2fft.ptospc(
-            wkp.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
-        self.d2fft.yderiv(
-            &self.hrky,
-            wka.as_slice_memory_order().unwrap(),
-            cs.as_slice_memory_order_mut().unwrap(),
-        );
+        self.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
+        self.d2fft.yderiv(&self.hrky, wka.view(), cs.view_mut());
 
         cs += &wkb;
     }
@@ -579,10 +489,7 @@ impl Spectral {
             .for_each(|(iz, mut fs)| {
                 let mut wkp = fp.index_axis(Axis(2), iz as usize).to_owned();
 
-                self.d2fft.ptospc(
-                    wkp.as_slice_memory_order_mut().unwrap(),
-                    fs.as_slice_memory_order_mut().unwrap(),
-                );
+                self.d2fft.ptospc(wkp.view_mut(), fs.view_mut());
             });
     }
 
@@ -605,10 +512,7 @@ impl Spectral {
             .for_each(|(iz, mut fp)| {
                 let mut wks = fs.index_axis(Axis(2), iz as usize).to_owned();
 
-                self.d2fft.spctop(
-                    wks.as_slice_memory_order_mut().unwrap(),
-                    fp.as_slice_memory_order_mut().unwrap(),
-                );
+                self.d2fft.spctop(wks.view_mut(), fp.view_mut());
             });
     }
 
@@ -622,21 +526,13 @@ impl Spectral {
                 let mut wkp = fp.to_owned();
                 let mut wks = arr2zero(ng);
 
-                self.d2fft.ptospc(
-                    wkp.as_slice_memory_order_mut().unwrap(),
-                    wks.as_slice_memory_order_mut().unwrap(),
-                );
+                self.d2fft.ptospc(wkp.view_mut(), wks.view_mut());
 
                 Zip::from(&mut wks)
                     .and(&self.filt)
                     .apply(|wks, filt| *wks *= filt);
 
-                self.d2fft.spctop(
-                    wks.as_slice_memory_order_mut().unwrap(),
-                    wkp.as_slice_memory_order_mut().unwrap(),
-                );
-
-                fp.assign(&wkp);
+                self.d2fft.spctop(wks.view_mut(), fp.view_mut());
             });
     }
 
@@ -644,19 +540,13 @@ impl Spectral {
     pub fn deal2d(&self, mut fp: ArrayViewMut2<f64>) {
         let mut fs = arr2zero(self.ng);
 
-        self.d2fft.ptospc(
-            fp.as_slice_memory_order_mut().unwrap(),
-            fs.as_slice_memory_order_mut().unwrap(),
-        );
+        self.d2fft.ptospc(fp.view_mut(), fs.view_mut());
 
         Zip::from(&mut fs)
             .and(&self.filt)
             .apply(|fs, filt| *fs *= filt);
 
-        self.d2fft.spctop(
-            fs.as_slice_memory_order_mut().unwrap(),
-            fp.as_slice_memory_order_mut().unwrap(),
-        );
+        self.d2fft.spctop(fs.view_mut(), fp.view_mut());
     }
 
     /// Computes the 1d spectrum of a spectral field ss and returns the

@@ -86,7 +86,9 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
         wkp[i] = COF * e;
     }
 
-    spectral.d2fft.ptospc(&mut wkp, &mut wkb);
+    spectral
+        .d2fft
+        .ptospc(viewmut2d(&mut wkp, ng, ng), viewmut2d(&mut wkb, ng, ng));
     fqbar = COF * qbar;
 
     let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
@@ -98,7 +100,9 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
         }
     }
 
-    spectral.d2fft.spctop(&mut wka, &mut hh);
+    spectral
+        .d2fft
+        .spctop(viewmut2d(&mut wka, ng, ng), viewmut2d(&mut hh, ng, ng));
 
     //wkp: corrected de-aliased height field (to be hh below)
     for (i, e) in hh.iter().enumerate() {
@@ -118,7 +122,9 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
     }
 
     //Obtain velocity field (uu,vv):
-    spectral.d2fft.ptospc(&mut zz, &mut wkb);
+    spectral
+        .d2fft
+        .ptospc(viewmut2d(&mut zz, ng, ng), viewmut2d(&mut wkb, ng, ng));
 
     let mut wka_matrix = viewmut2d(&mut wka, ng, ng);
     let mut wkb_matrix = viewmut2d(&mut wkb, ng, ng);
@@ -129,14 +135,28 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
         }
     }
 
-    spectral.d2fft.spctop(&mut wkb, &mut zz);
-    spectral.d2fft.xderiv(&spectral.hrkx, &wka, &mut wkd);
-    spectral.d2fft.yderiv(&spectral.hrky, &wka, &mut wkb);
+    spectral
+        .d2fft
+        .spctop(viewmut2d(&mut wkb, ng, ng), viewmut2d(&mut zz, ng, ng));
+    spectral.d2fft.xderiv(
+        &spectral.hrkx,
+        view2d(&mut wka, ng, ng),
+        viewmut2d(&mut wkd, ng, ng),
+    );
+    spectral.d2fft.yderiv(
+        &spectral.hrky,
+        view2d(&mut wka, ng, ng),
+        viewmut2d(&mut wkb, ng, ng),
+    );
     for e in wkb.iter_mut() {
         *e = -*e;
     }
-    spectral.d2fft.spctop(&mut wkb, &mut uu);
-    spectral.d2fft.spctop(&mut wkd, &mut vv);
+    spectral
+        .d2fft
+        .spctop(viewmut2d(&mut wkb, ng, ng), viewmut2d(&mut uu, ng, ng));
+    spectral
+        .d2fft
+        .spctop(viewmut2d(&mut wkd, ng, ng), viewmut2d(&mut vv, ng, ng));
     //Add mean flow (uio,vio):
     uio = -hh.iter().zip(&uu).map(|(a, b)| a * b).sum::<f64>() * dsumi;
     for e in uu.iter_mut() {
@@ -182,7 +202,9 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
             .apply(|gs, filt, wka, wkb| *gs = filt * (wka - 2.0 * wkb));
 
         wka = gs.clone();
-        spectral.d2fft.spctop(&mut wka, &mut gg);
+        spectral
+            .d2fft
+            .spctop(viewmut2d(&mut wka, ng, ng), viewmut2d(&mut gg, ng, ng));
 
         gg.iter()
             .zip(&ggpre)
@@ -231,7 +253,9 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
             .apply(|ds, helm, wkb, c2g2, wka| *ds = helm * (COF * wkb - c2g2 * wka));
 
         wka = ds.clone();
-        spectral.d2fft.spctop(&mut wka, &mut dd);
+        spectral
+            .d2fft
+            .spctop(viewmut2d(&mut wka, ng, ng), viewmut2d(&mut dd, ng, ng));
         ddrmserr = dd
             .iter()
             .zip(&ddpre)
@@ -251,7 +275,9 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
         for (i, e) in wkp.iter_mut().enumerate() {
             *e = COF * (qq[i] + hh[i] * (qq[i] - qbar)) - gg[i];
         }
-        spectral.d2fft.ptospc(&mut wkp, &mut wkb);
+        spectral
+            .d2fft
+            .ptospc(viewmut2d(&mut wkp, ng, ng), viewmut2d(&mut wkb, ng, ng));
         fqbar = COF * qbar;
 
         let wka_matrix = viewmut2d(&mut wka, ng, ng);
@@ -263,7 +289,9 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
             .and(&spectral.opak)
             .apply(|wka, filt, wkb, opak| *wka = filt * wkb / (opak - fqbar));
 
-        spectral.d2fft.spctop(&mut wka, &mut hh);
+        spectral
+            .d2fft
+            .spctop(viewmut2d(&mut wka, ng, ng), viewmut2d(&mut hh, ng, ng));
         //wkp: corrected de-aliased height field (to be hh below)
         for (i, e) in htot.iter_mut().enumerate() {
             *e = 1.0 + hh[i];
@@ -283,7 +311,9 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
         }
 
         //Obtain velocity field (uu,vv):
-        spectral.d2fft.ptospc(&mut zz, &mut wkb);
+        spectral
+            .d2fft
+            .ptospc(viewmut2d(&mut zz, ng, ng), viewmut2d(&mut wkb, ng, ng));
 
         let wka_matrix = viewmut2d(&mut wka, ng, ng);
         let wkb_matrix = viewmut2d(&mut wkb, ng, ng);
@@ -295,9 +325,19 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
             .and(&spectral.filt)
             .apply(|wkb, filt| *wkb *= filt);
 
-        spectral.d2fft.spctop(&mut wkb, &mut zz);
-        spectral.d2fft.xderiv(&spectral.hrkx, &wka, &mut wkd);
-        spectral.d2fft.yderiv(&spectral.hrky, &wka, &mut wkb);
+        spectral
+            .d2fft
+            .spctop(viewmut2d(&mut wkb, ng, ng), viewmut2d(&mut zz, ng, ng));
+        spectral.d2fft.xderiv(
+            &spectral.hrkx,
+            view2d(&mut wka, ng, ng),
+            viewmut2d(&mut wkd, ng, ng),
+        );
+        spectral.d2fft.yderiv(
+            &spectral.hrky,
+            view2d(&mut wka, ng, ng),
+            viewmut2d(&mut wkb, ng, ng),
+        );
 
         let wke_matrix = viewmut2d(&mut wke, ng, ng);
         let ds_matrix = view2d(&ds, ng, ng);
@@ -306,8 +346,16 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
             .and(&ds_matrix)
             .apply(|wke, rlap, ds| *wke = rlap * ds);
 
-        spectral.d2fft.xderiv(&spectral.hrkx, &wke, &mut wka);
-        spectral.d2fft.yderiv(&spectral.hrky, &wke, &mut wkc);
+        spectral.d2fft.xderiv(
+            &spectral.hrkx,
+            view2d(&mut wke, ng, ng),
+            viewmut2d(&mut wka, ng, ng),
+        );
+        spectral.d2fft.yderiv(
+            &spectral.hrky,
+            view2d(&mut wke, ng, ng),
+            viewmut2d(&mut wkc, ng, ng),
+        );
 
         for (i, e) in wkb.iter_mut().enumerate() {
             *e = wka[i] - *e;
@@ -316,8 +364,12 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
             *e += wkc[i];
         }
 
-        spectral.d2fft.spctop(&mut wkb, &mut uu);
-        spectral.d2fft.spctop(&mut wkd, &mut vv);
+        spectral
+            .d2fft
+            .spctop(viewmut2d(&mut wkb, ng, ng), viewmut2d(&mut uu, ng, ng));
+        spectral
+            .d2fft
+            .spctop(viewmut2d(&mut wkd, ng, ng), viewmut2d(&mut vv, ng, ng));
 
         //Add mean flow (uio,vio):
         uio = -hh.iter().zip(&uu).map(|(a, b)| a * b).sum::<f64>() * dsumi;

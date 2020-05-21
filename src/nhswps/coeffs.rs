@@ -64,10 +64,7 @@ pub fn coeffs(
                     sigy.index_axis(Axis(2), iz),
                     wka.view_mut(),
                 );
-                state.spectral.d2fft.spctop(
-                    wka.as_slice_memory_order_mut().unwrap(),
-                    wkp.as_slice_memory_order_mut().unwrap(),
-                );
+                state.spectral.d2fft.spctop(wka.view_mut(), wkp.view_mut());
 
                 Zip::from(cpt1)
                     .and(cpt2.index_axis(Axis(2), iz + 1))
@@ -85,10 +82,7 @@ pub fn coeffs(
         sigy.index_axis(Axis(2), nz),
         wka.view_mut(),
     );
-    state.spectral.d2fft.spctop(
-        wka.as_slice_memory_order_mut().unwrap(),
-        wkp.as_slice_memory_order_mut().unwrap(),
-    );
+    state.spectral.d2fft.spctop(wka.view_mut(), wkp.view_mut());
 
     Zip::from(cpt1.index_axis_mut(Axis(2), nz))
         .and(cpt2.index_axis(Axis(2), nz))

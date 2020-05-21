@@ -112,10 +112,10 @@ pub fn psolve(state: &mut State) {
             });
 
         // Return to physical space:
-        state.spectral.d2fft.spctop(
-            wkd.as_slice_memory_order_mut().unwrap(),
-            d2pdt2.lock().as_slice_memory_order_mut().unwrap(),
-        );
+        state
+            .spectral
+            .d2fft
+            .spctop(wkd.view_mut(), d2pdt2.lock().view_mut());
         // Total source:
         Zip::from(&mut wkp)
             .and(sp0.index_axis(Axis(2), 0))
@@ -124,10 +124,7 @@ pub fn psolve(state: &mut State) {
             .apply(|wkp, sp0, cpt2, d2pdt2| *wkp = sp0 + cpt2 * d2pdt2);
 
         // Transform to spectral space for inversion below:
-        state.spectral.d2fft.ptospc(
-            wkp.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
+        state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
         sp.lock().index_axis_mut(Axis(2), 0).assign(&wka);
 
         // Interior grid points:
@@ -155,34 +152,29 @@ pub fn psolve(state: &mut State) {
                 .apply(|wkd, psp, ps, psm| *wkd = (psp - 2.0 * ps + psm) * dzisq);
 
             // Calculate x & y derivatives of dp/dtheta:
-            state.spectral.d2fft.xderiv(
-                &state.spectral.hrkx,
-                wka.as_slice_memory_order().unwrap(),
-                wkb.as_slice_memory_order_mut().unwrap(),
-            );
-            state.spectral.d2fft.yderiv(
-                &state.spectral.hrky,
-                wka.as_slice_memory_order().unwrap(),
-                wkc.as_slice_memory_order_mut().unwrap(),
-            );
+            state
+                .spectral
+                .d2fft
+                .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
+            state
+                .spectral
+                .d2fft
+                .yderiv(&state.spectral.hrky, wka.view(), wkc.view_mut());
 
             // Return to physical space:
-            state.spectral.d2fft.spctop(
-                wka.as_slice_memory_order_mut().unwrap(),
-                dpdt.as_slice_memory_order_mut().unwrap(),
-            );
-            state.spectral.d2fft.spctop(
-                wkb.as_slice_memory_order_mut().unwrap(),
-                d2pdxt.as_slice_memory_order_mut().unwrap(),
-            );
-            state.spectral.d2fft.spctop(
-                wkc.as_slice_memory_order_mut().unwrap(),
-                d2pdyt.as_slice_memory_order_mut().unwrap(),
-            );
-            state.spectral.d2fft.spctop(
-                wkd.as_slice_memory_order_mut().unwrap(),
-                d2pdt2_local.as_slice_memory_order_mut().unwrap(),
-            );
+            state.spectral.d2fft.spctop(wka.view_mut(), dpdt.view_mut());
+            state
+                .spectral
+                .d2fft
+                .spctop(wkb.view_mut(), d2pdxt.view_mut());
+            state
+                .spectral
+                .d2fft
+                .spctop(wkc.view_mut(), d2pdyt.view_mut());
+            state
+                .spectral
+                .d2fft
+                .spctop(wkd.view_mut(), d2pdt2_local.view_mut());
 
             // Total source:
             Zip::from(&mut wkp)
@@ -202,10 +194,7 @@ pub fn psolve(state: &mut State) {
                 .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
 
             // Transform to spectral space for inversion below:
-            state.spectral.d2fft.ptospc(
-                wkp.as_slice_memory_order_mut().unwrap(),
-                wka.as_slice_memory_order_mut().unwrap(),
-            );
+            state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
 
             if iz == nz - 2 {
                 d2pdt2.lock().assign(&d2pdt2_local);
@@ -237,34 +226,29 @@ pub fn psolve(state: &mut State) {
                 .apply(|wkd, psp, ps, psm| *wkd = (psp - 2.0 * ps + psm) * dzisq);
 
             // Calculate x & y derivatives of dp/dtheta:
-            state.spectral.d2fft.xderiv(
-                &state.spectral.hrkx,
-                wka.as_slice_memory_order().unwrap(),
-                wkb.as_slice_memory_order_mut().unwrap(),
-            );
-            state.spectral.d2fft.yderiv(
-                &state.spectral.hrky,
-                wka.as_slice_memory_order().unwrap(),
-                wkc.as_slice_memory_order_mut().unwrap(),
-            );
+            state
+                .spectral
+                .d2fft
+                .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
+            state
+                .spectral
+                .d2fft
+                .yderiv(&state.spectral.hrky, wka.view(), wkc.view_mut());
 
             // Return to physical space:
-            state.spectral.d2fft.spctop(
-                wka.as_slice_memory_order_mut().unwrap(),
-                dpdt.as_slice_memory_order_mut().unwrap(),
-            );
-            state.spectral.d2fft.spctop(
-                wkb.as_slice_memory_order_mut().unwrap(),
-                d2pdxt.as_slice_memory_order_mut().unwrap(),
-            );
-            state.spectral.d2fft.spctop(
-                wkc.as_slice_memory_order_mut().unwrap(),
-                d2pdyt.as_slice_memory_order_mut().unwrap(),
-            );
-            state.spectral.d2fft.spctop(
-                wkd.as_slice_memory_order_mut().unwrap(),
-                d2pdt2.lock().as_slice_memory_order_mut().unwrap(),
-            );
+            state.spectral.d2fft.spctop(wka.view_mut(), dpdt.view_mut());
+            state
+                .spectral
+                .d2fft
+                .spctop(wkb.view_mut(), d2pdxt.view_mut());
+            state
+                .spectral
+                .d2fft
+                .spctop(wkc.view_mut(), d2pdyt.view_mut());
+            state
+                .spectral
+                .d2fft
+                .spctop(wkd.view_mut(), d2pdt2.lock().view_mut());
 
             // Total source:
             Zip::from(&mut wkp)
@@ -284,10 +268,7 @@ pub fn psolve(state: &mut State) {
                 .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
 
             // Transform to spectral space for inversion below:
-            state.spectral.d2fft.ptospc(
-                wkp.as_slice_memory_order_mut().unwrap(),
-                wka.as_slice_memory_order_mut().unwrap(),
-            );
+            state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
 
             sp.lock().index_axis_mut(Axis(2), iz).assign(&wka);
         }
@@ -304,32 +285,27 @@ pub fn psolve(state: &mut State) {
 
         wkp = dpdt.clone();
 
-        state.spectral.d2fft.ptospc(
-            wkp.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
+        state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
 
         // Calculate x & y derivatives of dp/dtheta:
-        state.spectral.d2fft.xderiv(
-            &state.spectral.hrkx,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.yderiv(
-            &state.spectral.hrky,
-            wka.as_slice_memory_order().unwrap(),
-            wkc.as_slice_memory_order_mut().unwrap(),
-        );
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, wka.view(), wkc.view_mut());
 
         // Return to physical space:
-        state.spectral.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            d2pdxt.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.spctop(
-            wkc.as_slice_memory_order_mut().unwrap(),
-            d2pdyt.as_slice_memory_order_mut().unwrap(),
-        );
+        state
+            .spectral
+            .d2fft
+            .spctop(wkb.view_mut(), d2pdxt.view_mut());
+        state
+            .spectral
+            .d2fft
+            .spctop(wkc.view_mut(), d2pdyt.view_mut());
 
         // Total source:
         Zip::from(&mut wkp)
@@ -349,10 +325,7 @@ pub fn psolve(state: &mut State) {
             .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
 
         // Transform to spectral space for inversion below:
-        state.spectral.d2fft.ptospc(
-            wkp.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
+        state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
         sp.lock().index_axis_mut(Axis(2), nz).assign(&wka);
 
         // Solve tridiagonal problem for pressure in spectral space:

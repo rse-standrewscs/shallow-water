@@ -11,12 +11,10 @@
 //! require the additional endpoint so 0:nx or 0:ny.
 
 use {
-    crate::{
-        stafft::{forfft, initfft, revfft},
-        utils::*,
-    },
+    crate::stafft::{forfft, initfft, revfft},
     core::f64::consts::PI,
     log::error,
+    ndarray::{ArrayView2, ArrayViewMut2},
     serde::{Deserialize, Serialize},
 };
 
@@ -90,57 +88,64 @@ impl D2FFT {
     /// rvar(ny,nx) periodic in x and y, and returns the result
     /// (transposed) in svar(nx,ny).
     /// *** Note rvar is destroyed on return. ***
-    pub fn ptospc(&self, rvar: &mut [f64], svar: &mut [f64]) {
+    pub fn ptospc(&self, mut rvar: ArrayViewMut2<f64>, mut svar: ArrayViewMut2<f64>) {
         let nx = self.nx;
         let ny = self.ny;
 
-        forfft(self.ny, self.nx, rvar, &self.xtrig, &self.xfactors);
+        forfft(
+            self.ny,
+            self.nx,
+            rvar.as_slice_memory_order_mut().unwrap(),
+            &self.xtrig,
+            &self.xfactors,
+        );
 
-        let rvar_nd = viewmut2d(rvar, ny, nx);
-        let mut svar_nd = viewmut2d(svar, nx, ny);
+        rvar.swap_axes(0, 1);
+        svar.assign(&rvar);
 
-        for kx in 0..nx {
-            for iy in 0..ny {
-                svar_nd[[kx, iy]] = rvar_nd[[iy, kx]];
-            }
-        }
-
-        forfft(nx, ny, svar, &self.ytrig, &self.yfactors);
+        forfft(
+            nx,
+            ny,
+            svar.as_slice_memory_order_mut().unwrap(),
+            &self.ytrig,
+            &self.yfactors,
+        );
     }
 
     /// Performs a spectral -> physical transform of a variable
     /// svar(nx,ny) periodic in x and y and returns the result
     /// (transposed) in rvar(ny,nx).
     /// *** Note svar is destroyed on return. ***
-    pub fn spctop(&self, svar: &mut [f64], rvar: &mut [f64]) {
+    pub fn spctop(&self, mut svar: ArrayViewMut2<f64>, mut rvar: ArrayViewMut2<f64>) {
         let nx = self.nx;
         let ny = self.ny;
 
-        revfft(nx, ny, svar, &self.ytrig, &self.yfactors);
+        revfft(
+            nx,
+            ny,
+            svar.as_slice_memory_order_mut().unwrap(),
+            &self.ytrig,
+            &self.yfactors,
+        );
 
-        let svar_nd = viewmut2d(svar, nx, ny);
-        let mut rvar_nd = viewmut2d(rvar, ny, nx);
+        svar.swap_axes(0, 1);
+        rvar.assign(&svar);
 
-        for kx in 0..nx {
-            for iy in 0..ny {
-                rvar_nd[[iy, kx]] = svar_nd[[kx, iy]];
-            }
-        }
-
-        revfft(ny, nx, rvar, &self.xtrig, &self.xfactors);
+        revfft(
+            ny,
+            nx,
+            rvar.as_slice_memory_order_mut().unwrap(),
+            &self.xtrig,
+            &self.xfactors,
+        );
     }
 
     /// Computes der = d(var)/dx, spectrally, for a variable
     /// var(nx,ny) periodic in x and y.
     /// *** both var and der are spectral ***
-    pub fn xderiv(&self, rkx: &[f64], var: &[f64], der: &mut [f64]) {
+    pub fn xderiv(&self, rkx: &[f64], var: ArrayView2<f64>, mut der: ArrayViewMut2<f64>) {
         let nx = self.nx;
         let ny = self.ny;
-        let var = view2d(var, nx, ny);
-        let mut der = viewmut2d(der, nx, ny);
-
-        let mut dkx: usize;
-        let mut kxc: usize;
 
         let nwx = nx / 2;
         let nxp2 = nx + 2;
@@ -149,15 +154,15 @@ impl D2FFT {
         for ky in 0..ny {
             der[[0, ky]] = 0.0;
             for kx in 2..=nx - nwx {
-                dkx = 2 * (kx - 1);
-                kxc = nxp2 - kx;
+                let dkx = 2 * (kx - 1);
+                let kxc = nxp2 - kx;
                 der[[kx - 1, ky]] = -rkx[dkx - 1] * var[[kxc - 1, ky]];
                 der[[kxc - 1, ky]] = rkx[dkx - 1] * var[[kx - 1, ky]];
             }
         }
 
         if nx % 2 == 0 {
-            kxc = nwx + 1;
+            let kxc = nwx + 1;
             for ky in 0..ny {
                 der[[kxc - 1, ky]] = 0.0;
             }
@@ -167,25 +172,21 @@ impl D2FFT {
     /// Computes der = d(var)/dy, spectrally, for a variable
     /// var(nx,ny) periodic in x and y.
     /// *** both var and der are spectral ***
-    pub fn yderiv(&self, rky: &[f64], var: &[f64], der: &mut [f64]) {
+    pub fn yderiv(&self, rky: &[f64], var: ArrayView2<f64>, mut der: ArrayViewMut2<f64>) {
         let nx = self.nx;
         let ny = self.ny;
-        let var = view2d(var, nx, ny);
-        let mut der = viewmut2d(der, nx, ny);
-
-        let mut kyc: usize;
-        let mut fac: f64;
 
         let nwy = ny / 2;
         let nyp2 = ny + 2;
+
         // Carry out differentiation by wavenumber multiplication:
         for kx in 0..nx {
             der[[kx, 0]] = 0.0;
         }
 
         for ky in 2..=ny - nwy {
-            kyc = nyp2 - ky;
-            fac = rky[2 * (ky - 1) - 1];
+            let kyc = nyp2 - ky;
+            let fac = rky[2 * (ky - 1) - 1];
             for kx in 0..nx {
                 der[[kx, ky - 1]] = -fac * var[[kx, kyc - 1]];
                 der[[kx, kyc - 1]] = fac * var[[kx, ky - 1]];
@@ -193,7 +194,7 @@ impl D2FFT {
         }
 
         if ny % 2 == 0 {
-            kyc = nwy + 1;
+            let kyc = nwy + 1;
             for kx in 0..nx {
                 der[[kx, kyc - 1]] = 0.0;
             }
@@ -205,9 +206,11 @@ impl D2FFT {
 mod test {
     use {
         super::*,
+        crate::array2_from_file,
         approx::assert_abs_diff_eq,
         byteorder::{ByteOrder, NetworkEndian},
         insta::assert_debug_snapshot,
+        ndarray::{Array2, ShapeBuilder},
     };
 
     #[test]
@@ -268,22 +271,10 @@ mod test {
     fn ptospc_ng32() {
         let nx = 32;
         let ny = 32;
-        let mut rvar = include_bytes!("testdata/ptospc/ptospc_ng32_rvar.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut svar = include_bytes!("testdata/ptospc/ptospc_ng32_svar.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let rvar2 = include_bytes!("testdata/ptospc/ptospc_ng32_rvar2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let svar2 = include_bytes!("testdata/ptospc/ptospc_ng32_svar2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut rvar = array2_from_file!(32, 32, "testdata/ptospc/ptospc_ng32_rvar.bin");
+        let mut svar = array2_from_file!(32, 32, "testdata/ptospc/ptospc_ng32_svar.bin");
+        let rvar2 = array2_from_file!(32, 32, "testdata/ptospc/ptospc_ng32_rvar2.bin");
+        let svar2 = array2_from_file!(32, 32, "testdata/ptospc/ptospc_ng32_svar2.bin");
         let xfactors = [0, 2, 1, 0, 0];
         let yfactors = [0, 2, 1, 0, 0];
         let xtrig = include_bytes!("testdata/ptospc/ptospc_ng32_trig.bin")
@@ -303,7 +294,7 @@ mod test {
             xtrig,
             ytrig,
         };
-        d2fft.ptospc(&mut rvar, &mut svar);
+        d2fft.ptospc(rvar.view_mut(), svar.view_mut());
 
         assert_eq!(rvar2, rvar);
         assert_eq!(svar2, svar);
@@ -313,22 +304,10 @@ mod test {
     fn spctop_ng32() {
         let nx = 32;
         let ny = 32;
-        let mut rvar = include_bytes!("testdata/spctop/spctop_ng32_rvar.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let mut svar = include_bytes!("testdata/spctop/spctop_ng32_svar.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let rvar2 = include_bytes!("testdata/spctop/spctop_ng32_rvar2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let svar2 = include_bytes!("testdata/spctop/spctop_ng32_svar2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let mut rvar = array2_from_file!(32, 32, "testdata/spctop/spctop_ng32_rvar.bin");
+        let mut svar = array2_from_file!(32, 32, "testdata/spctop/spctop_ng32_svar.bin");
+        let rvar2 = array2_from_file!(32, 32, "testdata/spctop/spctop_ng32_rvar2.bin");
+        let svar2 = array2_from_file!(32, 32, "testdata/spctop/spctop_ng32_svar2.bin");
         let xfactors = [0, 2, 1, 0, 0];
         let yfactors = [0, 2, 1, 0, 0];
         let xtrig = include_bytes!("testdata/spctop/spctop_ng32_trig.bin")
@@ -348,7 +327,7 @@ mod test {
             xtrig,
             ytrig,
         };
-        d2fft.spctop(&mut svar, &mut rvar);
+        d2fft.spctop(svar.view_mut(), rvar.view_mut());
 
         assert_eq!(rvar2, rvar);
         assert_eq!(svar2, svar);
@@ -362,24 +341,13 @@ mod test {
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-
-        let var = include_bytes!("testdata/deriv/xderiv_1_var.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let mut der = include_bytes!("testdata/deriv/xderiv_1_der.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let der2 = include_bytes!("testdata/deriv/xderiv_1_der2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let var = array2_from_file!(32, 32, "testdata/deriv/xderiv_1_var.bin");
+        let mut der = array2_from_file!(32, 32, "testdata/deriv/xderiv_1_der.bin");
+        let der2 = array2_from_file!(32, 32, "testdata/deriv/xderiv_1_der2.bin");
 
         let d2dfft = D2FFT::new(nx, ny, 2.0 * PI, 2.0 * PI, &mut [0.0; 32], &mut [0.0; 32]);
-        d2dfft.xderiv(&rkx, &var, &mut der);
+
+        d2dfft.xderiv(&rkx, var.view(), der.view_mut());
 
         assert_eq!(der2, der);
     }
@@ -392,24 +360,13 @@ mod test {
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-
-        let var = include_bytes!("testdata/deriv/xderiv_2_var.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let mut der = include_bytes!("testdata/deriv/xderiv_2_der.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let der2 = include_bytes!("testdata/deriv/xderiv_2_der2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let var = array2_from_file!(24, 24, "testdata/deriv/xderiv_2_var.bin");
+        let mut der = array2_from_file!(24, 24, "testdata/deriv/xderiv_2_der.bin");
+        let der2 = array2_from_file!(24, 24, "testdata/deriv/xderiv_2_der2.bin");
 
         let d2dfft = D2FFT::new(nx, ny, 2.0 * PI, 2.0 * PI, &mut [0.0; 32], &mut [0.0; 32]);
-        d2dfft.xderiv(&rkx, &var, &mut der);
+
+        d2dfft.xderiv(&rkx, var.view(), der.view_mut());
 
         assert_eq!(der2, der);
     }
@@ -422,24 +379,12 @@ mod test {
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-
-        let var = include_bytes!("testdata/deriv/yderiv_1_var.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let mut der = include_bytes!("testdata/deriv/yderiv_1_der.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let der2 = include_bytes!("testdata/deriv/yderiv_1_der2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let var = array2_from_file!(32, 32, "testdata/deriv/yderiv_1_var.bin");
+        let mut der = array2_from_file!(32, 32, "testdata/deriv/yderiv_1_der.bin");
+        let der2 = array2_from_file!(32, 32, "testdata/deriv/yderiv_1_der2.bin");
 
         let d2dfft = D2FFT::new(nx, ny, 2.0 * PI, 2.0 * PI, &mut [0.0; 32], &mut [0.0; 32]);
-        d2dfft.yderiv(&rky, &var, &mut der);
+        d2dfft.yderiv(&rky, var.view(), der.view_mut());
 
         assert_eq!(der2, der);
     }
@@ -452,24 +397,12 @@ mod test {
             .chunks(8)
             .map(NetworkEndian::read_f64)
             .collect::<Vec<f64>>();
-
-        let var = include_bytes!("testdata/deriv/yderiv_2_var.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let mut der = include_bytes!("testdata/deriv/yderiv_2_der.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let der2 = include_bytes!("testdata/deriv/yderiv_2_der2.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let var = array2_from_file!(24, 24, "testdata/deriv/yderiv_2_var.bin");
+        let mut der = array2_from_file!(24, 24, "testdata/deriv/yderiv_2_der.bin");
+        let der2 = array2_from_file!(24, 24, "testdata/deriv/yderiv_2_der2.bin");
 
         let d2dfft = D2FFT::new(nx, ny, 2.0 * PI, 2.0 * PI, &mut [0.0; 32], &mut [0.0; 32]);
-        d2dfft.yderiv(&rky, &var, &mut der);
+        d2dfft.yderiv(&rky, var.view(), der.view_mut());
 
         assert_eq!(der2, der);
     }

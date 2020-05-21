@@ -38,19 +38,13 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
     wkp.assign(&state.z.index_axis(Axis(2), nz));
 
     // Fourier transform to spectral space:
-    state.spectral.d2fft.ptospc(
-        wkp.as_slice_memory_order_mut().unwrap(),
-        wka.as_slice_memory_order_mut().unwrap(),
-    );
+    state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
 
     // Apply -g*Lap_h operator:
     wka *= &state.spectral.glap;
 
     // Return to physical space:
-    state.spectral.d2fft.spctop(
-        wka.as_slice_memory_order_mut().unwrap(),
-        hsrc.as_slice_memory_order_mut().unwrap(),
-    );
+    state.spectral.d2fft.spctop(wka.view_mut(), hsrc.view_mut());
     // hsrc contains -g*Lap{h} in physical space.
 
     // Calculate u_theta, v_theta & w_theta:
@@ -113,53 +107,31 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
     // Calculate u_x, u_y, v_x & v_y:
     wkq.assign(&state.u.index_axis(Axis(2), 0));
 
-    state.spectral.d2fft.ptospc(
-        wkq.as_slice_memory_order_mut().unwrap(),
-        wka.as_slice_memory_order_mut().unwrap(),
-    );
-    state.spectral.d2fft.xderiv(
-        &state.spectral.hrkx,
-        wka.as_slice_memory_order().unwrap(),
-        wkb.as_slice_memory_order_mut().unwrap(),
-    );
-    state.spectral.d2fft.spctop(
-        wkb.as_slice_memory_order_mut().unwrap(),
-        ux.as_slice_memory_order_mut().unwrap(),
-    );
-    state.spectral.d2fft.yderiv(
-        &state.spectral.hrky,
-        wka.as_slice_memory_order().unwrap(),
-        wkb.as_slice_memory_order_mut().unwrap(),
-    );
-    state.spectral.d2fft.spctop(
-        wkb.as_slice_memory_order_mut().unwrap(),
-        uy.as_slice_memory_order_mut().unwrap(),
-    );
+    state.spectral.d2fft.ptospc(wkq.view_mut(), wka.view_mut());
+    state
+        .spectral
+        .d2fft
+        .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
+    state.spectral.d2fft.spctop(wkb.view_mut(), ux.view_mut());
+    state
+        .spectral
+        .d2fft
+        .yderiv(&state.spectral.hrky, wka.view(), wkb.view_mut());
+    state.spectral.d2fft.spctop(wkb.view_mut(), uy.view_mut());
 
     wkq.assign(&state.v.index_axis(Axis(2), 0));
 
-    state.spectral.d2fft.ptospc(
-        wkq.as_slice_memory_order_mut().unwrap(),
-        wka.as_slice_memory_order_mut().unwrap(),
-    );
-    state.spectral.d2fft.xderiv(
-        &state.spectral.hrkx,
-        wka.as_slice_memory_order().unwrap(),
-        wkb.as_slice_memory_order_mut().unwrap(),
-    );
-    state.spectral.d2fft.spctop(
-        wkb.as_slice_memory_order_mut().unwrap(),
-        vx.as_slice_memory_order_mut().unwrap(),
-    );
-    state.spectral.d2fft.yderiv(
-        &state.spectral.hrky,
-        wka.as_slice_memory_order().unwrap(),
-        wkb.as_slice_memory_order_mut().unwrap(),
-    );
-    state.spectral.d2fft.spctop(
-        wkb.as_slice_memory_order_mut().unwrap(),
-        vy.as_slice_memory_order_mut().unwrap(),
-    );
+    state.spectral.d2fft.ptospc(wkq.view_mut(), wka.view_mut());
+    state
+        .spectral
+        .d2fft
+        .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
+    state.spectral.d2fft.spctop(wkb.view_mut(), vx.view_mut());
+    state
+        .spectral
+        .d2fft
+        .yderiv(&state.spectral.hrky, wka.view(), wkb.view_mut());
+    state.spectral.d2fft.spctop(wkb.view_mut(), vy.view_mut());
 
     Zip::from(&mut wkq)
         .and(state.ri.index_axis(Axis(2), 0))
@@ -199,78 +171,45 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
         // Calculate u_x, u_y, v_x, v_y, w_x, w_y:
         wkq.assign(&state.u.index_axis(Axis(2), iz));
 
-        state.spectral.d2fft.ptospc(
-            wkq.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.xderiv(
-            &state.spectral.hrkx,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            ux.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.yderiv(
-            &state.spectral.hrky,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            uy.as_slice_memory_order_mut().unwrap(),
-        );
+        state.spectral.d2fft.ptospc(wkq.view_mut(), wka.view_mut());
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
+        state.spectral.d2fft.spctop(wkb.view_mut(), ux.view_mut());
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, wka.view(), wkb.view_mut());
+        state.spectral.d2fft.spctop(wkb.view_mut(), uy.view_mut());
 
         wkq.assign(&state.v.index_axis(Axis(2), iz));
 
-        state.spectral.d2fft.ptospc(
-            wkq.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.xderiv(
-            &state.spectral.hrkx,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            vx.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.yderiv(
-            &state.spectral.hrky,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            vy.as_slice_memory_order_mut().unwrap(),
-        );
+        state.spectral.d2fft.ptospc(wkq.view_mut(), wka.view_mut());
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
+        state.spectral.d2fft.spctop(wkb.view_mut(), vx.view_mut());
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, wka.view(), wkb.view_mut());
+        state.spectral.d2fft.spctop(wkb.view_mut(), vy.view_mut());
 
         wkq.assign(&state.w.index_axis(Axis(2), iz));
 
-        state.spectral.d2fft.ptospc(
-            wkq.as_slice_memory_order_mut().unwrap(),
-            wka.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.xderiv(
-            &state.spectral.hrkx,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            wx.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.yderiv(
-            &state.spectral.hrky,
-            wka.as_slice_memory_order().unwrap(),
-            wkb.as_slice_memory_order_mut().unwrap(),
-        );
-        state.spectral.d2fft.spctop(
-            wkb.as_slice_memory_order_mut().unwrap(),
-            wy.as_slice_memory_order_mut().unwrap(),
-        );
+        state.spectral.d2fft.ptospc(wkq.view_mut(), wka.view_mut());
+        state
+            .spectral
+            .d2fft
+            .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
+        state.spectral.d2fft.spctop(wkb.view_mut(), wx.view_mut());
+        state
+            .spectral
+            .d2fft
+            .yderiv(&state.spectral.hrky, wka.view(), wkb.view_mut());
+        state.spectral.d2fft.spctop(wkb.view_mut(), wy.view_mut());
 
         // Calculate pressure source:
         Zip::from(&mut wkp)
