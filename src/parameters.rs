@@ -78,10 +78,8 @@ mod test {
     fn defaults() {
         assert_eq!(
             Parameters::default(),
-            serde_yaml::from_reader::<_, Parameters>(
-                File::open("src/testdata/defaults.yaml").unwrap()
-            )
-            .unwrap()
+            serde_yaml::from_reader::<_, Parameters>(File::open("parameters.yaml").unwrap())
+                .unwrap()
         );
     }
 }
