@@ -8,6 +8,7 @@ use {
         balinit::balinit, nhswps::nhswps, parameters::Parameters, swto3d::swto3d,
         vstrip::init_pv_strip,
     },
+    simplelog::{Config as LogConfig, LevelFilter, TermLogger, TerminalMode},
     std::{
         fs::{create_dir, File},
         io::{self, prelude::*},
@@ -16,11 +17,9 @@ use {
 
 #[quit::main]
 fn main() {
-    pretty_env_logger::init();
-
     let matches = clap_app!(shallow_water =>
         (version: crate_version!())
-        (@arg PARAMETERS_FILE: -p --params +takes_value "Path to file containing simulation parameters.")
+        (@arg PARAMETERS: -p --parameters +takes_value +required "Path to file containing simulation parameters.")
         (@subcommand vstrip =>
             (about: "Initialises a PV strip with zero fields of divergence and acceleration divergence.")
         )
@@ -36,28 +35,35 @@ fn main() {
     )
     .get_matches();
 
-    let params = {
-        match matches.value_of("PARAMETERS_FILE") {
-            Some(path) => {
-                let params = serde_yaml::from_reader::<_, Parameters>(
-                    File::open(path).unwrap_or_else(|e| {
-                        error!("Failed to open {}: \"{}\"", path, e);
-                        quit::with_code(1);
-                    }),
-                )
-                .unwrap_or_else(|e| {
-                    error!("Failed to parse parameters from {}: \"{}\"", path, e);
-                    quit::with_code(1);
-                });
+    TermLogger::init(
+        LevelFilter::Debug,
+        LogConfig::default(),
+        TerminalMode::Mixed,
+    )
+    .expect("Failed to initialize logger");
 
-                info!("Loaded simulation parameters from \"{}\"", path);
-                params
-            }
-            None => {
-                info!("Loaded default simulation parameters");
-                Parameters::default()
-            }
-        }
+    let params = {
+        // Should never panic as clap should return an error if the argument was not supplied
+        let path = matches
+            .value_of("PARAMETERS")
+            .expect("Path to parameters file not supplied");
+
+        let file = File::open(path).unwrap_or_else(|e| {
+            error!("Failed to open {}: \"{}\"", path, e);
+            quit::with_code(1);
+        });
+
+        let params = serde_yaml::from_reader::<_, Parameters>(file).unwrap_or_else(|e| {
+            error!("Failed to parse parameters from {}: \"{}\"", path, e);
+            quit::with_code(1);
+        });
+
+        info!(
+            "Successfully loaded simulation parameters from \"{}\": \n{:#?}",
+            path, params
+        );
+
+        params
     };
 
     run_subcommand(matches.subcommand_name(), params).unwrap_or_else(|e| {
@@ -77,6 +83,8 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
 
     match subcmd {
         Some("vstrip") => {
+            info!("Starting vstrip");
+
             let qq = init_pv_strip(&params);
 
             let mut f = File::create("qq_init.r8")?;
@@ -94,8 +102,12 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
 
             let mut f = File::create("gg_init.r8")?;
             f.write_all(&vec![0u8; ng * ng * 8])?;
+
+            info!("Finished vstrip");
         }
         Some("balinit") => {
+            info!("Starting balinit");
+
             let zz = {
                 let mut f = File::open("qq_init.r8")?;
                 let mut zz = Vec::new();
@@ -119,8 +131,12 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
                     f.write_all(&buf)
                 })
                 .collect::<io::Result<()>>()?;
+
+            info!("Finished balinit");
         }
         Some("swto3d") => {
+            info!("Starting swto3d");
+
             let split = {
                 let mut f = File::open("sw_init.r8")?;
                 let mut sw = Vec::new();
@@ -179,8 +195,12 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
             qq_file.write_all(&qq)?;
             dd_file.write_all(&dd)?;
             gg_file.write_all(&gg)?;
+
+            info!("Finished swto3d");
         }
         Some("nhswps") => {
+            info!("Starting nhswps");
+
             let qq = {
                 let mut f = File::open("qq_init.r8")?;
                 let mut qq = Vec::new();
@@ -231,6 +251,8 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
             write_file("3d/ql.r4", &output.d3ql)?;
             write_file("3d/r.r4", &output.d3r)?;
             write_file("3d/w.r4", &output.d3w)?;
+
+            info!("Finished nhswps");
         }
         _ => {
             error!("Please select a subcommand!");
