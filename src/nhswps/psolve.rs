@@ -29,33 +29,30 @@ pub fn psolve(state: &mut State) {
     let nitmax: usize = 100;
     // nitmax: maximum number of iterations allowed before stopping
 
-    let zero2 = arr2zero(ng);
-    let zero3 = arr3zero(ng, nz);
-
     // Constant part of the pressure source:
-    let mut sp0 = zero3.clone();
+    let mut sp0 = arr3zero(ng, nz);
 
     // Arrays used for pressure inversion (these depend on rho'_theta only):
-    let mut sigx = zero3.clone();
-    let mut sigy = zero3.clone();
-    let mut cpt1 = zero3.clone();
-    let mut cpt2 = zero3.clone();
+    let mut sigx = arr3zero(ng, nz);
+    let mut sigy = arr3zero(ng, nz);
+    let mut cpt1 = arr3zero(ng, nz);
+    let mut cpt2 = arr3zero(ng, nz);
 
     // Physical space arrays:
-    let mut dpdt = zero2.clone();
-    let mut d2pdxt = zero2.clone();
-    let mut d2pdyt = zero2.clone();
-    let d2pdt2 = zero2.clone();
-    let mut wkp = zero2.clone();
-    let mut wkq;
+    let dpdt = Arc::new(Mutex::new(arr2zero(ng)));
+    let mut d2pdxt = arr2zero(ng);
+    let mut d2pdyt = arr2zero(ng);
+    let d2pdt2 = arr2zero(ng);
+    let mut wkp = arr2zero(ng);
 
     // Spectral space arrays (all work arrays):
-    let sp = zero3.clone();
-    let mut gg = zero3.clone();
-    let mut wka = zero2.clone();
-    let mut wkb = zero2.clone();
-    let mut wkc = zero2.clone();
-    let mut wkd = zero2.clone();
+    let sp = arr3zero(ng, nz);
+    let mut gg = arr3zero(ng, nz);
+    let mut wka = arr2zero(ng);
+    let mut wkb = arr2zero(ng);
+    let mut wkc = arr2zero(ng);
+    let mut wkd = arr2zero(ng);
+    let wkq = Arc::new(Mutex::new(arr2zero(ng)));
 
     // Calculate 1/(1+rho'_theta) and de-aliase:
     Zip::from(&mut state.ri)
@@ -128,17 +125,15 @@ pub fn psolve(state: &mut State) {
         sp.lock().index_axis_mut(Axis(2), 0).assign(&wka);
 
         // Interior grid points:
-        (1..nz - 1).into_par_iter().for_each(|iz| {
-            let mut wka = zero2.clone();
-            let mut wkb = zero2.clone();
-            let mut wkc = zero2.clone();
-            let mut wkd = zero2.clone();
-            let mut wkp = zero2.clone();
+        (1..=nz - 1).into_par_iter().for_each(|iz| {
+            let mut wka = arr2zero(ng);
+            let mut wkb = arr2zero(ng);
+            let mut wkc = arr2zero(ng);
+            let mut wkd = arr2zero(ng);
+            let mut wkp = arr2zero(ng);
 
-            let mut dpdt = zero2.clone();
-            let mut d2pdxt = zero2.clone();
-            let mut d2pdyt = zero2.clone();
-            let mut d2pdt2_local = zero2.clone();
+            let mut d2pdxt = arr2zero(ng);
+            let mut d2pdyt = arr2zero(ng);
 
             Zip::from(&mut wka)
                 .and(&state.ps.index_axis(Axis(2), iz + 1))
@@ -162,7 +157,6 @@ pub fn psolve(state: &mut State) {
                 .yderiv(&state.spectral.hrky, wka.view(), wkc.view_mut());
 
             // Return to physical space:
-            state.spectral.d2fft.spctop(wka.view_mut(), dpdt.view_mut());
             state
                 .spectral
                 .d2fft
@@ -171,12 +165,7 @@ pub fn psolve(state: &mut State) {
                 .spectral
                 .d2fft
                 .spctop(wkc.view_mut(), d2pdyt.view_mut());
-            state
-                .spectral
-                .d2fft
-                .spctop(wkd.view_mut(), d2pdt2_local.view_mut());
 
-            // Total source:
             Zip::from(&mut wkp)
                 .and(sp0.index_axis(Axis(2), iz))
                 .and(sigx.index_axis(Axis(2), iz))
@@ -186,104 +175,69 @@ pub fn psolve(state: &mut State) {
                 .apply(|wkp, sp0, sigx, d2pdxt, sigy, d2pdyt| {
                     *wkp = sp0 + sigx * d2pdxt + sigy * d2pdyt
                 });
-            Zip::from(&mut wkp)
-                .and(cpt2.index_axis(Axis(2), iz))
-                .and(&d2pdt2_local)
-                .and(cpt1.index_axis(Axis(2), iz))
-                .and(&dpdt)
-                .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
+
+            if iz == nz - 1 {
+                // Return to physical space:
+                state
+                    .spectral
+                    .d2fft
+                    .spctop(wka.view_mut(), dpdt.lock().view_mut());
+                state
+                    .spectral
+                    .d2fft
+                    .spctop(wkd.view_mut(), d2pdt2.lock().view_mut());
+
+                // Total source:
+                Zip::from(&mut wkp)
+                    .and(cpt2.index_axis(Axis(2), iz))
+                    .and(&(*d2pdt2.lock()))
+                    .and(cpt1.index_axis(Axis(2), iz))
+                    .and(&(*dpdt.lock()))
+                    .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
+            } else {
+                let mut dpdt_local = arr2zero(ng);
+                let mut d2pdt2_local = arr2zero(ng);
+
+                // Return to physical space:
+                state
+                    .spectral
+                    .d2fft
+                    .spctop(wka.view_mut(), dpdt_local.view_mut());
+                state
+                    .spectral
+                    .d2fft
+                    .spctop(wkd.view_mut(), d2pdt2_local.view_mut());
+
+                if iz == nz - 2 {
+                    wkq.lock().assign(&d2pdt2_local);
+                }
+
+                // Total source:
+                Zip::from(&mut wkp)
+                    .and(cpt2.index_axis(Axis(2), iz))
+                    .and(&d2pdt2_local)
+                    .and(cpt1.index_axis(Axis(2), iz))
+                    .and(&dpdt_local)
+                    .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
+            }
 
             // Transform to spectral space for inversion below:
             state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
-
-            if iz == nz - 2 {
-                d2pdt2.lock().assign(&d2pdt2_local);
-            }
 
             sp.lock().index_axis_mut(Axis(2), iz).assign(&wka);
         });
 
-        {
-            let iz = nz - 1;
-
-            let mut wka = zero2.clone();
-            let mut wkb = zero2.clone();
-            let mut wkc = zero2.clone();
-            let mut wkd = zero2.clone();
-            let mut wkp = zero2.clone();
-
-            wkq = d2pdt2.lock().clone();
-
-            Zip::from(&mut wka)
-                .and(&state.ps.index_axis(Axis(2), iz + 1))
-                .and(&state.ps.index_axis(Axis(2), iz - 1))
-                .apply(|wka, psp, psm| *wka = (psp - psm) * hdzi);
-
-            Zip::from(&mut wkd)
-                .and(&state.ps.index_axis(Axis(2), iz + 1))
-                .and(&state.ps.index_axis(Axis(2), iz))
-                .and(&state.ps.index_axis(Axis(2), iz - 1))
-                .apply(|wkd, psp, ps, psm| *wkd = (psp - 2.0 * ps + psm) * dzisq);
-
-            // Calculate x & y derivatives of dp/dtheta:
-            state
-                .spectral
-                .d2fft
-                .xderiv(&state.spectral.hrkx, wka.view(), wkb.view_mut());
-            state
-                .spectral
-                .d2fft
-                .yderiv(&state.spectral.hrky, wka.view(), wkc.view_mut());
-
-            // Return to physical space:
-            state.spectral.d2fft.spctop(wka.view_mut(), dpdt.view_mut());
-            state
-                .spectral
-                .d2fft
-                .spctop(wkb.view_mut(), d2pdxt.view_mut());
-            state
-                .spectral
-                .d2fft
-                .spctop(wkc.view_mut(), d2pdyt.view_mut());
-            state
-                .spectral
-                .d2fft
-                .spctop(wkd.view_mut(), d2pdt2.lock().view_mut());
-
-            // Total source:
-            Zip::from(&mut wkp)
-                .and(sp0.index_axis(Axis(2), iz))
-                .and(sigx.index_axis(Axis(2), iz))
-                .and(&d2pdxt)
-                .and(sigy.index_axis(Axis(2), iz))
-                .and(&d2pdyt)
-                .apply(|wkp, sp0, sigx, d2pdxt, sigy, d2pdyt| {
-                    *wkp = sp0 + sigx * d2pdxt + sigy * d2pdyt
-                });
-            Zip::from(&mut wkp)
-                .and(cpt2.index_axis(Axis(2), iz))
-                .and(&(*d2pdt2.lock()))
-                .and(cpt1.index_axis(Axis(2), iz))
-                .and(&dpdt)
-                .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
-
-            // Transform to spectral space for inversion below:
-            state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
-
-            sp.lock().index_axis_mut(Axis(2), iz).assign(&wka);
-        }
-
         // Upper boundary at iz = nz (use p = 0):
         // Extrapolate to find first and second derivatives there:
-        Zip::from(&mut dpdt)
+        Zip::from(&mut *dpdt.lock())
             .and(&(*d2pdt2.lock()))
-            .and(&wkq)
+            .and(&(*wkq.lock()))
             .apply(|dpdt, d2pdt2, wkq| *dpdt += dz2 * (3.0 * d2pdt2 - wkq));
         Zip::from(&mut (*d2pdt2.lock()))
-            .and(&wkq)
+            .and(&(*wkq.lock()))
             .apply(|d2pdt2, wkq| *d2pdt2 = 2.0 * *d2pdt2 - wkq);
 
-        wkp = dpdt.clone();
+        wkp = dpdt.lock().clone();
 
         state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
 
@@ -321,7 +275,7 @@ pub fn psolve(state: &mut State) {
             .and(cpt2.index_axis(Axis(2), nz))
             .and(&(*d2pdt2.lock()))
             .and(cpt1.index_axis(Axis(2), nz))
-            .and(&dpdt)
+            .and(&(*dpdt.lock()))
             .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
 
         // Transform to spectral space for inversion below:
