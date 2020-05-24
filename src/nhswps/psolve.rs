@@ -6,9 +6,8 @@ use {
     },
     log::error,
     ndarray::{Axis, Zip},
-    parking_lot::Mutex,
     rayon::prelude::*,
-    std::sync::Arc,
+    std::sync::{Arc, Mutex},
 };
 
 /// Solves for the nonhydrostatic part of the pressure (pn) given
@@ -112,17 +111,17 @@ pub fn psolve(state: &mut State) {
         state
             .spectral
             .d2fft
-            .spctop(wkd.view_mut(), d2pdt2.lock().view_mut());
+            .spctop(wkd.view_mut(), d2pdt2.lock().unwrap().view_mut());
         // Total source:
         Zip::from(&mut wkp)
             .and(sp0.index_axis(Axis(2), 0))
             .and(cpt2.index_axis(Axis(2), 0))
-            .and(&(*d2pdt2.lock()))
+            .and(&(*d2pdt2.lock().unwrap()))
             .apply(|wkp, sp0, cpt2, d2pdt2| *wkp = sp0 + cpt2 * d2pdt2);
 
         // Transform to spectral space for inversion below:
         state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
-        sp.lock().index_axis_mut(Axis(2), 0).assign(&wka);
+        sp.lock().unwrap().index_axis_mut(Axis(2), 0).assign(&wka);
 
         // Interior grid points:
         (1..=nz - 1).into_par_iter().for_each(|iz| {
@@ -181,18 +180,18 @@ pub fn psolve(state: &mut State) {
                 state
                     .spectral
                     .d2fft
-                    .spctop(wka.view_mut(), dpdt.lock().view_mut());
+                    .spctop(wka.view_mut(), dpdt.lock().unwrap().view_mut());
                 state
                     .spectral
                     .d2fft
-                    .spctop(wkd.view_mut(), d2pdt2.lock().view_mut());
+                    .spctop(wkd.view_mut(), d2pdt2.lock().unwrap().view_mut());
 
                 // Total source:
                 Zip::from(&mut wkp)
                     .and(cpt2.index_axis(Axis(2), iz))
-                    .and(&(*d2pdt2.lock()))
+                    .and(&(*d2pdt2.lock().unwrap()))
                     .and(cpt1.index_axis(Axis(2), iz))
-                    .and(&(*dpdt.lock()))
+                    .and(&(*dpdt.lock().unwrap()))
                     .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
             } else {
                 let mut dpdt_local = arr2zero(ng);
@@ -209,7 +208,7 @@ pub fn psolve(state: &mut State) {
                     .spctop(wkd.view_mut(), d2pdt2_local.view_mut());
 
                 if iz == nz - 2 {
-                    wkq.lock().assign(&d2pdt2_local);
+                    wkq.lock().unwrap().assign(&d2pdt2_local);
                 }
 
                 // Total source:
@@ -224,20 +223,20 @@ pub fn psolve(state: &mut State) {
             // Transform to spectral space for inversion below:
             state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
 
-            sp.lock().index_axis_mut(Axis(2), iz).assign(&wka);
+            sp.lock().unwrap().index_axis_mut(Axis(2), iz).assign(&wka);
         });
 
         // Upper boundary at iz = nz (use p = 0):
         // Extrapolate to find first and second derivatives there:
-        Zip::from(&mut *dpdt.lock())
-            .and(&(*d2pdt2.lock()))
-            .and(&(*wkq.lock()))
+        Zip::from(&mut *dpdt.lock().unwrap())
+            .and(&(*d2pdt2.lock().unwrap()))
+            .and(&(*wkq.lock().unwrap()))
             .apply(|dpdt, d2pdt2, wkq| *dpdt += dz2 * (3.0 * d2pdt2 - wkq));
-        Zip::from(&mut (*d2pdt2.lock()))
-            .and(&(*wkq.lock()))
+        Zip::from(&mut (*d2pdt2.lock().unwrap()))
+            .and(&(*wkq.lock().unwrap()))
             .apply(|d2pdt2, wkq| *d2pdt2 = 2.0 * *d2pdt2 - wkq);
 
-        wkp = dpdt.lock().clone();
+        wkp = dpdt.lock().unwrap().clone();
 
         state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
 
@@ -273,18 +272,18 @@ pub fn psolve(state: &mut State) {
             });
         Zip::from(&mut wkp)
             .and(cpt2.index_axis(Axis(2), nz))
-            .and(&(*d2pdt2.lock()))
+            .and(&(*d2pdt2.lock().unwrap()))
             .and(cpt1.index_axis(Axis(2), nz))
-            .and(&(*dpdt.lock()))
+            .and(&(*dpdt.lock().unwrap()))
             .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
 
         // Transform to spectral space for inversion below:
         state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
-        sp.lock().index_axis_mut(Axis(2), nz).assign(&wka);
+        sp.lock().unwrap().index_axis_mut(Axis(2), nz).assign(&wka);
 
         // Solve tridiagonal problem for pressure in spectral space:
         {
-            let sp = sp.lock();
+            let sp = sp.lock().unwrap();
 
             Zip::from(gg.index_axis_mut(Axis(2), 0))
                 .and(sp.index_axis(Axis(2), 0))
@@ -376,7 +375,7 @@ pub fn psolve(state: &mut State) {
         }
 
         Zip::from(gg.index_axis_mut(Axis(2), nz))
-            .and(sp.lock().index_axis(Axis(2), nz))
+            .and(sp.lock().unwrap().index_axis(Axis(2), nz))
             .and(state.ps.index_axis(Axis(2), nz - 1))
             .apply(|gg, sp, ps| *gg = dz6 * sp - ps * dzi);
         Zip::from(gg.index_axis_mut(Axis(2), 1)).apply(|gg| *gg *= state.spectral.htd1[0]);
