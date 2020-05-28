@@ -117,9 +117,9 @@ pub fn vertical(state: &mut State) {
         .apply(|w, rsrc0, rsrc1| *w = dz2 * (rsrc0 + rsrc1));
 
     for iz in 1..nz {
-        let w0 = state.w.clone();
+        let w0 = state.w.index_axis(Axis(2), iz).to_owned();
         Zip::from(state.w.index_axis_mut(Axis(2), iz + 1))
-            .and(w0.index_axis(Axis(2), iz))
+            .and(&w0)
             .and(rsrc.index_axis(Axis(2), iz))
             .and(rsrc.index_axis(Axis(2), iz + 1))
             .apply(|w1, w0, rsrc0, rsrc1| *w1 = w0 + dz2 * (rsrc0 + rsrc1));
