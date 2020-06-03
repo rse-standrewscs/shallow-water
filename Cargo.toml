@@ -15,7 +15,7 @@ ndarray = { version = "0.13.1", features = ["approx", "rayon", "serde"] }
 log = "0.4.8"
 clap = "2.33.1"
 byteorder = "1.3.4"
-serde = { version = "1.0.110", features = ["derive"] }
+serde = { version = "1.0.111", features = ["derive"] }
 serde_yaml = "0.8.12"
 quit = "1.0.0"
 rayon = "1.3.0"
