@@ -26,7 +26,7 @@ simplelog = "0.8.0"
 insta = "0.16.0"
 approx = "0.3.2"
 lazy_static = "1.4.0"
-criterion = "0.3.2"
+criterion = "0.3.3"
 
 [[bench]]
 name = "spectral"
