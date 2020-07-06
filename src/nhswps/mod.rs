@@ -98,6 +98,21 @@ pub struct State {
     pub output: Output,
 }
 
+impl State {
+    /// Reinitializes all arrays so that each has contiguous memory
+    pub fn defragment(&mut self) {
+        let ds = self.ds.clone();
+        self.ds = arr3zero(self.spectral.ng, self.spectral.nz);
+        self.ds.assign(&ds);
+
+        let gs = self.gs.clone();
+        self.gs = arr3zero(self.spectral.ng, self.spectral.nz);
+        self.gs.assign(&gs);
+
+        //TODO: All other arrays
+    }
+}
+
 pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], parameters: &Parameters) -> Output {
     // Read linearised PV anomaly and convert to spectral space as qs
 
@@ -266,7 +281,7 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], parameters: &Parameters) -> Ou
     state.output
 }
 
-fn savegrid(state: &mut State) {
+pub fn savegrid(state: &mut State) {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
 
@@ -289,7 +304,7 @@ fn savegrid(state: &mut State) {
         .and(&state.r.index_axis(Axis(2), 0))
         .and(&state.u.index_axis(Axis(2), 0))
         .and(&state.v.index_axis(Axis(2), 0))
-        .apply(|wkp, &r, &u, &v| {
+        .par_apply(|wkp, &r, &u, &v| {
             *wkp = (1.0 + r) * (u.powf(2.0) + v.powf(2.0));
         });
 
@@ -300,7 +315,7 @@ fn savegrid(state: &mut State) {
         .and(&state.u.index_axis(Axis(2), nz))
         .and(&state.v.index_axis(Axis(2), nz))
         .and(&state.w.index_axis(Axis(2), nz))
-        .apply(|wkp, &r, &u, &v, &w| {
+        .par_apply(|wkp, &r, &u, &v, &w| {
             *wkp = (1.0 + r) * (u.powf(2.0) + v.powf(2.0) + w.powf(2.0));
         });
 
@@ -312,7 +327,7 @@ fn savegrid(state: &mut State) {
             .and(&state.u.index_axis(Axis(2), iz))
             .and(&state.v.index_axis(Axis(2), iz))
             .and(&state.w.index_axis(Axis(2), iz))
-            .apply(|wkp, &r, &u, &v, &w| {
+            .par_apply(|wkp, &r, &u, &v, &w| {
                 *wkp = (1.0 + r) * (u.powf(2.0) + v.powf(2.0) + w.powf(2.0));
             });
         ekin += wkp.sum();
@@ -324,11 +339,9 @@ fn savegrid(state: &mut State) {
     ekin *= (1.0 / 2.0) * gvol * (1.0 / HBAR);
 
     // Compute potential energy (same as SW expression):
-    for i in 0..ng {
-        for j in 0..ng {
-            wkp[[i, j]] = ((1.0 / HBAR) * state.z[[i, j, nz]] - 1.0).powf(2.0);
-        }
-    }
+    Zip::from(&mut wkp)
+        .and(&state.z.index_axis(Axis(2), nz))
+        .par_apply(|wkp, &z| *wkp = ((1.0 / HBAR) * z - 1.0).powf(2.0));
 
     let epot = (1.0 / 2.0) * (gl * gl) * CSQ * wkp.sum();
 
@@ -360,17 +373,14 @@ fn savegrid(state: &mut State) {
     );
     let mut tmpspec = Array1::<f64>::zeros(ng + 1);
     for iz in 0..=nz {
-        for i in 0..ng {
-            for j in 0..ng {
-                wkp[[i, j]] = state.zeta[[i, j, iz]];
-            }
-        }
+        wkp.assign(&state.zeta.index_axis(Axis(2), iz));
+
         d2fft.ptospc(wkp.view_mut(), wks.view_mut());
         state.spectral.spec1d(
             wks.as_slice_memory_order().unwrap(),
             tmpspec.as_slice_memory_order_mut().unwrap(),
         );
-        zspec = zspec + state.spectral.weight[iz] * &tmpspec;
+        zspec += &(state.spectral.weight[iz] * &tmpspec);
         state.spectral.spec1d(
             state
                 .ds
@@ -379,7 +389,7 @@ fn savegrid(state: &mut State) {
                 .unwrap(),
             tmpspec.as_slice_memory_order_mut().unwrap(),
         );
-        dspec = dspec + state.spectral.weight[iz] * &tmpspec;
+        dspec += &(state.spectral.weight[iz] * &tmpspec);
         state.spectral.spec1d(
             state
                 .gs
@@ -388,14 +398,14 @@ fn savegrid(state: &mut State) {
                 .unwrap(),
             tmpspec.as_slice_memory_order_mut().unwrap(),
         );
-        gspec = gspec + state.spectral.weight[iz] * &tmpspec;
+        gspec += &(state.spectral.weight[iz] * &tmpspec);
     }
     // Normalise to take into account uneven sampling of wavenumbers
     // in each shell [k-1/2,k+1/2]:
     let spmf = ArrayView1::from_shape(ng + 1, &state.spectral.spmf).unwrap();
-    zspec = zspec * spmf;
-    dspec = dspec * spmf;
-    gspec = gspec * spmf;
+    zspec *= &spmf;
+    dspec *= &spmf;
+    gspec *= &spmf;
 
     let s = format!("{:.6} {}\n", state.t, state.spectral.kmaxred);
     state.output.spectra += &s;
@@ -414,12 +424,11 @@ fn savegrid(state: &mut State) {
     // PV field:
     for iz in 0..=nz {
         wks.assign(&state.qs.index_axis(Axis(2), iz));
+
         d2fft.spctop(wks.view_mut(), wkp.view_mut());
-        for i in 0..ng {
-            for j in 0..ng {
-                v3d[[i, j, iz]] = wkp[[i, j]] as f32;
-            }
-        }
+
+        v3d.index_axis_mut(Axis(2), iz)
+            .assign(&wkp.mapv(|f| f as f32));
     }
     append_output(
         &mut state.output.d3ql,
@@ -430,12 +439,11 @@ fn savegrid(state: &mut State) {
     // Divergence field:
     for iz in 0..=nz {
         wks.assign(&state.ds.index_axis(Axis(2), iz));
+
         d2fft.spctop(wks.view_mut(), wkp.view_mut());
-        for i in 0..ng {
-            for j in 0..ng {
-                v3d[[i, j, iz]] = wkp[[i, j]] as f32;
-            }
-        }
+
+        v3d.index_axis_mut(Axis(2), iz)
+            .assign(&wkp.mapv(|f| f as f32));
     }
     append_output(
         &mut state.output.d3d,
@@ -446,12 +454,11 @@ fn savegrid(state: &mut State) {
     // Acceleration divergence field:
     for iz in 0..=nz {
         wks.assign(&state.gs.index_axis(Axis(2), iz));
+
         d2fft.spctop(wks.view_mut(), wkp.view_mut());
-        for i in 0..ng {
-            for j in 0..ng {
-                v3d[[i, j, iz]] = wkp[[i, j]] as f32;
-            }
-        }
+
+        v3d.index_axis_mut(Axis(2), iz)
+            .assign(&wkp.mapv(|f| f as f32));
     }
     append_output(
         &mut state.output.d3g,

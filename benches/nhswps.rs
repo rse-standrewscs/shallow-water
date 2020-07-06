@@ -5,8 +5,8 @@ use {
     shallow_water::{
         array3_from_file,
         nhswps::{
-            advance::advance, coeffs::coeffs, cpsource::cpsource, psolve::psolve, source::source,
-            vertical::vertical, Output, State,
+            advance::advance, coeffs::coeffs, cpsource::cpsource, psolve::psolve, savegrid,
+            source::source, vertical::vertical, Output, State,
         },
         spectral::Spectral,
         utils::*,
@@ -603,6 +603,20 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                 }
             };
             b.iter(|| advance(&mut state))
+        })
+        .sample_size(10),
+    );
+
+    c.bench(
+        "nhswps",
+        Benchmark::new("savegrid", |b| {
+            let mut state: State =
+                bincode::deserialize(include_bytes!("../src/nhswps/testdata/savegrid_state.bin"))
+                    .unwrap();
+
+            state.defragment();
+
+            b.iter(|| savegrid(&mut state))
         })
         .sample_size(10),
     );
