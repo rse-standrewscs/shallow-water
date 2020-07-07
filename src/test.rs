@@ -360,6 +360,8 @@ mod complete_32_4 {
     }
 
     /*
+    // NOTE: Spectra snapshot testing disabled due to the very high variation in output
+
     #[cfg(all(target_arch = "x86_64", target_os = "macos",))]
     #[test]
     #[ignore]
