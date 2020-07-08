@@ -1,10 +1,14 @@
-use {serde::Deserialize, std::f64::consts::PI};
+use {
+    serde::Deserialize,
+    std::{f64::consts::PI, path::PathBuf},
+};
 
 /// Simulation parameters
 #[derive(Debug, PartialEq, Default, Deserialize)]
 pub struct Parameters {
     pub numerical: Numerical,
     pub physical: Physical,
+    pub environment: Environment,
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -30,7 +34,7 @@ pub struct Numerical {
 }
 impl Default for Numerical {
     fn default() -> Self {
-        Numerical {
+        Self {
             grid_resolution: 32,
             vertical_layers: 4,
             time_step: 1.0 / 32.0,
@@ -60,12 +64,29 @@ pub struct Physical {
 
 impl Default for Physical {
     fn default() -> Self {
-        Physical {
+        Self {
             coriolis_frequency: 4.0 * PI,
             gravity_wave_speed: 2.0 * PI,
             mean_fluid_depth: 0.4,
             damping: 10.0,
             nnu: 3.0,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+pub struct Environment {
+    /// Number of threads in threadpool, auto detected if 0
+    pub threads: usize,
+    /// Directory to write output to during execution
+    pub output_directory: PathBuf,
+}
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self {
+            threads: 0,
+            output_directory: PathBuf::from(r"./out"),
         }
     }
 }

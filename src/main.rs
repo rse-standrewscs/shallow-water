@@ -2,6 +2,7 @@
 extern crate clap;
 
 use {
+    anyhow::{bail, Result},
     byteorder::{ByteOrder, LittleEndian},
     log::{error, info},
     shallow_water::{
@@ -10,7 +11,7 @@ use {
     },
     simplelog::{Config as LogConfig, LevelFilter, TermLogger, TerminalMode},
     std::{
-        fs::{create_dir, File},
+        fs::{create_dir, create_dir_all, File},
         io::{self, prelude::*},
     },
 };
@@ -67,24 +68,31 @@ fn main() {
     };
 
     run_subcommand(matches.subcommand_name(), params).unwrap_or_else(|e| {
-        error!("IO error: \"{}\"", e);
+        error!("Error: \"{}\"", e);
         quit::with_code(1);
     });
 }
 
-fn write_file(path: &str, data: &[u8]) -> io::Result<()> {
+fn write_file(path: &str, data: &[u8]) -> Result<()> {
     let mut f = File::create(path)?;
     f.write_all(data)?;
     Ok(())
 }
 
-fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
+fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> Result<()> {
     let ng = params.numerical.grid_resolution;
 
-    match subcmd {
-        Some("vstrip") => {
-            info!("Starting vstrip");
+    let subcmd = match subcmd {
+        Some(s) => s,
+        None => bail!("No subcommand selected"),
+    };
 
+    create_dir_all(&params.environment.output_directory)?;
+
+    info!("Starting {}", subcmd);
+
+    match subcmd {
+        "vstrip" => {
             let qq = init_pv_strip(&params);
 
             let mut f = File::create("qq_init.r8")?;
@@ -102,12 +110,8 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
 
             let mut f = File::create("gg_init.r8")?;
             f.write_all(&vec![0u8; ng * ng * 8])?;
-
-            info!("Finished vstrip");
         }
-        Some("balinit") => {
-            info!("Starting balinit");
-
+        "balinit" => {
             let zz = {
                 let mut f = File::open("qq_init.r8")?;
                 let mut zz = Vec::new();
@@ -131,12 +135,8 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
                     f.write_all(&buf)
                 })
                 .collect::<io::Result<()>>()?;
-
-            info!("Finished balinit");
         }
-        Some("swto3d") => {
-            info!("Starting swto3d");
-
+        "swto3d" => {
             let split = {
                 let mut f = File::open("sw_init.r8")?;
                 let mut sw = Vec::new();
@@ -195,12 +195,8 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
             qq_file.write_all(&qq)?;
             dd_file.write_all(&dd)?;
             gg_file.write_all(&gg)?;
-
-            info!("Finished swto3d");
         }
-        Some("nhswps") => {
-            info!("Starting nhswps");
-
+        "nhswps" => {
             let qq = {
                 let mut f = File::open("qq_init.r8")?;
                 let mut qq = Vec::new();
@@ -251,14 +247,14 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> io::Result<()> {
             write_file("3d/ql.r4", &output.d3ql)?;
             write_file("3d/r.r4", &output.d3r)?;
             write_file("3d/w.r4", &output.d3w)?;
-
-            info!("Finished nhswps");
         }
         _ => {
-            error!("Please select a subcommand!");
-            quit::with_code(1);
+            // Should be unreachable due to clap catching this error
+            bail!("Unrecognized subcommand");
         }
     }
+
+    info!("Finished {}", subcmd);
 
     Ok(())
 }

@@ -31,3 +31,10 @@ physical:
   damping: 10.0
   # Viscosity constant
   nnu: 3.0
+
+# Environment parameters
+environment:
+  # Number of threads in threadpool
+  threads: 0
+  # Directory to write output to during execution
+  output_directory: "./out"
