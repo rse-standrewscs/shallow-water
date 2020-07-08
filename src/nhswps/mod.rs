@@ -14,13 +14,14 @@ use {
         utils::{arr2zero, arr3zero, view3d},
     },
     advance::advance,
+    anyhow::Result,
     byteorder::{ByteOrder, LittleEndian},
     log::{debug, info},
     ndarray::{Array1, Array3, ArrayView1, Axis, ShapeBuilder, Zip},
     psolve::psolve,
     serde::{Deserialize, Serialize},
     source::source,
-    std::f64::consts::PI,
+    std::{f64::consts::PI, fs::File, io::Read},
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -113,8 +114,37 @@ impl State {
     }
 }
 
-pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], parameters: &Parameters) -> Output {
+pub fn nhswps(parameters: &Parameters) -> Result<Output> {
     // Read linearised PV anomaly and convert to spectral space as qs
+    let qq = {
+        let mut f = File::open(parameters.environment.output_directory.join("qq_init.r8"))?;
+        let mut qq = Vec::new();
+        f.read_to_end(&mut qq)?;
+        qq.chunks(8)
+            .skip(1)
+            .map(LittleEndian::read_f64)
+            .collect::<Vec<f64>>()
+    };
+
+    let dd = {
+        let mut f = File::open(parameters.environment.output_directory.join("dd_init.r8"))?;
+        let mut dd = Vec::new();
+        f.read_to_end(&mut dd)?;
+        dd.chunks(8)
+            .skip(1)
+            .map(LittleEndian::read_f64)
+            .collect::<Vec<f64>>()
+    };
+
+    let gg = {
+        let mut f = File::open(parameters.environment.output_directory.join("gg_init.r8"))?;
+        let mut gg = Vec::new();
+        f.read_to_end(&mut gg)?;
+        gg.chunks(8)
+            .skip(1)
+            .map(LittleEndian::read_f64)
+            .collect::<Vec<f64>>()
+    };
 
     // Parameters
     let ng = parameters.numerical.grid_resolution;
@@ -278,7 +308,7 @@ pub fn nhswps(qq: &[f64], dd: &[f64], gg: &[f64], parameters: &Parameters) -> Ou
     }
 
     //finalise
-    state.output
+    Ok(state.output)
 }
 
 pub fn savegrid(state: &mut State) {

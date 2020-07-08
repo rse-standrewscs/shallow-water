@@ -6,6 +6,7 @@ target
 *.r8
 *.asc
 log
+out
 
 # Misc.
 parameters.yaml

@@ -1,10 +1,11 @@
 use {
     crate::{parameters::Parameters, utils::arr2zero},
-    ndarray::Array2,
-    std::f64::consts::PI,
+    anyhow::Result,
+    byteorder::{ByteOrder, LittleEndian},
+    std::{f64::consts::PI, fs::File, io::Write},
 };
 
-pub fn init_pv_strip(parameters: &Parameters) -> Array2<f64> {
+pub fn init_pv_strip(parameters: &Parameters) -> Result<()> {
     let ng = parameters.numerical.grid_resolution;
 
     let ngu: usize = 16 * ng;
@@ -103,78 +104,95 @@ pub fn init_pv_strip(parameters: &Parameters) -> Array2<f64> {
         }
     }
 
-    qq
+    let mut f = File::create(parameters.environment.output_directory.join("qq_init.r8"))?;
+    let mut buf = [0u8; 8];
+    f.write_all(&buf)?;
+    for i in 0..ng {
+        for j in 0..ng {
+            LittleEndian::write_f64(&mut buf, qq[[j, i]]);
+            f.write_all(&buf)?;
+        }
+    }
+
+    let mut f = File::create(parameters.environment.output_directory.join("dd_init.r8"))?;
+    f.write_all(&vec![0u8; ng * ng * 8])?;
+
+    let mut f = File::create(parameters.environment.output_directory.join("gg_init.r8"))?;
+    f.write_all(&vec![0u8; ng * ng * 8])?;
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod test {
-    use {
-        super::*,
-        approx::assert_abs_diff_eq,
-        byteorder::{ByteOrder, LittleEndian},
-        ndarray::{Array2, ShapeBuilder},
-    };
+    use {super::*, std::io::Read, tempdir::TempDir};
 
     /// Asserts that the generated .r8 file for ng=18 is close to the Fortran-created file.
     #[test]
     fn ng18_snapshot() {
-        let qq2 = Array2::from_shape_vec(
-            (18, 18).strides((1, 18)),
-            include_bytes!("testdata/vstrip/qq_init_18.r8")
-                .chunks(8)
-                .skip(1)
-                .map(LittleEndian::read_f64)
-                .collect::<Vec<f64>>(),
-        )
-        .unwrap();
+        let tempdir = TempDir::new("shallow-water").unwrap();
 
         let mut params = Parameters::default();
         params.numerical.grid_resolution = 18;
+        params.environment.output_directory = tempdir.path().to_owned();
 
-        let qq = init_pv_strip(&params);
+        init_pv_strip(&params).unwrap();
 
-        assert_abs_diff_eq!(qq2, qq, epsilon = 1.0E-13);
+        for (i, byte) in File::open(params.environment.output_directory.join("qq_init.r8"))
+            .unwrap()
+            .bytes()
+            .enumerate()
+        {
+            assert_eq!(
+                include_bytes!("testdata/vstrip/qq_init_18.r8")[i],
+                byte.unwrap()
+            );
+        }
     }
 
     /// Asserts that the generated .r8 file for ng=32 is close to the Fortran-created file.
     #[test]
     fn ng32_snapshot() {
-        let qq2 = Array2::from_shape_vec(
-            (32, 32).strides((1, 32)),
-            include_bytes!("testdata/vstrip/qq_init_32.r8")
-                .chunks(8)
-                .skip(1)
-                .map(LittleEndian::read_f64)
-                .collect::<Vec<f64>>(),
-        )
-        .unwrap();
+        let tempdir = TempDir::new("shallow-water").unwrap();
 
         let mut params = Parameters::default();
         params.numerical.grid_resolution = 32;
+        params.environment.output_directory = tempdir.path().to_owned();
 
-        let qq = init_pv_strip(&params);
+        init_pv_strip(&params).unwrap();
 
-        assert_abs_diff_eq!(qq2, qq, epsilon = 1.0E-13);
+        for (i, byte) in File::open(params.environment.output_directory.join("qq_init.r8"))
+            .unwrap()
+            .bytes()
+            .enumerate()
+        {
+            assert_eq!(
+                include_bytes!("testdata/vstrip/qq_init_32.r8")[i],
+                byte.unwrap()
+            );
+        }
     }
 
     /// Asserts that the generated .r8 file for ng=64 is close to the Fortran-created file.
     #[test]
     fn ng64_snapshot() {
-        let qq2 = Array2::from_shape_vec(
-            (64, 64).strides((1, 64)),
-            include_bytes!("testdata/vstrip/qq_init_64.r8")
-                .chunks(8)
-                .skip(1)
-                .map(LittleEndian::read_f64)
-                .collect::<Vec<f64>>(),
-        )
-        .unwrap();
+        let tempdir = TempDir::new("shallow-water").unwrap();
 
         let mut params = Parameters::default();
         params.numerical.grid_resolution = 64;
+        params.environment.output_directory = tempdir.path().to_owned();
 
-        let qq = init_pv_strip(&params);
+        init_pv_strip(&params).unwrap();
 
-        assert_abs_diff_eq!(qq2, qq, epsilon = 1.0E-13);
+        for (i, byte) in File::open(params.environment.output_directory.join("qq_init.r8"))
+            .unwrap()
+            .bytes()
+            .enumerate()
+        {
+            assert_eq!(
+                include_bytes!("testdata/vstrip/qq_init_64.r8")[i],
+                byte.unwrap()
+            );
+        }
     }
 }

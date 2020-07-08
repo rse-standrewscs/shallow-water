@@ -9,31 +9,46 @@ use {
     approx::assert_abs_diff_eq,
     byteorder::{ByteOrder, LittleEndian},
     lazy_static::lazy_static,
+    tempdir::TempDir,
 };
 
 lazy_static! {
     static ref OUTPUT_18_4: Output = {
+        let tempdir = TempDir::new("shallow-water").unwrap();
+
         let mut params = Parameters::default();
         params.numerical.grid_resolution = 18;
         params.numerical.vertical_layers = 4;
         params.numerical.time_step = 1.0 / (18 as f64);
         params.numerical.duration = 2.0;
+        params.environment.output_directory = tempdir.path().to_owned();
 
-        let qq = init_pv_strip(&params);
-        let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), &params);
-        let (qq, dd, gg) = swto3d(&qq, &dd, &gg, &params);
+        init_pv_strip(&params).unwrap();
+        balinit(&params).unwrap();
+        swto3d(&params).unwrap();
 
-        nhswps(&qq, &dd, &gg, &params)
+        let output = nhswps(&params).unwrap();
+
+        tempdir.close().unwrap();
+
+        output
     };
     static ref OUTPUT_32_4: Output = {
+        let tempdir = TempDir::new("shallow-water").unwrap();
+
         let mut params = Parameters::default();
         params.numerical.duration = 1.0;
+        params.environment.output_directory = tempdir.path().to_owned();
 
-        let qq = init_pv_strip(&params);
-        let (qq, dd, gg) = balinit(qq.as_slice_memory_order().unwrap(), &params);
-        let (qq, dd, gg) = swto3d(&qq, &dd, &gg, &params);
+        init_pv_strip(&params).unwrap();
+        balinit(&params).unwrap();
+        swto3d(&params).unwrap();
 
-        nhswps(&qq, &dd, &gg, &params)
+        let output = nhswps(&params).unwrap();
+
+        tempdir.close().unwrap();
+
+        output
     };
 }
 

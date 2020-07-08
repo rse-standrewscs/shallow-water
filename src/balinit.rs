@@ -8,17 +8,33 @@
 
 use {
     crate::{constants::*, parameters::Parameters, spectral::Spectral, utils::*},
+    anyhow::Result,
+    byteorder::{ByteOrder, LittleEndian},
     log::info,
     ndarray::Zip,
+    std::{
+        fs::File,
+        io::{self, Read, Write},
+    },
 };
 
-pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+pub fn balinit(parameters: &Parameters) -> Result<()> {
     let ng = parameters.numerical.grid_resolution;
     let nz = parameters.numerical.vertical_layers;
 
     let toler = 1.0E-9;
 
-    let mut zz = zz.to_vec();
+    let mut zz = {
+        let mut f = File::open(parameters.environment.output_directory.join("qq_init.r8"))?;
+        let mut zz = Vec::new();
+        f.read_to_end(&mut zz)?;
+
+        zz.chunks(8)
+            .skip(1)
+            .map(LittleEndian::read_f64)
+            .collect::<Vec<f64>>()
+    };
+
     let mut uu = vec![0.0; ng * ng];
     let mut vv = vec![0.0; ng * ng];
 
@@ -404,129 +420,75 @@ pub fn balinit(zz: &[f64], parameters: &Parameters) -> (Vec<f64>, Vec<f64>, Vec<
         *e = zz[i] - COF * hh[i];
     }
 
-    (qq, dd, gg)
+    let mut f = File::create(parameters.environment.output_directory.join("sw_init.r8"))?;
+    [vec![0.0], qq, vec![0.0], dd, vec![0.0], gg]
+        .concat()
+        .iter()
+        .map(|x| {
+            let mut buf = [0u8; 8];
+            LittleEndian::write_f64(&mut buf, *x);
+            f.write_all(&buf)
+        })
+        .collect::<io::Result<()>>()?;
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod test {
-    use {
-        super::*,
-        approx::assert_abs_diff_eq,
-        byteorder::{ByteOrder, LittleEndian, NetworkEndian},
-    };
+    use {super::*, tempdir::TempDir};
 
-    fn assert_approx_eq_slice(a: &[f64], b: &[f64]) {
-        for (i, e) in a.iter().enumerate() {
-            assert_abs_diff_eq!(*e, b[i], epsilon = 1.0E-13);
+    #[test]
+    fn end2end_18_2() {
+        let tempdir = TempDir::new("shallow-water").unwrap();
+
+        let mut qq = File::create(tempdir.path().join("qq_init.r8")).unwrap();
+        qq.write_all(include_bytes!("testdata/balinit/18_2_qq_init.r8"))
+            .unwrap();
+
+        let mut params = Parameters::default();
+        params.numerical.grid_resolution = 18;
+        params.numerical.vertical_layers = 2;
+        params.environment.output_directory = tempdir.path().to_owned();
+
+        balinit(&params).unwrap();
+
+        for (i, byte) in File::open(params.environment.output_directory.join("sw_init.r8"))
+            .unwrap()
+            .bytes()
+            .enumerate()
+        {
+            assert_eq!(
+                include_bytes!("testdata/balinit/18_2_sw_init.r8")[i],
+                byte.unwrap()
+            );
         }
     }
 
     #[test]
-    fn balinit_18_2_qq() {
-        let zz = include_bytes!("testdata/balinit/18_2_zz.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let qq2 = include_bytes!("testdata/balinit/18_2_qq.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let mut params = Parameters::default();
-        params.numerical.grid_resolution = 18;
-        params.numerical.vertical_layers = 2;
-
-        let (qq, _, _) = balinit(&zz, &params);
-
-        assert_approx_eq_slice(&qq2, &qq);
-    }
-
-    #[test]
-    fn balinit_18_2_dd() {
-        let zz = include_bytes!("testdata/balinit/18_2_zz.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let dd2 = include_bytes!("testdata/balinit/18_2_dd.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let mut params = Parameters::default();
-        params.numerical.grid_resolution = 18;
-        params.numerical.vertical_layers = 2;
-
-        let (_, dd, __) = balinit(&zz, &params);
-
-        assert_approx_eq_slice(&dd2, &dd);
-    }
-
-    #[test]
-    fn balinit_18_2_gg() {
-        let zz = include_bytes!("testdata/balinit/18_2_zz.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let gg2 = include_bytes!("testdata/balinit/18_2_gg.bin")
-            .chunks(8)
-            .map(NetworkEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let mut params = Parameters::default();
-        params.numerical.grid_resolution = 18;
-        params.numerical.vertical_layers = 2;
-
-        let (_, __, gg) = balinit(&zz, &params);
-
-        assert_approx_eq_slice(&gg2, &gg);
-    }
-
-    #[test]
-    fn end2end_18_2() {
-        let qq_init = include_bytes!("testdata/balinit/18_2_qq_init.r8")
-            .chunks(8)
-            .skip(1)
-            .map(LittleEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let sw_init = include_bytes!("testdata/balinit/18_2_sw_init.r8")
-            .chunks(8)
-            .map(LittleEndian::read_f64)
-            .collect::<Vec<f64>>();
-
-        let mut params = Parameters::default();
-        params.numerical.grid_resolution = 18;
-        params.numerical.vertical_layers = 2;
-
-        let (qq, dd, gg) = balinit(&qq_init, &params);
-
-        assert_approx_eq_slice(
-            &sw_init,
-            &[vec![0.0], qq, vec![0.0], dd, vec![0.0], gg].concat(),
-        );
-    }
-
-    #[test]
     fn end2end_32_4() {
-        let qq_init = include_bytes!("testdata/balinit/32_4_qq_init.r8")
-            .chunks(8)
-            .skip(1)
-            .map(LittleEndian::read_f64)
-            .collect::<Vec<f64>>();
-        let sw_init = include_bytes!("testdata/balinit/32_4_sw_init.r8")
-            .chunks(8)
-            .map(LittleEndian::read_f64)
-            .collect::<Vec<f64>>();
+        let tempdir = TempDir::new("shallow-water").unwrap();
+
+        let mut qq = File::create(tempdir.path().join("qq_init.r8")).unwrap();
+        qq.write_all(include_bytes!("testdata/balinit/32_4_qq_init.r8"))
+            .unwrap();
 
         let mut params = Parameters::default();
         params.numerical.grid_resolution = 32;
         params.numerical.vertical_layers = 4;
+        params.environment.output_directory = tempdir.path().to_owned();
 
-        let (qq, dd, gg) = balinit(&qq_init, &params);
+        balinit(&params).unwrap();
 
-        assert_approx_eq_slice(
-            &sw_init,
-            &[vec![0.0], qq, vec![0.0], dd, vec![0.0], gg].concat(),
-        );
+        for (i, byte) in File::open(params.environment.output_directory.join("sw_init.r8"))
+            .unwrap()
+            .bytes()
+            .enumerate()
+        {
+            assert_eq!(
+                include_bytes!("testdata/balinit/32_4_sw_init.r8")[i],
+                byte.unwrap()
+            );
+        }
     }
 }
