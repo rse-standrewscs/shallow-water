@@ -62,19 +62,13 @@ cargo run --release -- -p parameters.yaml nhswps
 
 ### Testing
 
-To run the inexpensive tests:
+To run all tests:
 
 ```
 cargo test --release
 ```
 
-To run the expensive (and therefore ignored by default) tests:
-
-```
-cargo test --release -- --ignored
-```
-
-If the `--release` flag is not set the tests may be slow and the expensive tests may take a _very_ long time to complete.
+If the `--release` flag is not set the tests may take a _very_ long time to complete.
 
 ### Benchmarking
 
