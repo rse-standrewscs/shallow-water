@@ -1,5 +1,8 @@
 use ndarray::{Array2, Array3, ArrayView2, ArrayView3, ArrayViewMut2, ArrayViewMut3, ShapeBuilder};
 
+#[cfg(test)]
+use std::{fs::File, io::Read, path::Path};
+
 pub fn view2d<T>(xs: &[T], x: usize, y: usize) -> ArrayView2<T> {
     ArrayView2::from_shape((x, y).strides((1, x)), xs).unwrap()
 }
@@ -29,11 +32,29 @@ pub fn arr3zero(ng: usize, nz: usize) -> Array3<f64> {
 }
 
 #[cfg(test)]
-pub fn assert_approx_eq_slice(a: &[f64], b: &[f64]) {
-    use approx::assert_abs_diff_eq;
-
+pub(crate) fn assert_approx_eq_slice(a: &[f64], b: &[f64]) {
     for (i, e) in a.iter().enumerate() {
-        assert_abs_diff_eq!(*e, b[i], epsilon = 1.0E-13);
+        approx::assert_abs_diff_eq!(*e, b[i], epsilon = 1.0E-13);
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn assert_approx_eq_files<A: AsRef<Path>, B: AsRef<Path>>(correct: A, test: B) {
+    let mut correct_file = File::open(correct).unwrap();
+    let mut test_file = File::open(test).unwrap();
+
+    for _ in (0..correct_file.metadata().unwrap().len()).step_by(8) {
+        let mut correct_buf = [0; 8];
+        let mut test_buf = [0; 8];
+
+        correct_file.read_exact(&mut correct_buf).unwrap();
+        test_file.read_exact(&mut test_buf).unwrap();
+
+        approx::assert_abs_diff_eq!(
+            f64::from_le_bytes(correct_buf),
+            f64::from_le_bytes(test_buf),
+            epsilon = 1.0E-13
+        );
     }
 }
 

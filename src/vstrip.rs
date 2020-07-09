@@ -125,7 +125,7 @@ pub fn init_pv_strip(parameters: &Parameters) -> Result<()> {
 
 #[cfg(test)]
 mod test {
-    use {super::*, std::io::Read, tempdir::TempDir};
+    use {super::*, crate::utils::assert_approx_eq_files, tempdir::TempDir};
 
     /// Asserts that the generated .r8 file for ng=18 is close to the Fortran-created file.
     #[test]
@@ -138,16 +138,10 @@ mod test {
 
         init_pv_strip(&params).unwrap();
 
-        for (i, byte) in File::open(params.environment.output_directory.join("qq_init.r8"))
-            .unwrap()
-            .bytes()
-            .enumerate()
-        {
-            assert_eq!(
-                include_bytes!("testdata/vstrip/qq_init_18.r8")[i],
-                byte.unwrap()
-            );
-        }
+        assert_approx_eq_files(
+            "./src/testdata/vstrip/qq_init_18.r8",
+            params.environment.output_directory.join("qq_init.r8"),
+        );
     }
 
     /// Asserts that the generated .r8 file for ng=32 is close to the Fortran-created file.
@@ -161,16 +155,10 @@ mod test {
 
         init_pv_strip(&params).unwrap();
 
-        for (i, byte) in File::open(params.environment.output_directory.join("qq_init.r8"))
-            .unwrap()
-            .bytes()
-            .enumerate()
-        {
-            assert_eq!(
-                include_bytes!("testdata/vstrip/qq_init_32.r8")[i],
-                byte.unwrap()
-            );
-        }
+        assert_approx_eq_files(
+            "./src/testdata/vstrip/qq_init_32.r8",
+            params.environment.output_directory.join("qq_init.r8"),
+        );
     }
 
     /// Asserts that the generated .r8 file for ng=64 is close to the Fortran-created file.
@@ -184,15 +172,9 @@ mod test {
 
         init_pv_strip(&params).unwrap();
 
-        for (i, byte) in File::open(params.environment.output_directory.join("qq_init.r8"))
-            .unwrap()
-            .bytes()
-            .enumerate()
-        {
-            assert_eq!(
-                include_bytes!("testdata/vstrip/qq_init_64.r8")[i],
-                byte.unwrap()
-            );
-        }
+        assert_approx_eq_files(
+            "./src/testdata/vstrip/qq_init_64.r8",
+            params.environment.output_directory.join("qq_init.r8"),
+        );
     }
 }

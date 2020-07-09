@@ -436,7 +436,7 @@ pub fn balinit(parameters: &Parameters) -> Result<()> {
 
 #[cfg(test)]
 mod test {
-    use {super::*, tempdir::TempDir};
+    use {super::*, crate::utils::assert_approx_eq_files, tempdir::TempDir};
 
     #[test]
     fn end2end_18_2() {
@@ -453,16 +453,10 @@ mod test {
 
         balinit(&params).unwrap();
 
-        for (i, byte) in File::open(params.environment.output_directory.join("sw_init.r8"))
-            .unwrap()
-            .bytes()
-            .enumerate()
-        {
-            assert_eq!(
-                include_bytes!("testdata/balinit/18_2_sw_init.r8")[i],
-                byte.unwrap()
-            );
-        }
+        assert_approx_eq_files(
+            params.environment.output_directory.join("sw_init.r8"),
+            "./src/testdata/balinit/18_2_sw_init.r8",
+        );
     }
 
     #[test]
@@ -480,15 +474,9 @@ mod test {
 
         balinit(&params).unwrap();
 
-        for (i, byte) in File::open(params.environment.output_directory.join("sw_init.r8"))
-            .unwrap()
-            .bytes()
-            .enumerate()
-        {
-            assert_eq!(
-                include_bytes!("testdata/balinit/32_4_sw_init.r8")[i],
-                byte.unwrap()
-            );
-        }
+        assert_approx_eq_files(
+            params.environment.output_directory.join("sw_init.r8"),
+            "./src/testdata/balinit/32_4_sw_init.r8",
+        );
     }
 }
