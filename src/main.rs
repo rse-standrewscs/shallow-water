@@ -4,6 +4,7 @@ extern crate clap;
 use {
     anyhow::{bail, Result},
     log::{error, info},
+    rayon::{current_num_threads, ThreadPoolBuilder},
     shallow_water::{
         balinit::balinit, nhswps::nhswps, parameters::Parameters, swto3d::swto3d,
         vstrip::init_pv_strip,
@@ -84,7 +85,18 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> Result<()> {
         None => bail!("No subcommand selected"),
     };
 
+    // Recursively create output directiry and all parents
     create_dir_all(&params.environment.output_directory)?;
+    info!("Writing data to {:?}", params.environment.output_directory);
+
+    // Initialise global thread pool
+    ThreadPoolBuilder::new()
+        .num_threads(params.environment.threads)
+        .build_global()?;
+    info!(
+        "Initialised global thread pool with {} threads",
+        current_num_threads()
+    );
 
     info!("Starting {}", subcmd);
 
