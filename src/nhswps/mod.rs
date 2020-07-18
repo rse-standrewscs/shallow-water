@@ -21,7 +21,12 @@ use {
     psolve::psolve,
     serde::{Deserialize, Serialize},
     source::source,
-    std::{f64::consts::PI, fs::File, io::Read},
+    std::{
+        f64::consts::PI,
+        fs::{create_dir, File},
+        io::{Read, Write},
+        path::Path,
+    },
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -114,10 +119,18 @@ impl State {
     }
 }
 
-pub fn nhswps(parameters: &Parameters) -> Result<Output> {
+pub fn nhswps(parameters: &Parameters) -> Result<()> {
+    // Parameters
+    let ng = parameters.numerical.grid_resolution;
+    let nz = parameters.numerical.vertical_layers;
+    let dt = parameters.numerical.time_step;
+    let tgsave = parameters.numerical.save_interval;
+    let tsim = parameters.numerical.duration;
+    let out_dir = parameters.environment.output_directory.clone();
+
     // Read linearised PV anomaly and convert to spectral space as qs
     let qq = {
-        let mut f = File::open(parameters.environment.output_directory.join("qq_init.r8"))?;
+        let mut f = File::open(out_dir.join("qq_init.r8"))?;
         let mut qq = Vec::new();
         f.read_to_end(&mut qq)?;
         qq.chunks(8)
@@ -127,7 +140,7 @@ pub fn nhswps(parameters: &Parameters) -> Result<Output> {
     };
 
     let dd = {
-        let mut f = File::open(parameters.environment.output_directory.join("dd_init.r8"))?;
+        let mut f = File::open(out_dir.join("dd_init.r8"))?;
         let mut dd = Vec::new();
         f.read_to_end(&mut dd)?;
         dd.chunks(8)
@@ -137,7 +150,7 @@ pub fn nhswps(parameters: &Parameters) -> Result<Output> {
     };
 
     let gg = {
-        let mut f = File::open(parameters.environment.output_directory.join("gg_init.r8"))?;
+        let mut f = File::open(out_dir.join("gg_init.r8"))?;
         let mut gg = Vec::new();
         f.read_to_end(&mut gg)?;
         gg.chunks(8)
@@ -145,13 +158,6 @@ pub fn nhswps(parameters: &Parameters) -> Result<Output> {
             .map(LittleEndian::read_f64)
             .collect::<Vec<f64>>()
     };
-
-    // Parameters
-    let ng = parameters.numerical.grid_resolution;
-    let nz = parameters.numerical.vertical_layers;
-    let dt = parameters.numerical.time_step;
-    let tgsave = parameters.numerical.save_interval;
-    let tsim = parameters.numerical.duration;
 
     let mut state = State {
         spectral: Spectral::new(ng, nz),
@@ -308,7 +314,38 @@ pub fn nhswps(parameters: &Parameters) -> Result<Output> {
     }
 
     //finalise
-    Ok(state.output)
+    let output = state.output;
+
+    write_file(out_dir.join("monitor.asc"), &output.monitor.as_bytes())?;
+    write_file(out_dir.join("ecomp.asc"), &output.ecomp.as_bytes())?;
+    write_file(out_dir.join("spectra.asc"), &output.spectra.as_bytes())?;
+
+    let out_dir_2d = out_dir.join("2d/");
+
+    create_dir(&out_dir_2d).ok();
+    write_file(&out_dir_2d.join("d.r4"), &output.d2d)?;
+    write_file(&out_dir_2d.join("g.r4"), &output.d2g)?;
+    write_file(&out_dir_2d.join("h.r4"), &output.d2h)?;
+    write_file(&out_dir_2d.join("q.r4"), &output.d2q)?;
+    write_file(&out_dir_2d.join("zeta.r4"), &output.d2zeta)?;
+
+    let out_dir_3d = out_dir.join("3d/");
+
+    create_dir(&out_dir_3d).ok();
+    write_file(&out_dir_3d.join("d.r4"), &output.d3d)?;
+    write_file(&out_dir_3d.join("g.r4"), &output.d3g)?;
+    write_file(&out_dir_3d.join("pn.r4"), &output.d3pn)?;
+    write_file(&out_dir_3d.join("ql.r4"), &output.d3ql)?;
+    write_file(&out_dir_3d.join("r.r4"), &output.d3r)?;
+    write_file(&out_dir_3d.join("w.r4"), &output.d3w)?;
+
+    Ok(())
+}
+
+fn write_file<P: AsRef<Path>>(path: P, data: &[u8]) -> Result<()> {
+    let mut f = File::create(path)?;
+    f.write_all(data)?;
+    Ok(())
 }
 
 pub fn savegrid(state: &mut State) {

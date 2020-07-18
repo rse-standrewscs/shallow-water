@@ -58,6 +58,26 @@ pub(crate) fn assert_approx_eq_files<A: AsRef<Path>, B: AsRef<Path>>(correct: A,
     }
 }
 
+#[cfg(test)]
+pub(crate) fn assert_approx_eq_files_f32<A: AsRef<Path>, B: AsRef<Path>>(correct: A, test: B) {
+    let mut correct_file = File::open(correct).unwrap();
+    let mut test_file = File::open(test).unwrap();
+
+    for _ in (0..correct_file.metadata().unwrap().len()).step_by(4) {
+        let mut correct_buf = [0; 4];
+        let mut test_buf = [0; 4];
+
+        correct_file.read_exact(&mut correct_buf).unwrap();
+        test_file.read_exact(&mut test_buf).unwrap();
+
+        approx::assert_abs_diff_eq!(
+            f32::from_le_bytes(correct_buf),
+            f32::from_le_bytes(test_buf),
+            epsilon = 1.0E-8
+        );
+    }
+}
+
 #[macro_export]
 macro_rules! array2_from_file {
     ($x:expr, $y:expr, $name:expr) => {

@@ -1,19 +1,15 @@
 use {
     crate::{
-        balinit::balinit,
-        nhswps::{nhswps, Output},
-        parameters::Parameters,
-        swto3d::swto3d,
-        vstrip::init_pv_strip,
+        balinit::balinit, nhswps::nhswps, parameters::Parameters, swto3d::swto3d,
+        utils::assert_approx_eq_files_f32, vstrip::init_pv_strip,
     },
-    approx::assert_abs_diff_eq,
-    byteorder::{ByteOrder, LittleEndian},
     lazy_static::lazy_static,
+    std::fs::read_to_string,
     tempdir::TempDir,
 };
 
 lazy_static! {
-    static ref OUTPUT_18_4: Output = {
+    static ref OUTPUT_18_4: TempDir = {
         let tempdir = TempDir::new("shallow-water").unwrap();
 
         let mut params = Parameters::default();
@@ -26,14 +22,11 @@ lazy_static! {
         init_pv_strip(&params).unwrap();
         balinit(&params).unwrap();
         swto3d(&params).unwrap();
+        nhswps(&params).unwrap();
 
-        let output = nhswps(&params).unwrap();
-
-        tempdir.close().unwrap();
-
-        output
+        tempdir
     };
-    static ref OUTPUT_32_4: Output = {
+    static ref OUTPUT_32_4: TempDir = {
         let tempdir = TempDir::new("shallow-water").unwrap();
 
         let mut params = Parameters::default();
@@ -43,12 +36,9 @@ lazy_static! {
         init_pv_strip(&params).unwrap();
         balinit(&params).unwrap();
         swto3d(&params).unwrap();
+        nhswps(&params).unwrap();
 
-        let output = nhswps(&params).unwrap();
-
-        tempdir.close().unwrap();
-
-        output
+        tempdir
     };
 }
 
@@ -62,8 +52,8 @@ mod complete_18_4 {
                 .to_string()
                 .split_whitespace()
                 .collect::<Vec<&str>>(),
-            OUTPUT_18_4
-                .monitor
+            read_to_string(OUTPUT_18_4.path().join("monitor.asc"))
+                .unwrap()
                 .replace("\n", " ")
                 .split(' ')
                 .filter(|&s| !s.is_empty())
@@ -78,8 +68,8 @@ mod complete_18_4 {
                 .to_string()
                 .split_whitespace()
                 .collect::<Vec<&str>>(),
-            OUTPUT_18_4
-                .ecomp
+            read_to_string(OUTPUT_18_4.path().join("ecomp.asc"))
+                .unwrap()
                 .replace("\n", " ")
                 .split(' ')
                 .filter(|&s| !s.is_empty())
@@ -132,92 +122,42 @@ mod complete_18_4 {
 
         #[test]
         fn d() {
-            let d2 = include_bytes!("testdata/complete/18_4/2d/d.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let d = OUTPUT_18_4
-                .d2d
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in d2.iter().zip(&d) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/2d/d.r4",
+                OUTPUT_18_4.path().join("2d/d.r4"),
+            );
         }
 
         #[test]
         fn g() {
-            let g2 = include_bytes!("testdata/complete/18_4/2d/g.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let g = OUTPUT_18_4
-                .d2g
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in g2.iter().zip(&g) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/2d/g.r4",
+                OUTPUT_18_4.path().join("2d/g.r4"),
+            );
         }
 
         #[test]
         fn h() {
-            let h2 = include_bytes!("testdata/complete/18_4/2d/h.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let h = OUTPUT_18_4
-                .d2h
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in h2.iter().zip(&h) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/2d/h.r4",
+                OUTPUT_18_4.path().join("2d/h.r4"),
+            );
         }
 
         #[test]
         fn q() {
-            let q2 = include_bytes!("testdata/complete/18_4/2d/q.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let q = OUTPUT_18_4
-                .d2q
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in q2.iter().zip(&q) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/2d/q.r4",
+                OUTPUT_18_4.path().join("2d/q.r4"),
+            );
         }
 
         #[test]
         fn zeta() {
-            let zeta2 = include_bytes!("testdata/complete/18_4/2d/zeta.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let zeta = OUTPUT_18_4
-                .d2zeta
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in zeta2.iter().zip(&zeta) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/2d/zeta.r4",
+                OUTPUT_18_4.path().join("2d/zeta.r4"),
+            );
         }
     }
 
@@ -226,100 +166,50 @@ mod complete_18_4 {
 
         #[test]
         fn d() {
-            let d2 = include_bytes!("testdata/complete/18_4/3d/d.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let d = OUTPUT_18_4
-                .d3d
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in d2.iter().zip(&d) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/3d/d.r4",
+                OUTPUT_18_4.path().join("3d/d.r4"),
+            );
         }
 
         #[test]
         fn g() {
-            let g2 = include_bytes!("testdata/complete/18_4/3d/g.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let g = OUTPUT_18_4
-                .d3g
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in g2.iter().zip(&g) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/3d/g.r4",
+                OUTPUT_18_4.path().join("3d/g.r4"),
+            );
         }
 
         #[test]
         fn pn() {
-            let pn2 = include_bytes!("testdata/complete/18_4/3d/pn.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let pn = OUTPUT_18_4
-                .d3pn
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in pn2.iter().zip(&pn) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/3d/pn.r4",
+                OUTPUT_18_4.path().join("3d/pn.r4"),
+            );
         }
 
         #[test]
         fn ql() {
-            assert_eq!(
-                include_bytes!("testdata/complete/18_4/3d/ql.r4")[..],
-                OUTPUT_18_4.d3ql[..]
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/3d/ql.r4",
+                OUTPUT_18_4.path().join("3d/ql.r4"),
             );
         }
 
         #[test]
         fn r() {
-            let r2 = include_bytes!("testdata/complete/18_4/3d/r.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let r = OUTPUT_18_4
-                .d3r
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in r2.iter().zip(&r) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/3d/r.r4",
+                OUTPUT_18_4.path().join("3d/r.r4"),
+            );
         }
 
         #[test]
         fn w() {
-            let w2 = include_bytes!("testdata/complete/18_4/3d/w.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let w = OUTPUT_18_4
-                .d3w
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in w2.iter().zip(&w) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/18_4/3d/w.r4",
+                OUTPUT_18_4.path().join("3d/w.r4"),
+            );
         }
     }
 }
@@ -334,8 +224,8 @@ mod complete_32_4 {
                 .to_string()
                 .split_whitespace()
                 .collect::<Vec<&str>>(),
-            OUTPUT_32_4
-                .monitor
+            read_to_string(OUTPUT_32_4.path().join("monitor.asc"))
+                .unwrap()
                 .replace("\n", " ")
                 .split(' ')
                 .filter(|&s| !s.is_empty())
@@ -350,8 +240,8 @@ mod complete_32_4 {
                 .to_string()
                 .split_whitespace()
                 .collect::<Vec<&str>>(),
-            OUTPUT_32_4
-                .ecomp
+            read_to_string(OUTPUT_32_4.path().join("ecomp.asc"))
+                .unwrap()
                 .replace("\n", " ")
                 .split(' ')
                 .filter(|&s| !s.is_empty())
@@ -402,92 +292,42 @@ mod complete_32_4 {
 
         #[test]
         fn d() {
-            let d2 = include_bytes!("testdata/complete/32_4/2d/d.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let d = OUTPUT_32_4
-                .d2d
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in d2.iter().zip(&d) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/2d/d.r4",
+                OUTPUT_32_4.path().join("2d/d.r4"),
+            );
         }
 
         #[test]
         fn g() {
-            let g2 = include_bytes!("testdata/complete/32_4/2d/g.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let g = OUTPUT_32_4
-                .d2g
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in g2.iter().zip(&g) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/2d/g.r4",
+                OUTPUT_32_4.path().join("2d/g.r4"),
+            );
         }
 
         #[test]
         fn h() {
-            let h2 = include_bytes!("testdata/complete/32_4/2d/h.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let h = OUTPUT_32_4
-                .d2h
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in h2.iter().zip(&h) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/2d/h.r4",
+                OUTPUT_32_4.path().join("2d/h.r4"),
+            );
         }
 
         #[test]
         fn q() {
-            let q2 = include_bytes!("testdata/complete/32_4/2d/q.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let q = OUTPUT_32_4
-                .d2q
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in q2.iter().zip(&q) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/2d/q.r4",
+                OUTPUT_32_4.path().join("2d/q.r4"),
+            );
         }
 
         #[test]
         fn zeta() {
-            let zeta2 = include_bytes!("testdata/complete/32_4/2d/zeta.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let zeta = OUTPUT_32_4
-                .d2zeta
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in zeta2.iter().zip(&zeta) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/2d/zeta.r4",
+                OUTPUT_32_4.path().join("2d/zeta.r4"),
+            );
         }
     }
 
@@ -496,100 +336,50 @@ mod complete_32_4 {
 
         #[test]
         fn d() {
-            let d2 = include_bytes!("testdata/complete/32_4/3d/d.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let d = OUTPUT_32_4
-                .d3d
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in d2.iter().zip(&d) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/3d/d.r4",
+                OUTPUT_32_4.path().join("3d/d.r4"),
+            );
         }
 
         #[test]
         fn g() {
-            let g2 = include_bytes!("testdata/complete/32_4/3d/g.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let g = OUTPUT_32_4
-                .d3g
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in g2.iter().zip(&g) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/3d/g.r4",
+                OUTPUT_32_4.path().join("3d/g.r4"),
+            );
         }
 
         #[test]
         fn pn() {
-            let pn2 = include_bytes!("testdata/complete/32_4/3d/pn.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let pn = OUTPUT_32_4
-                .d3pn
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in pn2.iter().zip(&pn) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/3d/pn.r4",
+                OUTPUT_32_4.path().join("3d/pn.r4"),
+            );
         }
 
         #[test]
         fn ql() {
-            assert_eq!(
-                include_bytes!("testdata/complete/32_4/3d/ql.r4")[..],
-                OUTPUT_32_4.d3ql[..]
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/3d/ql.r4",
+                OUTPUT_32_4.path().join("3d/ql.r4"),
             );
         }
 
         #[test]
         fn r() {
-            let r2 = include_bytes!("testdata/complete/32_4/3d/r.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let r = OUTPUT_32_4
-                .d3r
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in r2.iter().zip(&r) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/3d/r.r4",
+                OUTPUT_32_4.path().join("3d/r.r4"),
+            );
         }
 
         #[test]
         fn w() {
-            let w2 = include_bytes!("testdata/complete/32_4/3d/w.r4")
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            let w = OUTPUT_32_4
-                .d3w
-                .chunks(4)
-                .map(LittleEndian::read_f32)
-                .collect::<Vec<f32>>();
-
-            for (a, b) in w2.iter().zip(&w) {
-                assert_abs_diff_eq!(a, b);
-            }
+            assert_approx_eq_files_f32(
+                "src/testdata/complete/32_4/3d/w.r4",
+                OUTPUT_32_4.path().join("3d/w.r4"),
+            );
         }
     }
 }

@@ -10,10 +10,7 @@ use {
         vstrip::init_pv_strip,
     },
     simplelog::{Config as LogConfig, LevelFilter, TermLogger, TerminalMode},
-    std::{
-        fs::{create_dir, create_dir_all, File},
-        io::prelude::*,
-    },
+    std::fs::{create_dir_all, File},
 };
 
 #[quit::main]
@@ -73,12 +70,6 @@ fn main() {
     });
 }
 
-fn write_file(path: &str, data: &[u8]) -> Result<()> {
-    let mut f = File::create(path)?;
-    f.write_all(data)?;
-    Ok(())
-}
-
 fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> Result<()> {
     let subcmd = match subcmd {
         Some(s) => s,
@@ -104,28 +95,7 @@ fn run_subcommand(subcmd: Option<&str>, params: Parameters) -> Result<()> {
         "vstrip" => init_pv_strip(&params)?,
         "balinit" => balinit(&params)?,
         "swto3d" => swto3d(&params)?,
-        "nhswps" => {
-            let output = nhswps(&params)?;
-
-            write_file("monitor.asc", &output.monitor.as_bytes())?;
-            write_file("ecomp.asc", &output.ecomp.as_bytes())?;
-            write_file("spectra.asc", &output.spectra.as_bytes())?;
-
-            create_dir("2d").ok();
-            write_file("2d/d.r4", &output.d2d)?;
-            write_file("2d/g.r4", &output.d2g)?;
-            write_file("2d/h.r4", &output.d2h)?;
-            write_file("2d/q.r4", &output.d2q)?;
-            write_file("2d/zeta.r4", &output.d2zeta)?;
-
-            create_dir("3d").ok();
-            write_file("3d/d.r4", &output.d3d)?;
-            write_file("3d/g.r4", &output.d3g)?;
-            write_file("3d/pn.r4", &output.d3pn)?;
-            write_file("3d/ql.r4", &output.d3ql)?;
-            write_file("3d/r.r4", &output.d3r)?;
-            write_file("3d/w.r4", &output.d3w)?;
-        }
+        "nhswps" => nhswps(&params)?,
         _ => {
             // Should be unreachable due to clap catching this error
             bail!("Unrecognized subcommand");
