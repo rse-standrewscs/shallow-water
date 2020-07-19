@@ -264,11 +264,7 @@ pub fn cpsource(state: &State, mut sp0: ArrayViewMut3<f64>) {
 mod test {
     use {
         super::*,
-        crate::{
-            array3_from_file,
-            nhswps::{Output, Spectral},
-            utils::*,
-        },
+        crate::{array3_from_file, nhswps::Spectral, utils::*},
         byteorder::{ByteOrder, NetworkEndian},
         lazy_static::lazy_static,
         ndarray::{Array3, ShapeBuilder},
@@ -310,7 +306,6 @@ mod test {
                 itime: 0,
                 jtime: 0,
                 ggen: false,
-                output: Output::default(),
             }
         };
         static ref STATE_32_4: State = {
@@ -348,7 +343,6 @@ mod test {
                 itime: 0,
                 jtime: 0,
                 ggen: false,
-                output: Output::default(),
             }
         };
     }

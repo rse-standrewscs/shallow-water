@@ -412,10 +412,7 @@ pub fn psolve(state: &mut State) {
 mod test {
     use {
         super::*,
-        crate::{
-            array3_from_file,
-            nhswps::{Output, Spectral},
-        },
+        crate::{array3_from_file, nhswps::Spectral},
         approx::assert_abs_diff_eq,
         byteorder::ByteOrder,
         lazy_static::lazy_static,
@@ -467,7 +464,6 @@ mod test {
                 itime: 0,
                 jtime: 0,
                 ggen: false,
-                output: Output::default(),
             };
             psolve(&mut state);
             state
@@ -516,7 +512,6 @@ mod test {
                 itime: 0,
                 jtime: 0,
                 ggen: false,
-                output: Output::default(),
             };
             psolve(&mut state);
             state

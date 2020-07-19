@@ -1,15 +1,16 @@
 use {
     crate::{
         constants::*,
-        nhswps::{diagnose, psolve, source, State},
+        nhswps::{diagnose, psolve, source, Output, State},
         utils::{arr2zero, arr3zero},
     },
+    anyhow::Result,
     ndarray::{Axis, Zip},
 };
 
 /// Advances fields from time t to t+dt using an iterative implicit
 /// method of the form
-pub fn advance(state: &mut State) {
+pub fn advance(state: &mut State, output: &mut Output) -> Result<()> {
     // (F^{n+1}-F^n)/dt = L[(F^{n+1}-F^n)/2] + N[(F^{n+1}-F^n)/2]
     //
     // for a field F, where n refers to the time level, L refers to
@@ -56,7 +57,7 @@ pub fn advance(state: &mut State) {
     // at this time level.
 
     // Save various diagnostics each time step:
-    diagnose(state);
+    diagnose(state, output)?;
 
     //Start with a guess for F^{n+1} for all fields:
 
@@ -273,6 +274,8 @@ pub fn advance(state: &mut State) {
 
     // Advance time:
     state.t += dt;
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -287,6 +290,7 @@ mod test {
         byteorder::ByteOrder,
         lazy_static::lazy_static,
         ndarray::{Array3, ShapeBuilder},
+        tempdir::TempDir,
     };
 
     mod _18_6 {
@@ -337,9 +341,9 @@ mod test {
                     itime: 1,
                     jtime: 0,
                     ggen: true,
-                    output: Output::default(),
                 };
-                advance(&mut state);
+                let td = TempDir::new("advance").unwrap();
+                advance(&mut state, &mut Output::from_path(td.path()).unwrap()).unwrap();
                 state
             };
         }
@@ -492,9 +496,9 @@ mod test {
                     itime: 15,
                     jtime: 2,
                     ggen: true,
-                    output: Output::default(),
                 };
-                advance(&mut state);
+                let td = TempDir::new("advance").unwrap();
+                advance(&mut state, &mut Output::from_path(td.path()).unwrap()).unwrap();
                 state
             };
         }

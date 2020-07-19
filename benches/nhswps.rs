@@ -11,6 +11,7 @@ use {
         spectral::Spectral,
         utils::*,
     },
+    tempdir::TempDir,
 };
 
 pub fn criterion_benchmark(c: &mut Criterion) {
@@ -67,7 +68,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     itime: 0,
                     jtime: 0,
                     ggen: false,
-                    output: Output::default(),
                 }
             };
             let mut sqs = include_bytes!("../src/nhswps/testdata/source/32_4_sqs.bin")
@@ -159,7 +159,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     itime: 0,
                     jtime: 0,
                     ggen: false,
-                    output: Output::default(),
                 }
             };
             b.iter(|| vertical(&mut state))
@@ -203,7 +202,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     itime: 0,
                     jtime: 0,
                     ggen: false,
-                    output: Output::default(),
                 }
             };
 
@@ -307,7 +305,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     itime: 0,
                     jtime: 0,
                     ggen: false,
-                    output: Output::default(),
                 }
             };
             let mut sp0 = include_bytes!("../src/nhswps/testdata/cpsource/32_4_sp0.bin")
@@ -386,7 +383,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     itime: 0,
                     jtime: 0,
                     ggen: false,
-                    output: Output::default(),
                 }
             };
 
@@ -465,10 +461,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     itime: 15,
                     jtime: 2,
                     ggen: true,
-                    output: Output::default(),
                 }
             };
-            b.iter(|| advance(&mut state))
+            let td = TempDir::new("advance").unwrap();
+            b.iter(|| advance(&mut state, &mut Output::from_path(td.path()).unwrap()))
         }),
     );
 
@@ -599,10 +595,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
                     itime: 0,
                     jtime: 0,
                     ggen: false,
-                    output: Output::default(),
                 }
             };
-            b.iter(|| advance(&mut state))
+            let td = TempDir::new("advance_128").unwrap();
+            b.iter(|| advance(&mut state, &mut Output::from_path(td.path()).unwrap()))
         })
         .sample_size(10),
     );
@@ -616,7 +612,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
             state.defragment();
 
-            b.iter(|| savegrid(&mut state))
+            let td = TempDir::new("savegrid").unwrap();
+            b.iter(|| savegrid(&mut state, &mut Output::from_path(td.path()).unwrap()))
         })
         .sample_size(10),
     );

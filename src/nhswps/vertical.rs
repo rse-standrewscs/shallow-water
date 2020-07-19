@@ -146,10 +146,7 @@ pub fn vertical(state: &mut State) {
 mod test {
     use {
         super::*,
-        crate::{
-            array3_from_file,
-            nhswps::{Output, Spectral},
-        },
+        crate::{array3_from_file, nhswps::Spectral},
         approx::assert_abs_diff_eq,
         byteorder::ByteOrder,
         lazy_static::lazy_static,
@@ -194,7 +191,6 @@ mod test {
                 itime: 0,
                 jtime: 0,
                 ggen: false,
-                output: Output::default(),
             }
         };
         static ref STATE_32_4: State = {
@@ -233,7 +229,6 @@ mod test {
                 itime: 0,
                 jtime: 0,
                 ggen: false,
-                output: Output::default(),
             }
         };
     }

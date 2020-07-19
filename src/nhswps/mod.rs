@@ -16,42 +16,72 @@ use {
     advance::advance,
     anyhow::Result,
     byteorder::{ByteOrder, LittleEndian},
-    log::{debug, info},
+    log::info,
     ndarray::{Array1, Array3, ArrayView1, Axis, ShapeBuilder, Zip},
     psolve::psolve,
     serde::{Deserialize, Serialize},
     source::source,
     std::{
         f64::consts::PI,
-        fs::{create_dir, File},
+        fs::{create_dir_all, File},
         io::{Read, Write},
         path::Path,
     },
 };
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Output {
     // Plain text diagnostics
-    pub ecomp: String,   //16
-    pub monitor: String, //17
+    pub ecomp: File,   //16
+    pub monitor: File, //17
 
     // 1D vorticity and divergence spectra
-    pub spectra: String, //51
+    pub spectra: File, //51
 
     // 3D fields
-    pub d3ql: Vec<u8>, //31
-    pub d3d: Vec<u8>,  //32
-    pub d3g: Vec<u8>,  //33
-    pub d3r: Vec<u8>,  //34
-    pub d3w: Vec<u8>,  //35
-    pub d3pn: Vec<u8>, //36
+    pub d3ql: File, //31
+    pub d3d: File,  //32
+    pub d3g: File,  //33
+    pub d3r: File,  //34
+    pub d3w: File,  //35
+    pub d3pn: File, //36
 
     // Selected vertically-averaged fields
-    pub d2q: Vec<u8>,    //41
-    pub d2d: Vec<u8>,    //42
-    pub d2g: Vec<u8>,    //43
-    pub d2h: Vec<u8>,    //44
-    pub d2zeta: Vec<u8>, //45
+    pub d2q: File,    //41
+    pub d2d: File,    //42
+    pub d2g: File,    //43
+    pub d2h: File,    //44
+    pub d2zeta: File, //45
+}
+
+impl Output {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let d2 = path.as_ref().join("2d/");
+        let d3 = path.as_ref().join("3d/");
+
+        create_dir_all(&d2)?;
+        create_dir_all(&d3)?;
+
+        Ok(Self {
+            ecomp: File::create(path.as_ref().join("ecomp.asc"))?,
+            monitor: File::create(path.as_ref().join("monitor.asc"))?,
+
+            spectra: File::create(path.as_ref().join("spectra.asc"))?,
+
+            d3ql: File::create(d3.join("ql.r4"))?,
+            d3d: File::create(d3.join("d.r4"))?,
+            d3g: File::create(d3.join("g.r4"))?,
+            d3r: File::create(d3.join("r.r4"))?,
+            d3w: File::create(d3.join("w.r4"))?,
+            d3pn: File::create(d3.join("pn.r4"))?,
+
+            d2q: File::create(d2.join("q.r4"))?,
+            d2d: File::create(d2.join("d.r4"))?,
+            d2g: File::create(d2.join("g.r4"))?,
+            d2h: File::create(d2.join("h.r4"))?,
+            d2zeta: File::create(d2.join("zeta.r4"))?,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,8 +130,6 @@ pub struct State {
 
     // Logical for use in calling inversion routine:
     pub ggen: bool,
-
-    pub output: Output,
 }
 
 impl State {
@@ -203,9 +231,9 @@ pub fn nhswps(parameters: &Parameters) -> Result<()> {
 
         // Logical for use in calling inversion routine:
         ggen: false,
-
-        output: Output::default(),
     };
+
+    let mut output = Output::from_path(out_dir)?;
 
     state
         .spectral
@@ -285,7 +313,7 @@ pub fn nhswps(parameters: &Parameters) -> Result<()> {
             psolve(&mut state);
 
             // Save field data:
-            savegrid(&mut state);
+            savegrid(&mut state, &mut output)?;
 
             state.ggen = false;
         } else {
@@ -294,7 +322,7 @@ pub fn nhswps(parameters: &Parameters) -> Result<()> {
         // ggen is used to indicate if calling inversion is needed in advance below
 
         // Advect flow from time t to t + dt:
-        advance(&mut state);
+        advance(&mut state, &mut output)?;
     }
 
     state.itime = (state.t / dt) as usize;
@@ -310,45 +338,13 @@ pub fn nhswps(parameters: &Parameters) -> Result<()> {
             state.zeta.view_mut(),
         );
         psolve(&mut state);
-        savegrid(&mut state);
+        savegrid(&mut state, &mut output)?;
     }
 
-    //finalise
-    let output = state.output;
-
-    write_file(out_dir.join("monitor.asc"), &output.monitor.as_bytes())?;
-    write_file(out_dir.join("ecomp.asc"), &output.ecomp.as_bytes())?;
-    write_file(out_dir.join("spectra.asc"), &output.spectra.as_bytes())?;
-
-    let out_dir_2d = out_dir.join("2d/");
-
-    create_dir(&out_dir_2d).ok();
-    write_file(&out_dir_2d.join("d.r4"), &output.d2d)?;
-    write_file(&out_dir_2d.join("g.r4"), &output.d2g)?;
-    write_file(&out_dir_2d.join("h.r4"), &output.d2h)?;
-    write_file(&out_dir_2d.join("q.r4"), &output.d2q)?;
-    write_file(&out_dir_2d.join("zeta.r4"), &output.d2zeta)?;
-
-    let out_dir_3d = out_dir.join("3d/");
-
-    create_dir(&out_dir_3d).ok();
-    write_file(&out_dir_3d.join("d.r4"), &output.d3d)?;
-    write_file(&out_dir_3d.join("g.r4"), &output.d3g)?;
-    write_file(&out_dir_3d.join("pn.r4"), &output.d3pn)?;
-    write_file(&out_dir_3d.join("ql.r4"), &output.d3ql)?;
-    write_file(&out_dir_3d.join("r.r4"), &output.d3r)?;
-    write_file(&out_dir_3d.join("w.r4"), &output.d3w)?;
-
     Ok(())
 }
 
-fn write_file<P: AsRef<Path>>(path: P, data: &[u8]) -> Result<()> {
-    let mut f = File::create(path)?;
-    f.write_all(data)?;
-    Ok(())
-}
-
-pub fn savegrid(state: &mut State) {
+pub fn savegrid(state: &mut State, output: &mut Output) -> Result<()> {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
 
@@ -417,11 +413,12 @@ pub fn savegrid(state: &mut State) {
 
     // Write energies to ecomp.asc:
     //write(16,'(f13.6,5(1x,f16.9))') t,zero,ekin,ekin,epot,etot
-    let s = format!(
+    write!(
+        output.ecomp,
         "{:.6} {:.9} {:.9} {:.9} {:.9} {:.9}\n",
         state.t, 0.0, ekin, ekin, epot, etot
-    );
-    state.output.ecomp += &s;
+    )?;
+
     info!("t = {}, E_tot = {}", state.t, etot);
 
     // Compute vertically-averaged 1d vorticity, divergence and
@@ -474,17 +471,21 @@ pub fn savegrid(state: &mut State) {
     dspec *= &spmf;
     gspec *= &spmf;
 
-    let s = format!("{:.6} {}\n", state.t, state.spectral.kmaxred);
-    state.output.spectra += &s;
+    write!(
+        output.spectra,
+        "{:.6} {}\n",
+        state.t, state.spectral.kmaxred
+    )?;
+
     for k in 1..=state.spectral.kmaxred {
-        let s = format!(
+        write!(
+            output.spectra,
             "{:.8} {:.8} {:.8} {:.8}\n",
             state.spectral.alk[k - 1],
             zspec[k].log10(),
             (dspec[k] + 1.0E-32).log10(),
             (gspec[k] + 1.0E-32).log10()
-        );
-        state.output.spectra += &s;
+        )?;
     }
 
     // Write various 3D gridded fields to direct access files:
@@ -498,10 +499,10 @@ pub fn savegrid(state: &mut State) {
             .assign(&wkp.mapv(|f| f as f32));
     }
     append_output(
-        &mut state.output.d3ql,
+        &mut output.d3ql,
         state.t,
         v3d.as_slice_memory_order().unwrap(),
-    );
+    )?;
 
     // Divergence field:
     for iz in 0..=nz {
@@ -513,10 +514,10 @@ pub fn savegrid(state: &mut State) {
             .assign(&wkp.mapv(|f| f as f32));
     }
     append_output(
-        &mut state.output.d3d,
+        &mut output.d3d,
         state.t,
         v3d.as_slice_memory_order().unwrap(),
-    );
+    )?;
 
     // Acceleration divergence field:
     for iz in 0..=nz {
@@ -528,10 +529,10 @@ pub fn savegrid(state: &mut State) {
             .assign(&wkp.mapv(|f| f as f32));
     }
     append_output(
-        &mut state.output.d3g,
+        &mut output.d3g,
         state.t,
         v3d.as_slice_memory_order().unwrap(),
-    );
+    )?;
 
     // Dimensionless thickness anomaly:
     let r_f32 = state
@@ -541,7 +542,7 @@ pub fn savegrid(state: &mut State) {
         .iter()
         .map(|x| *x as f32)
         .collect::<Vec<f32>>();
-    append_output(&mut state.output.d3r, state.t, &r_f32);
+    append_output(&mut output.d3r, state.t, &r_f32)?;
 
     // Vertical velocity:
     let w_f32 = state
@@ -551,7 +552,7 @@ pub fn savegrid(state: &mut State) {
         .iter()
         .map(|x| *x as f32)
         .collect::<Vec<f32>>();
-    append_output(&mut state.output.d3w, state.t, &w_f32);
+    append_output(&mut output.d3w, state.t, &w_f32)?;
 
     // Non-hydrostatic pressure:
     let pn_f32 = state
@@ -561,7 +562,7 @@ pub fn savegrid(state: &mut State) {
         .iter()
         .map(|x| *x as f32)
         .collect::<Vec<f32>>();
-    append_output(&mut state.output.d3pn, state.t, &pn_f32);
+    append_output(&mut output.d3pn, state.t, &pn_f32)?;
 
     // Write various vertically-integrated 2D fields to direct access files:
     // Divergence:
@@ -577,7 +578,7 @@ pub fn savegrid(state: &mut State) {
         .iter()
         .map(|x| *x as f32)
         .collect::<Vec<f32>>();
-    append_output(&mut state.output.d2d, state.t, &wkp_f32);
+    append_output(&mut output.d2d, state.t, &wkp_f32)?;
 
     // Relative vorticity:
     wkp.fill(0.0);
@@ -600,7 +601,7 @@ pub fn savegrid(state: &mut State) {
         .iter()
         .map(|x| *x as f32)
         .collect::<Vec<f32>>();
-    append_output(&mut state.output.d2zeta, state.t, &wkp_f32);
+    append_output(&mut output.d2zeta, state.t, &wkp_f32)?;
 
     // PV anomaly:
     Zip::from(&mut wkp)
@@ -612,7 +613,7 @@ pub fn savegrid(state: &mut State) {
         .iter()
         .map(|x| *x as f32)
         .collect::<Vec<f32>>();
-    append_output(&mut state.output.d2q, state.t, &wkp_f32);
+    append_output(&mut output.d2q, state.t, &wkp_f32)?;
 
     // Acceleration divergence:
     wkp.fill(0.0);
@@ -633,7 +634,7 @@ pub fn savegrid(state: &mut State) {
         .iter()
         .map(|x| *x as f32)
         .collect::<Vec<f32>>();
-    append_output(&mut state.output.d2g, state.t, &wkp_f32);
+    append_output(&mut output.d2g, state.t, &wkp_f32)?;
 
     // Dimensionless height anomaly:
     Zip::from(&mut wkp)
@@ -645,21 +646,24 @@ pub fn savegrid(state: &mut State) {
         .iter()
         .map(|x| *x as f32)
         .collect::<Vec<f32>>();
-    append_output(&mut state.output.d2h, state.t, &wkp_f32);
+    append_output(&mut output.d2h, state.t, &wkp_f32)?;
+
+    Ok(())
 }
 
-fn append_output(field: &mut Vec<u8>, t: f64, data: &[f32]) {
+fn append_output(field: &mut File, t: f64, data: &[f32]) -> Result<()> {
     let mut buf = [0u8; 4];
     LittleEndian::write_f32(&mut buf, t as f32);
-    field.extend_from_slice(&buf);
+    field.write_all(&buf)?;
     for e in data {
         LittleEndian::write_f32(&mut buf, *e);
-        field.extend_from_slice(&buf);
+        field.write_all(&buf)?;
     }
+    Ok(())
 }
 
 /// Computes various quantities every time step to monitor the flow evolution.
-fn diagnose(state: &mut State) {
+fn diagnose(state: &mut State, output: &mut Output) -> Result<()> {
     let ng = state.spectral.ng;
     let nz = state.spectral.nz;
     // Compute maximum horizontal speed:
@@ -693,15 +697,15 @@ fn diagnose(state: &mut State) {
     }
     let zrms = (vsumi * sum).sqrt();
 
-    let s = format!(
+    write!(
+        output.monitor,
         "{:.5} {:.6} {:.6} {:.6} {:.6}\n",
         state.t,
         (1.0 / 2.0) * (zrms.powf(2.0)),
         zrms,
         zmax,
         umax
-    );
+    )?;
 
-    debug!("{}", &s.trim());
-    state.output.monitor += &s;
+    Ok(())
 }

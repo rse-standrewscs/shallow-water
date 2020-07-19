@@ -139,10 +139,7 @@ pub fn source(
 mod test {
     use {
         super::*,
-        crate::{
-            array3_from_file,
-            nhswps::{Output, Spectral},
-        },
+        crate::{array3_from_file, nhswps::Spectral},
         byteorder::{ByteOrder, NetworkEndian},
         lazy_static::lazy_static,
         ndarray::{Array3, ShapeBuilder},
@@ -188,7 +185,6 @@ mod test {
                 itime: 0,
                 jtime: 0,
                 ggen: false,
-                output: Output::default(),
             }
         };
         static ref STATE_32_4: State = {
@@ -230,7 +226,6 @@ mod test {
                 itime: 0,
                 jtime: 0,
                 ggen: false,
-                output: Output::default(),
             }
         };
     }
