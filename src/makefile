@@ -11,12 +11,12 @@ objects = parameters.o constants.o spectral.o #Main .o files
 fft_lib = stafft.f90 sta2dfft.f90
 
  # Set flag options:
-norm_flags = -O3 #-mcmodel=medium #Compiler flags
-test_flags = -O3 -mcmodel=medium -fbounds-check -fbacktrace  #Compiler flags
+norm_flags = -fast -qopenmp #-mcmodel=medium #Compiler flags
+test_flags = -fast -check -g -traceback  #Compiler flags
 
  # Set compiler and flag used:
-f90=gfortran
-flags=$(norm_flags)
+f90=ifort
+flags=$(test_flags)
 
 #----------------------------------------------------------------------
  # Rules:
@@ -36,7 +36,7 @@ setup:
 	test -d $(installdir)/2d || mkdir $(installdir)/2d
 
 install:
-	find . -type f -executable -exec /bin/mv {} $(installdir)/ \;
+	find . -type f -executable -exec /bin/cp {} $(installdir)/ \;
 
  # Include intialisation and post-processing rules
  # if these exist:
