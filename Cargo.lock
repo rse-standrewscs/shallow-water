@@ -415,15 +415,15 @@ dependencies = [
 
 [[package]]
 name = "quit"
-version = "1.1.0"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "quit_macros 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quit_macros 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "quit_macros"
-version = "1.1.0"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -625,7 +625,7 @@ dependencies = [
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "ndarray 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "quit 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quit 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rayon 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.116 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.8.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -887,8 +887,8 @@ dependencies = [
 "checksum oorandom 11.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "a170cebd8021a008ea92e4db85a72f80b35df514ec664b296fdcbb654eac0b2c"
 "checksum plotters 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)" = "0d1685fbe7beba33de0330629da9d955ac75bd54f33d7b79f9a895590124f6bb"
 "checksum proc-macro2 1.0.18 (registry+https://github.com/rust-lang/crates.io-index)" = "beae6331a816b1f65d04c45b078fd8e6c93e8071771f41b8163255bbd8d7c8fa"
-"checksum quit 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "cb03ab14606c541fa2cf20b1975d55d4ecb9204ce032cb4e947cb56fe178b2ac"
-"checksum quit_macros 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "dce3906c8eb59a7a31c5515dd27fc24a858690bdc1c8a03db08e2047b0da902a"
+"checksum quit 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "94f4bb36a4259c52bb35ae60baf6242b9b33f7505e834d8d36f6227d21840756"
+"checksum quit_macros 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "ff6923e4138faf97a0aaabf4a7b5ff1b0df28370786bead6200d2202c16e1b4e"
 "checksum quote 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)" = "aa563d17ecb180e500da1cfd2b028310ac758de548efdd203e18f283af693f37"
 "checksum rand 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
 "checksum rand_core 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6fdeb83b075e8266dcc8762c22776f6877a63111121f5f8c7411e5be7eed4b"
