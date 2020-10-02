@@ -29,7 +29,7 @@ serde_yaml = "0.8"
 [dev-dependencies]
 approx = "0.3"
 criterion = "0.3"
-insta = "0.16"
+insta = "1.0"
 lazy_static = "1.4"
 tempdir = "0.3"
 
