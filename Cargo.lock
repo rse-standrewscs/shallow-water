@@ -25,6 +25,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "approx"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f2a05fd1bd10b2527e20a2cd32d8873d115b8b39fe219ee25f42a8aca6ba278"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -393,7 +402,7 @@ version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac06db03ec2f46ee0ecdca1a1c34a99c0d188a0d83439b84bf0cb4b386e4ab09"
 dependencies = [
- "approx",
+ "approx 0.3.2",
  "matrixmultiply",
  "num-complex",
  "num-integer",
@@ -697,7 +706,7 @@ name = "shallow-water"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "approx",
+ "approx 0.4.0",
  "bincode",
  "byteorder",
  "clap",
