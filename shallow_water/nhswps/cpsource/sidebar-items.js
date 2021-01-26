@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["cpsource","Finds the part of the pressure source which does not vary in the iteration to find the pressure."]]});

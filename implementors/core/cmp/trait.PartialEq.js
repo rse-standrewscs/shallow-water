@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["shallow_water"] = [{"text":"impl PartialEq&lt;Spectral&gt; for Spectral","synthetic":false,"types":[]},{"text":"impl PartialEq&lt;D2FFT&gt; for D2FFT","synthetic":false,"types":[]},{"text":"impl PartialEq&lt;Parameters&gt; for Parameters","synthetic":false,"types":[]},{"text":"impl PartialEq&lt;Numerical&gt; for Numerical","synthetic":false,"types":[]},{"text":"impl PartialEq&lt;Physical&gt; for Physical","synthetic":false,"types":[]},{"text":"impl PartialEq&lt;Environment&gt; for Environment","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

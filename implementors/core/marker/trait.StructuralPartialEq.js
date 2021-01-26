@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["shallow_water"] = [{"text":"impl StructuralPartialEq for Spectral","synthetic":false,"types":[]},{"text":"impl StructuralPartialEq for D2FFT","synthetic":false,"types":[]},{"text":"impl StructuralPartialEq for Parameters","synthetic":false,"types":[]},{"text":"impl StructuralPartialEq for Numerical","synthetic":false,"types":[]},{"text":"impl StructuralPartialEq for Physical","synthetic":false,"types":[]},{"text":"impl StructuralPartialEq for Environment","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

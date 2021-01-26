@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["shallow_water"] = [{"text":"impl Debug for Output","synthetic":false,"types":[]},{"text":"impl Debug for State","synthetic":false,"types":[]},{"text":"impl Debug for Spectral","synthetic":false,"types":[]},{"text":"impl Debug for D2FFT","synthetic":false,"types":[]},{"text":"impl Debug for Parameters","synthetic":false,"types":[]},{"text":"impl Debug for Numerical","synthetic":false,"types":[]},{"text":"impl Debug for Physical","synthetic":false,"types":[]},{"text":"impl Debug for Environment","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

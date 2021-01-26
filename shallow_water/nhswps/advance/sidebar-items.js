@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["advance","Advances fields from time t to t+dt using an iterative implicit method of the form"]]});

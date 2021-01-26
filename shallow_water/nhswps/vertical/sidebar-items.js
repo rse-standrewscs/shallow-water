@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["vertical","Calculates layer heights (z), as well as dz/dx & dz/dy (zx & zy), the vertical velocity (w), and the A = grad{u*rho'_theta} (aa)."]]});

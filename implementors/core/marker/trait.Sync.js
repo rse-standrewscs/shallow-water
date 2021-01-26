@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["shallow_water"] = [{"text":"impl Sync for Output","synthetic":true,"types":[]},{"text":"impl Sync for State","synthetic":true,"types":[]},{"text":"impl Sync for Spectral","synthetic":true,"types":[]},{"text":"impl Sync for D2FFT","synthetic":true,"types":[]},{"text":"impl Sync for Parameters","synthetic":true,"types":[]},{"text":"impl Sync for Numerical","synthetic":true,"types":[]},{"text":"impl Sync for Physical","synthetic":true,"types":[]},{"text":"impl Sync for Environment","synthetic":true,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

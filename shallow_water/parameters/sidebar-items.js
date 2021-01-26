@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Environment",""],["Numerical",""],["Parameters","Simulation parameters"],["Physical",""]]});

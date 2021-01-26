@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["coeffs","Calculates the fixed coefficients used in the pressure iteration."]]});

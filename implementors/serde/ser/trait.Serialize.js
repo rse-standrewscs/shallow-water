@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["shallow_water"] = [{"text":"impl Serialize for State","synthetic":false,"types":[]},{"text":"impl Serialize for Spectral","synthetic":false,"types":[]},{"text":"impl Serialize for D2FFT","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

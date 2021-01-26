@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["psolve","Solves for the nonhydrostatic part of the pressure (pn) given the velocity field (u,v,w) together with r = rho'_theta and z = theta + int_0^theta{rho'_theta(s)ds}."]]});

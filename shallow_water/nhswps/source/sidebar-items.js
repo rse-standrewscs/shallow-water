@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["source","Gets the nonlinear source terms for linearised PV, divergence and acceleration divergence  --- all in spectral space.  These are returned in sqs, sds and sgs respectively."]]});

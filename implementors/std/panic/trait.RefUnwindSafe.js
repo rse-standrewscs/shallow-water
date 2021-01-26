@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["shallow_water"] = [{"text":"impl RefUnwindSafe for Output","synthetic":true,"types":[]},{"text":"impl RefUnwindSafe for State","synthetic":true,"types":[]},{"text":"impl RefUnwindSafe for Spectral","synthetic":true,"types":[]},{"text":"impl RefUnwindSafe for D2FFT","synthetic":true,"types":[]},{"text":"impl RefUnwindSafe for Parameters","synthetic":true,"types":[]},{"text":"impl RefUnwindSafe for Numerical","synthetic":true,"types":[]},{"text":"impl RefUnwindSafe for Physical","synthetic":true,"types":[]},{"text":"impl RefUnwindSafe for Environment","synthetic":true,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

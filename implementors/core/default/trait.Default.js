@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["shallow_water"] = [{"text":"impl Default for Parameters","synthetic":false,"types":[]},{"text":"impl Default for Numerical","synthetic":false,"types":[]},{"text":"impl Default for Physical","synthetic":false,"types":[]},{"text":"impl Default for Environment","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
