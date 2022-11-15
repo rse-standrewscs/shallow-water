@@ -9,7 +9,7 @@ use {
         balinit::balinit, nhswps::nhswps, parameters::Parameters, swto3d::swto3d,
         vstrip::init_pv_strip,
     },
-    simplelog::{Config as LogConfig, LevelFilter, TermLogger, TerminalMode},
+    simplelog::{ColorChoice, Config as LogConfig, LevelFilter, TermLogger, TerminalMode},
     std::fs::{create_dir_all, File},
 };
 
@@ -37,6 +37,7 @@ fn main() {
         LevelFilter::Debug,
         LogConfig::default(),
         TerminalMode::Mixed,
+        ColorChoice::Auto,
     )
     .expect("Failed to initialize logger");
 

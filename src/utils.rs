@@ -88,7 +88,7 @@ macro_rules! array2_from_file {
                 .map(byteorder::NetworkEndian::read_f64)
                 .collect::<Vec<f64>>(),
         )
-        .unwrap();
+        .unwrap()
     };
 }
 
@@ -102,6 +102,6 @@ macro_rules! array3_from_file {
                 .map(byteorder::NetworkEndian::read_f64)
                 .collect::<Vec<f64>>(),
         )
-        .unwrap();
+        .unwrap()
     };
 }

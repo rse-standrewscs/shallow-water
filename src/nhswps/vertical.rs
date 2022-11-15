@@ -25,7 +25,7 @@ pub fn vertical(state: &mut State) {
     Zip::from(state.z.index_axis_mut(Axis(2), 1))
         .and(state.r.index_axis(Axis(2), 0))
         .and(state.r.index_axis(Axis(2), 1))
-        .apply(|z, r0, r1| *z = dz2 * (r0 + r1));
+        .for_each(|z, r0, r1| *z = dz2 * (r0 + r1));
 
     let mut last_layer = state.z.index_axis(Axis(2), 1).into_owned();
     for iz in 1..nz {
@@ -33,7 +33,7 @@ pub fn vertical(state: &mut State) {
             .and(&last_layer)
             .and(state.r.index_axis(Axis(2), iz))
             .and(state.r.index_axis(Axis(2), iz + 1))
-            .apply(|z1, z0, r0, r1| *z1 = z0 + dz2 * (r0 + r1));
+            .for_each(|z1, z0, r0, r1| *z1 = z0 + dz2 * (r0 + r1));
 
         last_layer.assign(&state.z.index_axis(Axis(2), iz + 1));
     }
@@ -41,7 +41,7 @@ pub fn vertical(state: &mut State) {
     for iz in 1..=nz {
         // Add on theta (a linear function) to complete definition of z:
         let theta = state.spectral.theta[iz];
-        Zip::from(state.z.index_axis_mut(Axis(2), iz)).apply(|z| *z += theta);
+        Zip::from(state.z.index_axis_mut(Axis(2), iz)).for_each(|z| *z += theta);
 
         // Calculate z_x & z_y:
         let mut wkq = state.z.index_axis(Axis(2), iz).to_owned();
@@ -70,7 +70,7 @@ pub fn vertical(state: &mut State) {
         Zip::from(&mut wkq)
             .and(state.u.index_axis(Axis(2), iz))
             .and(state.r.index_axis(Axis(2), iz))
-            .apply(|wkq, u, r| *wkq = u * r);
+            .for_each(|wkq, u, r| *wkq = u * r);
 
         state.spectral.d2fft.ptospc(wkq.view_mut(), wka.view_mut());
         state
@@ -82,7 +82,7 @@ pub fn vertical(state: &mut State) {
         Zip::from(&mut wkq)
             .and(state.v.index_axis(Axis(2), iz))
             .and(state.r.index_axis(Axis(2), iz))
-            .apply(|wkq, v, r| *wkq = v * r);
+            .for_each(|wkq, v, r| *wkq = v * r);
 
         state.spectral.d2fft.ptospc(wkq.view_mut(), wka.view_mut());
         state
@@ -95,26 +95,26 @@ pub fn vertical(state: &mut State) {
             .and(&state.spectral.filt)
             .and(&wkb)
             .and(&wkc)
-            .apply(|aa, filt, wkb, wkc| *aa = filt * (wkb + wkc));
+            .for_each(|aa, filt, wkb, wkc| *aa = filt * (wkb + wkc));
 
         // Need -(A + delta) in physical space for computing w just below:
         Zip::from(&mut wka)
             .and(state.aa.index_axis(Axis(2), iz))
             .and(state.ds.index_axis(Axis(2), iz))
-            .apply(|wka, aa, ds| *wka = aa + ds);
+            .for_each(|wka, aa, ds| *wka = aa + ds);
 
         state.spectral.d2fft.spctop(wka.view_mut(), wkq.view_mut());
 
         Zip::from(rsrc.index_axis_mut(Axis(2), iz))
             .and(&wkq)
-            .apply(|rsrc, wkq| *rsrc = -wkq);
+            .for_each(|rsrc, wkq| *rsrc = -wkq);
     }
 
     // Calculate vertical velocity (0 at iz = 0):
     Zip::from(state.w.index_axis_mut(Axis(2), 1))
         .and(rsrc.index_axis(Axis(2), 0))
         .and(rsrc.index_axis(Axis(2), 1))
-        .apply(|w, rsrc0, rsrc1| *w = dz2 * (rsrc0 + rsrc1));
+        .for_each(|w, rsrc0, rsrc1| *w = dz2 * (rsrc0 + rsrc1));
 
     for iz in 1..nz {
         let w0 = state.w.index_axis(Axis(2), iz).to_owned();
@@ -122,7 +122,7 @@ pub fn vertical(state: &mut State) {
             .and(&w0)
             .and(rsrc.index_axis(Axis(2), iz))
             .and(rsrc.index_axis(Axis(2), iz + 1))
-            .apply(|w1, w0, rsrc0, rsrc1| *w1 = w0 + dz2 * (rsrc0 + rsrc1));
+            .for_each(|w1, w0, rsrc0, rsrc1| *w1 = w0 + dz2 * (rsrc0 + rsrc1));
     }
 
     // Complete definition of w by adding u*z_x + v*z_y after de-aliasing:
@@ -132,13 +132,13 @@ pub fn vertical(state: &mut State) {
             .and(state.zx.index_axis(Axis(2), iz))
             .and(state.v.index_axis(Axis(2), iz))
             .and(state.zy.index_axis(Axis(2), iz))
-            .apply(|wkq, u, zx, v, zy| *wkq = u * zx + v * zy);
+            .for_each(|wkq, u, zx, v, zy| *wkq = u * zx + v * zy);
 
         state.spectral.deal2d(wkq.view_mut());
 
         Zip::from(state.w.index_axis_mut(Axis(2), iz))
             .and(&wkq)
-            .apply(|w, wkq| *w += wkq);
+            .for_each(|w, wkq| *w += wkq);
     }
 }
 

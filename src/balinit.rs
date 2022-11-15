@@ -215,7 +215,7 @@ pub fn balinit(parameters: &Parameters) -> Result<()> {
             .and(&spectral.filt)
             .and(&wka_matrix)
             .and(&wkb_matrix)
-            .apply(|gs, filt, wka, wkb| *gs = filt * (wka - 2.0 * wkb));
+            .for_each(|gs, filt, wka, wkb| *gs = filt * (wka - 2.0 * wkb));
 
         wka = gs.clone();
         spectral
@@ -266,7 +266,7 @@ pub fn balinit(parameters: &Parameters) -> Result<()> {
             .and(&wkb_matrix)
             .and(&spectral.c2g2)
             .and(&wka_matrix)
-            .apply(|ds, helm, wkb, c2g2, wka| *ds = helm * (COF * wkb - c2g2 * wka));
+            .for_each(|ds, helm, wkb, c2g2, wka| *ds = helm * (COF * wkb - c2g2 * wka));
 
         wka = ds.clone();
         spectral
@@ -303,7 +303,7 @@ pub fn balinit(parameters: &Parameters) -> Result<()> {
             .and(&spectral.filt)
             .and(&wkb_matrix)
             .and(&spectral.opak)
-            .apply(|wka, filt, wkb, opak| *wka = filt * wkb / (opak - fqbar));
+            .for_each(|wka, filt, wkb, opak| *wka = filt * wkb / (opak - fqbar));
 
         spectral
             .d2fft
@@ -336,10 +336,10 @@ pub fn balinit(parameters: &Parameters) -> Result<()> {
         Zip::from(wka_matrix)
             .and(&spectral.rlap)
             .and(&wkb_matrix)
-            .apply(|wka, rlap, wkb| *wka = rlap * wkb);
+            .for_each(|wka, rlap, wkb| *wka = rlap * wkb);
         Zip::from(wkb_matrix)
             .and(&spectral.filt)
-            .apply(|wkb, filt| *wkb *= filt);
+            .for_each(|wkb, filt| *wkb *= filt);
 
         spectral
             .d2fft
@@ -360,7 +360,7 @@ pub fn balinit(parameters: &Parameters) -> Result<()> {
         Zip::from(wke_matrix)
             .and(&spectral.rlap)
             .and(&ds_matrix)
-            .apply(|wke, rlap, ds| *wke = rlap * ds);
+            .for_each(|wke, rlap, ds| *wke = rlap * ds);
 
         spectral.d2fft.xderiv(
             &spectral.hrkx,

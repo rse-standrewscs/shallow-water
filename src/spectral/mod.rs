@@ -228,11 +228,11 @@ impl Spectral {
         Zip::from(&mut htdv.index_axis_mut(Axis(2), 0))
             .and(&filt)
             .and(&a0b)
-            .apply(|htdv, filt, a0b| *htdv = filt / a0b);
+            .for_each(|htdv, filt, a0b| *htdv = filt / a0b);
         Zip::from(&mut etdv.index_axis_mut(Axis(2), 0))
             .and(&apb)
             .and(&htdv.index_axis(Axis(2), 0))
-            .apply(|etdv, apb, htdv| *etdv = -apb * htdv);
+            .for_each(|etdv, apb, htdv| *etdv = -apb * htdv);
 
         for iz in 1..=nz - 2 {
             Zip::from(htdv.index_axis_mut(Axis(2), iz))
@@ -240,12 +240,12 @@ impl Spectral {
                 .and(&a0)
                 .and(&ap)
                 .and(etdv.index_axis(Axis(2), iz - 1))
-                .apply(|htdv, filt, a0, ap, etdv| *htdv = filt / (a0 + ap * etdv));
+                .for_each(|htdv, filt, a0, ap, etdv| *htdv = filt / (a0 + ap * etdv));
 
             Zip::from(etdv.index_axis_mut(Axis(2), iz))
                 .and(&ap)
                 .and(htdv.index_axis(Axis(2), iz))
-                .apply(|etdv, ap, htdv| *etdv = -ap * htdv);
+                .for_each(|etdv, ap, htdv| *etdv = -ap * htdv);
         }
 
         Zip::from(htdv.index_axis_mut(Axis(2), nz - 1))
@@ -253,7 +253,7 @@ impl Spectral {
             .and(&a0)
             .and(&ap)
             .and(etdv.index_axis(Axis(2), nz - 2))
-            .apply(|htdv, filt, a0, ap, etdv| *htdv = filt / (a0 + ap * etdv));
+            .for_each(|htdv, filt, a0, ap, etdv| *htdv = filt / (a0 + ap * etdv));
 
         //Tridiagonal arrays for the compact difference calculation of d/dz:
         htd1[0] = 1.0 / (2.0 / 3.0);
@@ -323,7 +323,7 @@ impl Spectral {
         Zip::from(&mut es)
             .and(gs)
             .and(qs)
-            .apply(|es, gs, qs| *es = COFI * (COFI * gs - qs));
+            .for_each(|es, gs, qs| *es = COFI * (COFI * gs - qs));
 
         //Compute vertical average of eta (store in wkh):
         wkh.fill(0.0);
@@ -331,13 +331,13 @@ impl Spectral {
         for iz in 0..=nz {
             Zip::from(&mut wkh)
                 .and(&es.index_axis(Axis(2), iz))
-                .apply(|wkh, es| *wkh += self.weight[iz] * es);
+                .for_each(|wkh, es| *wkh += self.weight[iz] * es);
         }
 
         //Multiply by F = c^2*k^2/(f^2+c^2k^2) in spectral space:
         Zip::from(&mut wkh)
             .and(&self.rope)
-            .apply(|wkh, rope| *wkh *= rope);
+            .for_each(|wkh, rope| *wkh *= rope);
 
         //Initialise mean flow:
         let uio = Arc::new(Mutex::new(0.0));
@@ -365,24 +365,24 @@ impl Spectral {
                 Zip::from(&mut wka)
                     .and(&es.index_axis(Axis(2), iz))
                     .and(&wkh)
-                    .apply(|wka, es, wkh| *wka = es - wkh);
+                    .for_each(|wka, es, wkh| *wka = es - wkh);
 
                 //Obtain relative vorticity (spectral, in wkb):
                 //wkb=qs(:,:,iz)+COF*wka;
                 Zip::from(&mut wkb)
                     .and(&qs.index_axis(Axis(2), iz))
                     .and(&wka)
-                    .apply(|wkb, qs, wka| *wkb = qs + COF * wka);
+                    .for_each(|wkb, qs, wka| *wkb = qs + COF * wka);
 
                 //Invert Laplace operator on zeta & delta to define velocity:
                 Zip::from(&mut wkc)
                     .and(&self.rlap)
                     .and(&wkb)
-                    .apply(|wkc, rlap, wkb| *wkc = rlap * wkb);
+                    .for_each(|wkc, rlap, wkb| *wkc = rlap * wkb);
                 Zip::from(&mut wkd)
                     .and(&self.rlap)
                     .and(&ds.index_axis(Axis(2), iz))
-                    .apply(|wkd, rlap, ds| *wkd = rlap * ds);
+                    .for_each(|wkd, rlap, ds| *wkd = rlap * ds);
 
                 //Calculate derivatives spectrally:
                 self.d2fft.xderiv(&self.hrkx, wkd.view(), wke.view_mut());
@@ -392,9 +392,13 @@ impl Spectral {
 
                 //Define velocity components:
                 //wke=wke-wkg;
-                Zip::from(&mut wke).and(&wkg).apply(|wke, wkg| *wke -= wkg);
+                Zip::from(&mut wke)
+                    .and(&wkg)
+                    .for_each(|wke, wkg| *wke -= wkg);
                 //wkf=wkf+wkd;
-                Zip::from(&mut wkf).and(&wkd).apply(|wkf, wkd| *wkf += wkd);
+                Zip::from(&mut wkf)
+                    .and(&wkd)
+                    .for_each(|wkf, wkd| *wkf += wkd);
 
                 //Bring quantities back to physical space and store:
                 self.d2fft.spctop(wka.view_mut(), r.view_mut());
@@ -447,7 +451,7 @@ impl Spectral {
             .and(&ay)
             .and(&bx)
             .and(&by)
-            .apply(|wkb, ax, ay, bx, by| *wkb = ax * by - ay * bx);
+            .for_each(|wkb, ax, ay, bx, by| *wkb = ax * by - ay * bx);
 
         self.d2fft.ptospc(wkb.view_mut(), cs.view_mut());
     }
@@ -530,7 +534,7 @@ impl Spectral {
 
                 Zip::from(&mut wks)
                     .and(&self.filt)
-                    .apply(|wks, filt| *wks *= filt);
+                    .for_each(|wks, filt| *wks *= filt);
 
                 self.d2fft.spctop(wks.view_mut(), fp.view_mut());
             });
@@ -544,7 +548,7 @@ impl Spectral {
 
         Zip::from(&mut fs)
             .and(&self.filt)
-            .apply(|fs, filt| *fs *= filt);
+            .for_each(|fs, filt| *fs *= filt);
 
         self.d2fft.spctop(fs.view_mut(), fp.view_mut());
     }

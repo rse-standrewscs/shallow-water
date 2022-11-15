@@ -56,7 +56,7 @@ pub fn psolve(state: &mut State) {
     // Calculate 1/(1+rho'_theta) and de-aliase:
     Zip::from(&mut state.ri)
         .and(&state.r)
-        .apply(|ri, r| *ri = 1.0 / (r + 1.0));
+        .for_each(|ri, r| *ri = 1.0 / (r + 1.0));
     state.spectral.deal3d(state.ri.view_mut());
 
     // Calcuate layer heights z and z_x & z_y, vertical velocity w
@@ -103,7 +103,7 @@ pub fn psolve(state: &mut State) {
             .and(&state.ps.index_axis(Axis(2), 1))
             .and(&state.ps.index_axis(Axis(2), 2))
             .and(&state.ps.index_axis(Axis(2), 3))
-            .apply(|wkd, ps0, ps1, ps2, ps3| {
+            .for_each(|wkd, ps0, ps1, ps2, ps3| {
                 *wkd = (2.0 * ps0 - 5.0 * ps1 + 4.0 * ps2 - ps3) * dzisq;
             });
 
@@ -117,7 +117,7 @@ pub fn psolve(state: &mut State) {
             .and(sp0.index_axis(Axis(2), 0))
             .and(cpt2.index_axis(Axis(2), 0))
             .and(&(*d2pdt2.lock().unwrap()))
-            .apply(|wkp, sp0, cpt2, d2pdt2| *wkp = sp0 + cpt2 * d2pdt2);
+            .for_each(|wkp, sp0, cpt2, d2pdt2| *wkp = sp0 + cpt2 * d2pdt2);
 
         // Transform to spectral space for inversion below:
         state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
@@ -137,13 +137,13 @@ pub fn psolve(state: &mut State) {
             Zip::from(&mut wka)
                 .and(&state.ps.index_axis(Axis(2), iz + 1))
                 .and(&state.ps.index_axis(Axis(2), iz - 1))
-                .apply(|wka, psp, psm| *wka = (psp - psm) * hdzi);
+                .for_each(|wka, psp, psm| *wka = (psp - psm) * hdzi);
 
             Zip::from(&mut wkd)
                 .and(&state.ps.index_axis(Axis(2), iz + 1))
                 .and(&state.ps.index_axis(Axis(2), iz))
                 .and(&state.ps.index_axis(Axis(2), iz - 1))
-                .apply(|wkd, psp, ps, psm| *wkd = (psp - 2.0 * ps + psm) * dzisq);
+                .for_each(|wkd, psp, ps, psm| *wkd = (psp - 2.0 * ps + psm) * dzisq);
 
             // Calculate x & y derivatives of dp/dtheta:
             state
@@ -171,7 +171,7 @@ pub fn psolve(state: &mut State) {
                 .and(&d2pdxt)
                 .and(sigy.index_axis(Axis(2), iz))
                 .and(&d2pdyt)
-                .apply(|wkp, sp0, sigx, d2pdxt, sigy, d2pdyt| {
+                .for_each(|wkp, sp0, sigx, d2pdxt, sigy, d2pdyt| {
                     *wkp = sp0 + sigx * d2pdxt + sigy * d2pdyt
                 });
 
@@ -192,7 +192,7 @@ pub fn psolve(state: &mut State) {
                     .and(&(*d2pdt2.lock().unwrap()))
                     .and(cpt1.index_axis(Axis(2), iz))
                     .and(&(*dpdt.lock().unwrap()))
-                    .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
+                    .for_each(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
             } else {
                 let mut dpdt_local = arr2zero(ng);
                 let mut d2pdt2_local = arr2zero(ng);
@@ -217,7 +217,7 @@ pub fn psolve(state: &mut State) {
                     .and(&d2pdt2_local)
                     .and(cpt1.index_axis(Axis(2), iz))
                     .and(&dpdt_local)
-                    .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
+                    .for_each(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
             }
 
             // Transform to spectral space for inversion below:
@@ -231,10 +231,10 @@ pub fn psolve(state: &mut State) {
         Zip::from(&mut *dpdt.lock().unwrap())
             .and(&(*d2pdt2.lock().unwrap()))
             .and(&(*wkq.lock().unwrap()))
-            .apply(|dpdt, d2pdt2, wkq| *dpdt += dz2 * (3.0 * d2pdt2 - wkq));
+            .for_each(|dpdt, d2pdt2, wkq| *dpdt += dz2 * (3.0 * d2pdt2 - wkq));
         Zip::from(&mut (*d2pdt2.lock().unwrap()))
             .and(&(*wkq.lock().unwrap()))
-            .apply(|d2pdt2, wkq| *d2pdt2 = 2.0 * *d2pdt2 - wkq);
+            .for_each(|d2pdt2, wkq| *d2pdt2 = 2.0 * *d2pdt2 - wkq);
 
         wkp = dpdt.lock().unwrap().clone();
 
@@ -267,7 +267,7 @@ pub fn psolve(state: &mut State) {
             .and(&d2pdxt)
             .and(sigy.index_axis(Axis(2), nz))
             .and(&d2pdyt)
-            .apply(|wkp, sp0, sigx, d2pdxt, sigy, d2pdyt| {
+            .for_each(|wkp, sp0, sigx, d2pdxt, sigy, d2pdyt| {
                 *wkp = sp0 + sigx * d2pdxt + sigy * d2pdyt
             });
         Zip::from(&mut wkp)
@@ -275,7 +275,7 @@ pub fn psolve(state: &mut State) {
             .and(&(*d2pdt2.lock().unwrap()))
             .and(cpt1.index_axis(Axis(2), nz))
             .and(&(*dpdt.lock().unwrap()))
-            .apply(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
+            .for_each(|wkp, cpt2, d2pdt2, cpt1, dpdt| *wkp += cpt2 * d2pdt2 + cpt1 * dpdt);
 
         // Transform to spectral space for inversion below:
         state.spectral.d2fft.ptospc(wkp.view_mut(), wka.view_mut());
@@ -288,21 +288,23 @@ pub fn psolve(state: &mut State) {
             Zip::from(gg.index_axis_mut(Axis(2), 0))
                 .and(sp.index_axis(Axis(2), 0))
                 .and(sp.index_axis(Axis(2), 1))
-                .apply(|gg, sp0, sp1| *gg = (1.0 / 3.0) * sp0 + (1.0 / 6.0) * sp1);
+                .for_each(|gg, sp0, sp1| *gg = (1.0 / 3.0) * sp0 + (1.0 / 6.0) * sp1);
 
             for iz in 1..nz {
                 Zip::from(gg.index_axis_mut(Axis(2), iz))
                     .and(sp.index_axis(Axis(2), iz - 1))
                     .and(sp.index_axis(Axis(2), iz + 1))
                     .and(sp.index_axis(Axis(2), iz))
-                    .apply(|gg, spm, spp, sp| *gg = (1.0 / 12.0) * (spm + spp) + (5.0 / 6.0) * sp);
+                    .for_each(|gg, spm, spp, sp| {
+                        *gg = (1.0 / 12.0) * (spm + spp) + (5.0 / 6.0) * sp
+                    });
             }
         }
 
         Zip::from(state.ps.index_axis_mut(Axis(2), 0))
             .and(gg.index_axis(Axis(2), 0))
             .and(state.spectral.htdv.index_axis(Axis(2), 0))
-            .apply(|ps, gg, htdv| *ps = gg * htdv);
+            .for_each(|ps, gg, htdv| *ps = gg * htdv);
 
         for iz in 1..nz {
             let ps1 = state.ps.index_axis(Axis(2), iz - 1).into_owned();
@@ -312,7 +314,7 @@ pub fn psolve(state: &mut State) {
                 .and(&state.spectral.ap)
                 .and(&ps1)
                 .and(state.spectral.htdv.index_axis(Axis(2), iz))
-                .apply(|ps, gg, ap, ps1, htdv| *ps = (gg - ap * ps1) * htdv);
+                .for_each(|ps, gg, ap, ps1, htdv| *ps = (gg - ap * ps1) * htdv);
         }
 
         for iz in (0..=nz - 2).rev() {
@@ -321,7 +323,7 @@ pub fn psolve(state: &mut State) {
             Zip::from(state.ps.index_axis_mut(Axis(2), iz))
                 .and(state.spectral.etdv.index_axis(Axis(2), iz))
                 .and(&ps1)
-                .apply(|ps, etdv, ps1| *ps += etdv * ps1);
+                .for_each(|ps, etdv, ps1| *ps += etdv * ps1);
         }
 
         state.ps.index_axis_mut(Axis(2), nz).fill(0.0);
@@ -371,34 +373,34 @@ pub fn psolve(state: &mut State) {
             Zip::from(gg.index_axis_mut(Axis(2), iz))
                 .and(state.ps.index_axis(Axis(2), iz + 1))
                 .and(state.ps.index_axis(Axis(2), iz - 1))
-                .apply(|gg, psp, psm| *gg = (psp - psm) * hdzi);
+                .for_each(|gg, psp, psm| *gg = (psp - psm) * hdzi);
         }
 
         Zip::from(gg.index_axis_mut(Axis(2), nz))
             .and(sp.lock().unwrap().index_axis(Axis(2), nz))
             .and(state.ps.index_axis(Axis(2), nz - 1))
-            .apply(|gg, sp, ps| *gg = dz6 * sp - ps * dzi);
-        Zip::from(gg.index_axis_mut(Axis(2), 1)).apply(|gg| *gg *= state.spectral.htd1[0]);
+            .for_each(|gg, sp, ps| *gg = dz6 * sp - ps * dzi);
+        Zip::from(gg.index_axis_mut(Axis(2), 1)).for_each(|gg| *gg *= state.spectral.htd1[0]);
 
         for iz in 2..nz {
             let gg1 = gg.index_axis(Axis(2), iz - 1).into_owned();
             Zip::from(gg.index_axis_mut(Axis(2), iz))
                 .and(&gg1)
-                .apply(|gg, gg1| *gg = (*gg - (1.0 / 6.0) * gg1) * state.spectral.htd1[iz - 1]);
+                .for_each(|gg, gg1| *gg = (*gg - (1.0 / 6.0) * gg1) * state.spectral.htd1[iz - 1]);
         }
 
         {
             let gg1 = gg.index_axis(Axis(2), nz - 1).into_owned();
             Zip::from(gg.index_axis_mut(Axis(2), nz))
                 .and(&gg1)
-                .apply(|gg, gg1| *gg = (*gg - (1.0 / 3.0) * gg1) * state.spectral.htd1[nz - 1]);
+                .for_each(|gg, gg1| *gg = (*gg - (1.0 / 3.0) * gg1) * state.spectral.htd1[nz - 1]);
         }
 
         for iz in (1..nz).rev() {
             let gg1 = gg.index_axis(Axis(2), iz + 1).into_owned();
             Zip::from(gg.index_axis_mut(Axis(2), iz))
                 .and(&gg1)
-                .apply(|gg, gg1| *gg += state.spectral.etd1[iz - 1] * gg1);
+                .for_each(|gg, gg1| *gg += state.spectral.etd1[iz - 1] * gg1);
         }
     }
 

@@ -31,7 +31,7 @@ pub fn source(
     for iz in 0..=nz {
         Zip::from(&mut wkd)
             .and(state.aa.index_axis(Axis(2), iz))
-            .apply(|wkd, aa| *wkd += state.spectral.weight[iz] * aa);
+            .for_each(|wkd, aa| *wkd += state.spectral.weight[iz] * aa);
     }
 
     //Note: aa contains div(u*rho_theta) in spectral space
@@ -83,7 +83,7 @@ pub fn source(
                     .and(&state.spectral.filt)
                     .and(&wkb)
                     .and(&wka)
-                    .apply(|sqs, filt, wkb, wka| *sqs = filt * (wkb - wka));
+                    .for_each(|sqs, filt, wkb, wka| *sqs = filt * (wkb - wka));
             }
 
             // Nonlinear part of ds source:
@@ -106,14 +106,14 @@ pub fn source(
                 .and(state.zx.index_axis(Axis(2), iz))
                 .and(&dd)
                 .and(state.u.index_axis(Axis(2), iz))
-                .apply(|wkp, ff, zx, dd, u| *wkp = ff * zx - dd * u);
+                .for_each(|wkp, ff, zx, dd, u| *wkp = ff * zx - dd * u);
 
             Zip::from(&mut wkq)
                 .and(&ff)
                 .and(state.zy.index_axis(Axis(2), iz))
                 .and(&dd)
                 .and(state.v.index_axis(Axis(2), iz))
-                .apply(|wkq, ff, zy, dd, v| *wkq = ff * zy - dd * v);
+                .for_each(|wkq, ff, zy, dd, v| *wkq = ff * zy - dd * v);
 
             state.spectral.divs(wkp.view(), wkq.view(), wkb.view_mut());
 
@@ -124,14 +124,16 @@ pub fn source(
                 .and(&wkb)
                 .and(&state.spectral.hlap)
                 .and(state.ps.index_axis(Axis(2), iz))
-                .apply(|sds, filt, wkc, wkb, hlap, ps| *sds = filt * (2.0 * wkc + wkb - hlap * ps));
+                .for_each(|sds, filt, wkc, wkb, hlap, ps| {
+                    *sds = filt * (2.0 * wkc + wkb - hlap * ps)
+                });
 
             // Nonlinear part of gs source:
             Zip::from(sgs_slice)
                 .and(sqs_slice)
                 .and(&wkd)
                 .and(state.aa.index_axis(Axis(2), iz))
-                .apply(|sgs, sqs, wkd, aa| *sgs = COF * *sqs + wkd - FSQ * aa);
+                .for_each(|sgs, sqs, wkd, aa| *sgs = COF * *sqs + wkd - FSQ * aa);
         });
 }
 

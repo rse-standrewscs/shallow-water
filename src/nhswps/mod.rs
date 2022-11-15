@@ -265,13 +265,13 @@ pub fn nhswps(parameters: &Parameters) -> Result<()> {
     for iz in 0..=nz {
         Zip::from(state.qs.index_axis_mut(Axis(2), iz))
             .and(&state.spectral.filt)
-            .apply(|qs, filt| *qs *= filt);
+            .for_each(|qs, filt| *qs *= filt);
         Zip::from(state.ds.index_axis_mut(Axis(2), iz))
             .and(&state.spectral.filt)
-            .apply(|ds, filt| *ds *= filt);
+            .for_each(|ds, filt| *ds *= filt);
         Zip::from(state.gs.index_axis_mut(Axis(2), iz))
             .and(&state.spectral.filt)
-            .apply(|gs, filt| *gs *= filt);
+            .for_each(|gs, filt| *gs *= filt);
     }
 
     state.spectral.main_invert(
@@ -367,7 +367,7 @@ pub fn savegrid(state: &mut State, output: &mut Output) -> Result<()> {
         .and(&state.r.index_axis(Axis(2), 0))
         .and(&state.u.index_axis(Axis(2), 0))
         .and(&state.v.index_axis(Axis(2), 0))
-        .par_apply(|wkp, &r, &u, &v| {
+        .par_for_each(|wkp, &r, &u, &v| {
             *wkp = (1.0 + r) * (u.powf(2.0) + v.powf(2.0));
         });
 
@@ -378,7 +378,7 @@ pub fn savegrid(state: &mut State, output: &mut Output) -> Result<()> {
         .and(&state.u.index_axis(Axis(2), nz))
         .and(&state.v.index_axis(Axis(2), nz))
         .and(&state.w.index_axis(Axis(2), nz))
-        .par_apply(|wkp, &r, &u, &v, &w| {
+        .par_for_each(|wkp, &r, &u, &v, &w| {
             *wkp = (1.0 + r) * (u.powf(2.0) + v.powf(2.0) + w.powf(2.0));
         });
 
@@ -390,7 +390,7 @@ pub fn savegrid(state: &mut State, output: &mut Output) -> Result<()> {
             .and(&state.u.index_axis(Axis(2), iz))
             .and(&state.v.index_axis(Axis(2), iz))
             .and(&state.w.index_axis(Axis(2), iz))
-            .par_apply(|wkp, &r, &u, &v, &w| {
+            .par_for_each(|wkp, &r, &u, &v, &w| {
                 *wkp = (1.0 + r) * (u.powf(2.0) + v.powf(2.0) + w.powf(2.0));
             });
         ekin += wkp.sum();
@@ -404,7 +404,7 @@ pub fn savegrid(state: &mut State, output: &mut Output) -> Result<()> {
     // Compute potential energy (same as SW expression):
     Zip::from(&mut wkp)
         .and(&state.z.index_axis(Axis(2), nz))
-        .par_apply(|wkp, &z| *wkp = ((1.0 / HBAR) * z - 1.0).powf(2.0));
+        .par_for_each(|wkp, &z| *wkp = ((1.0 / HBAR) * z - 1.0).powf(2.0));
 
     let epot = (1.0 / 2.0) * (gl * gl) * CSQ * wkp.sum();
 
@@ -569,7 +569,7 @@ pub fn savegrid(state: &mut State, output: &mut Output) -> Result<()> {
     Zip::from(&mut wkp)
         .and(&state.w.index_axis(Axis(2), nz))
         .and(&state.z.index_axis(Axis(2), nz))
-        .apply(|wkp, &w, &z| {
+        .for_each(|wkp, &w, &z| {
             *wkp = -w / z;
         });
     let wkp_f32 = wkp
@@ -586,13 +586,13 @@ pub fn savegrid(state: &mut State, output: &mut Output) -> Result<()> {
         Zip::from(&mut wkp)
             .and(&state.zeta.index_axis(Axis(2), iz))
             .and(&state.r.index_axis(Axis(2), iz))
-            .apply(|wkp, zeta, r| {
+            .for_each(|wkp, zeta, r| {
                 *wkp += state.spectral.weight[iz] * zeta * (1.0 + r);
             });
     }
     Zip::from(&mut wkp)
         .and(&state.z.index_axis(Axis(2), nz))
-        .apply(|wkp, z| {
+        .for_each(|wkp, z| {
             *wkp *= HBAR / z;
         });
     let wkp_f32 = wkp
@@ -606,7 +606,7 @@ pub fn savegrid(state: &mut State, output: &mut Output) -> Result<()> {
     // PV anomaly:
     Zip::from(&mut wkp)
         .and(&state.z.index_axis(Axis(2), nz))
-        .apply(|wkp, z| *wkp = HBAR * (*wkp + COF) / z - COF);
+        .for_each(|wkp, z| *wkp = HBAR * (*wkp + COF) / z - COF);
     let wkp_f32 = wkp
         .as_slice_memory_order()
         .unwrap()
@@ -623,11 +623,11 @@ pub fn savegrid(state: &mut State, output: &mut Output) -> Result<()> {
         Zip::from(&mut wkp)
             .and(&wkq)
             .and(&state.r.index_axis(Axis(2), iz))
-            .apply(|wkp, wkq, r| *wkp += state.spectral.weight[iz] * wkq * (1.0 + r));
+            .for_each(|wkp, wkq, r| *wkp += state.spectral.weight[iz] * wkq * (1.0 + r));
     }
     Zip::from(&mut wkp)
         .and(&state.z.index_axis(Axis(2), nz))
-        .apply(|wkp, z| *wkp *= HBAR / z);
+        .for_each(|wkp, z| *wkp *= HBAR / z);
     let wkp_f32 = wkp
         .as_slice_memory_order()
         .unwrap()
@@ -639,7 +639,7 @@ pub fn savegrid(state: &mut State, output: &mut Output) -> Result<()> {
     // Dimensionless height anomaly:
     Zip::from(&mut wkp)
         .and(&state.z.index_axis(Axis(2), nz))
-        .apply(|wkp, z| *wkp = (1.0 / HBAR) * z - 1.0);
+        .for_each(|wkp, z| *wkp = (1.0 / HBAR) * z - 1.0);
     let wkp_f32 = wkp
         .as_slice_memory_order()
         .unwrap()

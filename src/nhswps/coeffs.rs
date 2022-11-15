@@ -20,11 +20,11 @@ pub fn coeffs(
     Zip::from(&mut sigx)
         .and(&state.ri)
         .and(&state.zx)
-        .apply(|sigx, ri, zx| *sigx = ri * zx);
+        .for_each(|sigx, ri, zx| *sigx = ri * zx);
     Zip::from(&mut sigy)
         .and(&state.ri)
         .and(&state.zy)
-        .apply(|sigy, ri, zy| *sigy = ri * zy);
+        .for_each(|sigy, ri, zy| *sigy = ri * zy);
     state.spectral.deal3d(sigx.view_mut());
     state.spectral.deal3d(sigy.view_mut());
 
@@ -33,7 +33,9 @@ pub fn coeffs(
         .and(&state.ri)
         .and(&sigx)
         .and(&sigy)
-        .apply(|cpt2, ri, sigx, sigy| *cpt2 = 1.0 - ri.powf(2.0) - sigx.powf(2.0) - sigy.powf(2.0));
+        .for_each(|cpt2, ri, sigx, sigy| {
+            *cpt2 = 1.0 - ri.powf(2.0) - sigx.powf(2.0) - sigy.powf(2.0)
+        });
 
     state.spectral.deal3d(cpt2.view_mut());
 
@@ -55,7 +57,7 @@ pub fn coeffs(
                     .and(cpt2.index_axis(Axis(2), 0))
                     .and(cpt2.index_axis(Axis(2), 1))
                     .and(cpt2.index_axis(Axis(2), 2))
-                    .apply(|cpt1, cpt2_0, cpt2_1, cpt2_2| {
+                    .for_each(|cpt1, cpt2_0, cpt2_1, cpt2_2| {
                         *cpt1 = qdzi * (4.0 * cpt2_1 - 3.0 * cpt2_0 - cpt2_2)
                     });
             } else {
@@ -70,7 +72,7 @@ pub fn coeffs(
                     .and(cpt2.index_axis(Axis(2), iz + 1))
                     .and(cpt2.index_axis(Axis(2), iz - 1))
                     .and(&wkp)
-                    .apply(|cpt1, cpt2_p, cpt2_m, wkp| *cpt1 = qdzi * (cpt2_p - cpt2_m) + wkp);
+                    .for_each(|cpt1, cpt2_p, cpt2_m, wkp| *cpt1 = qdzi * (cpt2_p - cpt2_m) + wkp);
             }
         });
 
@@ -89,7 +91,7 @@ pub fn coeffs(
         .and(cpt2.index_axis(Axis(2), nz - 1))
         .and(cpt2.index_axis(Axis(2), nz - 2))
         .and(&wkp)
-        .apply(|cpt1, cpt2_0, cpt2_1, cpt2_2, wkp| {
+        .for_each(|cpt1, cpt2_0, cpt2_1, cpt2_2, wkp| {
             *cpt1 = qdzi * (3.0 * cpt2_0 + cpt2_2 - 4.0 * cpt2_1) + wkp;
         });
 
